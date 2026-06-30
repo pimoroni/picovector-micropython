@@ -1,0 +1,4 @@
+[submodule "picovector"]
+	path = picovector
+	url = https://github.com/pimoroni/picovector
+	branch = no-bindings
