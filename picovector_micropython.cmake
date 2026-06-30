@@ -1,47 +1,47 @@
 # picovector-micropython.cmake — the MicroPython side of PicoVector.
 #
 # Wires the generated bindings + PNG/JPEG decoders into the firmware and
-# configures the core picovector library for the badge: rasterise on core1
+# configures the core picovector library for RP2 MicroPython rasterise on core1
 # (PV_DUAL_CORE), enlarge the shared working buffer to fit PNGDEC/JPEGDEC decode
 # state, and expose optional metrics/profiling.
-#
-# Include this AFTER find_package(PICOVECTOR) so the usermod_picovector target
-# already exists (see board/usermodules.cmake).
 
-set(_PV_MP_DIR ${CMAKE_CURRENT_LIST_DIR})
-# The core PicoVector library is vendored as a submodule (no-bindings branch).
-set(_PV_CORE_DIR ${CMAKE_CURRENT_LIST_DIR}/picovector)
+if(NOT DEFINED ${PICOVECTOR_DIR})
+  set(PICOVECTOR_DIR "${CMAKE_CURRENT_LIST_DIR}/picovector")
+endif()
+
+# PicoVector core library
+find_package(PICOVECTOR CONFIG REQUIRED)
 
 # PNG/JPEG decoders are bundled in the core picovector checkout, but only the
 # bindings use them, so they're wired here rather than in the core library.
-set(PNGDEC_DIR "${_PV_CORE_DIR}/lib/pngdec")
-set(JPEGDEC_DIR "${_PV_CORE_DIR}/lib/jpegdec")
+set(PNGDEC_DIR "${PICOVECTOR_DIR}/lib/pngdec")
+set(JPEGDEC_DIR "${PICOVECTOR_DIR}/lib/jpegdec")
 find_package(PNGDEC CONFIG REQUIRED)
 find_package(JPEGDEC CONFIG REQUIRED)
 
 set(PV_MP_SOURCES
   # generated module table + per-type bindings
-  ${_PV_MP_DIR}/generated/picovector_bindings.c
-  ${_PV_MP_DIR}/generated/vec2.cpp
-  ${_PV_MP_DIR}/generated/rect.cpp
-  ${_PV_MP_DIR}/generated/mat3.cpp
-  ${_PV_MP_DIR}/generated/color.cpp
-  ${_PV_MP_DIR}/generated/brush.cpp
-  ${_PV_MP_DIR}/generated/shape.cpp
-  ${_PV_MP_DIR}/generated/image.cpp
-  ${_PV_MP_DIR}/generated/font.cpp
-  ${_PV_MP_DIR}/generated/pixel_font.cpp
-  ${_PV_MP_DIR}/generated/algorithm.cpp
-  ${_PV_MP_DIR}/generated/pv_metrics_names.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/picovector_bindings.c
+  ${CMAKE_CURRENT_LIST_DIR}/generated/vec2.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/rect.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/mat3.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/color.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/brush.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/shape.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/image.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/font.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/pv_metrics_names.cpp
   # shared glue + hand-written (native) bodies + companion image decoders
-  ${_PV_MP_DIR}/runtime/pv_support.cpp
-  ${_PV_MP_DIR}/runtime/pv_metrics.cpp
-  ${_PV_MP_DIR}/native/font_native.cpp
-  ${_PV_MP_DIR}/native/pixel_font_native.cpp
-  ${_PV_MP_DIR}/native/image_native.cpp
-  ${_PV_MP_DIR}/native/algorithm_native.cpp
-  ${_PV_MP_DIR}/native/image_png.cpp
-  ${_PV_MP_DIR}/native/image_jpeg.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_support.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_metrics.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/font_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/pixel_font_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/image_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/image_jpeg.cpp
 )
 
 target_sources(usermod_picovector INTERFACE
@@ -49,9 +49,9 @@ target_sources(usermod_picovector INTERFACE
 )
 
 target_include_directories(usermod_picovector INTERFACE
-  ${_PV_MP_DIR}            # picovector.config.hpp (core selects it via __has_include)
-  ${_PV_MP_DIR}/generated  # types.h, pv_metrics_table.h
-  ${_PV_MP_DIR}/runtime    # pv_bindings.hpp, pv_objs.hpp, mp_allocator.hpp, pv_metrics.hpp
+  ${CMAKE_CURRENT_LIST_DIR}            # picovector.config.hpp (core selects it via __has_include)
+  ${CMAKE_CURRENT_LIST_DIR}/generated  # types.h, pv_metrics_table.h
+  ${CMAKE_CURRENT_LIST_DIR}/runtime    # pv_bindings.hpp, pv_objs.hpp, mp_allocator.hpp, pv_metrics.hpp
 )
 
 target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec)
