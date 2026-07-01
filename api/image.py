@@ -123,13 +123,18 @@ class image:
 
     # ── text (font branching → native) ──────────────────────────────────────
     @native
-    def text(self, text: str, at: XY, size: float = 12) -> None:
-        "Draw text at a point using the current font."
+    def text(self, text: str, at: XY, size: float = 0) -> None:
+        "Draw text at a point using the current font. "
+        "size (sentinel 0 = the font's default): point size for vector fonts "
+        "(default 12), or the integer nearest-neighbour scale for pixel fonts "
+        "(default 1; 2 = double size, 3 = triple, ...)."
 
     @native
     def measure_text(self, text: str, size: float = 0) -> tuple[float, float]:
         "Measure text in the current font. Returns (width, height). "
-        "size is required for vector fonts, ignored for pixel fonts."
+        "size (sentinel 0 = the font's default): point size for vector fonts "
+        "(default 12), or the integer scale for pixel fonts (default 1) — pass "
+        "the same value you draw with so layout matches."
 
     # ── blitting ─────────────────────────────────────────────────────────────
     @overload

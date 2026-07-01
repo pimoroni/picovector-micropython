@@ -108,12 +108,15 @@ extern "C" {
     }
     size_t _i = 2;
     vec2_t at = pv::get_xy(args, &_i, n_args);
+    // size is a sentinel-0 optional: 0 (or omitted) means "font's default" —
+    // 12pt for vector fonts, 1x for pixel fonts (where it's the integer scale).
+    float size = n_args > _i ? mp_obj_get_float(args[_i]) : 0.0f;
     if (self->font) {
-      float size = n_args > _i ? mp_obj_get_float(args[_i]) : 12;
-      self->image->font()->draw(self->image, text, at.x, at.y, size);
+      self->image->font()->draw(self->image, text, at.x, at.y, size > 0.0f ? size : 12.0f);
     }
     if (self->pixel_font) {
-      self->image->pixel_font()->draw(self->image, text, at.x, at.y);
+      int scale = size > 0.0f ? (int)size : 1;
+      self->image->pixel_font()->draw(self->image, text, at.x, at.y, scale);
     }
     return mp_const_none;
   }
@@ -127,15 +130,18 @@ extern "C" {
     if (!self->font && !self->pixel_font) {
       mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("target image has no font"));
     }
+    // size is a sentinel-0 optional: 0 (or omitted) means "font's default" —
+    // 12pt for vector fonts, 1x for pixel fonts (where it's the integer scale).
+    float size = n_args > 2 ? mp_obj_get_float(args[2]) : 0.0f;
     mp_obj_t result[2];
     if (self->font) {
-      float size = mp_obj_get_float(args[2]);
-      rect_t r = self->image->font()->measure(self->image, text, size);
+      rect_t r = self->image->font()->measure(self->image, text, size > 0.0f ? size : 12.0f);
       result[0] = mp_obj_new_float(r.w);
       result[1] = mp_obj_new_float(r.h);
     }
     if (self->pixel_font) {
-      rect_t r = self->image->pixel_font()->measure(self->image, text);
+      int scale = size > 0.0f ? (int)size : 1;
+      rect_t r = self->image->pixel_font()->measure(self->image, text, scale);
       result[0] = mp_obj_new_float(r.w);
       result[1] = mp_obj_new_float(r.h);
     }
