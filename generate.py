@@ -206,7 +206,7 @@ def call_expr(t, call, args, emit, recv, params):
     if emit == "new":
         return f"new {call}({a})"
     if emit == "mnew":
-        return f"m_new_class({call}, {a})"
+        return f"m_new_class({call}, {a})" if a else f"m_new_class({call})"
     if emit == "expr":
         return a
     raise ValueError(f"unknown emit {emit!r}")
