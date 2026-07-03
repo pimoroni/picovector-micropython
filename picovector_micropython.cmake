@@ -57,13 +57,18 @@ target_include_directories(usermod_picovector INTERFACE
 target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec)
 
 # Badge configuration of the core library:
-#  - rasterise on core1 (the core default is single-core)
 #  - enlarge the shared working buffer to also fit PNGDEC/JPEGDEC decode state
 #    ((60 + 20) * 1024 = 81920); the core rasteriser-only default is 60 KB.
 target_compile_definitions(usermod_picovector INTERFACE
-  PV_DUAL_CORE=1
   PV_WORKING_BUFFER_SIZE=81920
 )
+
+# Rasterise on core1. Off by default (the core library is single-core); enable
+# per-board with set(PV_DUAL_CORE ON) before find_package(PICOVECTOR_MICROPYTHON
+# ...), or cmake -DPV_DUAL_CORE=ON.
+if(PV_DUAL_CORE)
+  target_compile_definitions(usermod_picovector INTERFACE PV_DUAL_CORE=1)
+endif()
 
 # Optional per-binding call-count + timing metrics (the picovector.metrics
 # module). Off by default (zero cost):  cmake -DPV_METRICS=ON ...
