@@ -76,6 +76,22 @@ mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(gradient_brush_t, (gradient_type_t)type, x1, y1, x2, y2, stops_positions, stops_colors, stops_n, transform));
 }
 
+// brush.erase: Erase/window brush. No args erases (dst-out); pass a color for a translucent
+mp_obj_t mpy_brush_erase(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_erase);
+#endif
+  if (n_args == 0) {
+    return pv::box_brush(m_new_class(transparent_brush_t));
+  }
+  if (n_args == 1 && mp_obj_is_type(args[0], &type_color)) {
+    size_t _i = 0;
+    color_t c = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+    return pv::box_brush(m_new_class(transparent_brush_t, c));
+  }
+  mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.erase([color])"));
+}
+
 // brush.pixelate: Mosaic the shape's area, block size in pixels.
 mp_obj_t mpy_brush_pixelate(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
@@ -124,6 +140,8 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_image_obj, 0, mpy_brush_image);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_image_static_obj, MP_ROM_PTR(&mpy_brush_image_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_gradient_obj, 6, mpy_brush_gradient);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_gradient_static_obj, MP_ROM_PTR(&mpy_brush_gradient_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_erase_obj, 0, mpy_brush_erase);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_erase_static_obj, MP_ROM_PTR(&mpy_brush_erase_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_pixelate_obj, 1, mpy_brush_pixelate);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_pixelate_static_obj, MP_ROM_PTR(&mpy_brush_pixelate_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_blur_obj, 1, mpy_brush_blur);
@@ -139,6 +157,7 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_pattern), MP_ROM_PTR(&mpy_brush_pattern_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_image), MP_ROM_PTR(&mpy_brush_image_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_gradient), MP_ROM_PTR(&mpy_brush_gradient_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mpy_brush_erase_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_pixelate), MP_ROM_PTR(&mpy_brush_pixelate_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_brush_blur_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_lighten), MP_ROM_PTR(&mpy_brush_lighten_static_obj) },

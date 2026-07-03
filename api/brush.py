@@ -55,6 +55,19 @@ class brush:
         "Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of "
         "(position 0–1, color), up to 16."
 
+    # erase(color=None) ------------------------------------------------------
+    @overload
+    def erase() -> brush: "Erase: punch fully-transparent holes (dst-out) with AA edges."
+    @overload
+    def erase(c: color) -> brush: "Punch a translucent window of colour c with AA edges."
+
+    @staticmethod
+    @cpp(call="transparent_brush_t", emit="mnew",
+         error="invalid parameter, expected brush.erase([color])")
+    def erase(c=None) -> brush:
+        "Erase/window brush. No args erases (dst-out); pass a color for a translucent "
+        "window that lerps the destination toward that colour by shape coverage."
+
     # single-arg effect brushes ---------------------------------------------
     @staticmethod
     @cpp(call="pixelate_brush_t", emit="mnew")

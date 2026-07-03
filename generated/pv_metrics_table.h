@@ -46,6 +46,7 @@ enum {
   PV_M_brush_pattern,  // brush.pattern
   PV_M_brush_image,  // brush.image
   PV_M_brush_gradient,  // brush.gradient
+  PV_M_brush_erase,  // brush.erase
   PV_M_brush_pixelate,  // brush.pixelate
   PV_M_brush_blur,  // brush.blur
   PV_M_brush_lighten,  // brush.lighten
