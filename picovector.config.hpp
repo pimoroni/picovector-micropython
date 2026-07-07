@@ -34,8 +34,3 @@ extern "C" {
 #define PV_MALLOC_NO_SCAN m_malloc_no_scan
 #define PV_FREE m_free
 #define PV_REALLOC m_realloc
-
-// Shared, overridable defaults for everything not set above (PV_PROFILE,
-// PV_DUAL_CORE, PV_WORKING_BUFFER_SIZE). Resolved from the core picovector dir,
-// which picovector-micropython.cmake puts on the include path.
-#include "config_default.hpp"
