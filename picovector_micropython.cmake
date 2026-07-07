@@ -54,7 +54,15 @@ target_include_directories(usermod_picovector INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/runtime    # pv_bindings.hpp, pv_objs.hpp, mp_allocator.hpp, pv_metrics.hpp
 )
 
-target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec hardware_interp)
+target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec)
+
+# The RP2 hardware interpolator acceleration is pico-sdk only. It's on by
+# default so Pico builds are unchanged; non-pico targets (e.g. the WebAssembly
+# simulator) build the portable C++ rasteriser and set -DPV_HARDWARE_INTERP=OFF.
+option(PV_HARDWARE_INTERP "Link the RP2 hardware interpolator (pico-sdk only)" ON)
+if(PV_HARDWARE_INTERP)
+  target_link_libraries(usermod_picovector INTERFACE hardware_interp)
+endif()
 
 # Badge configuration of the core library:
 #  - enlarge the shared working buffer to also fit PNGDEC/JPEGDEC decode state
