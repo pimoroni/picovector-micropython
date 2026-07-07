@@ -54,7 +54,7 @@ target_include_directories(usermod_picovector INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/runtime    # pv_bindings.hpp, pv_objs.hpp, mp_allocator.hpp, pv_metrics.hpp
 )
 
-target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec)
+target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec hardware_interp)
 
 # Badge configuration of the core library:
 #  - enlarge the shared working buffer to also fit PNGDEC/JPEGDEC decode state
