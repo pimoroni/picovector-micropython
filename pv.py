@@ -146,7 +146,7 @@ def _unwrap(fn):
     return fn
 
 
-def cpp(call=None, *, args=None, emit=None, native=False, get=None, set=None,
+def cpp(call=None, *, args=None, emit=None, native=False, kw=False, get=None, set=None,
         get_raw=None, error=None, result=None, default=None, recv=None, box=None):
     """Method/property decorator for the cases convention can't express.
 
@@ -159,11 +159,12 @@ def cpp(call=None, *, args=None, emit=None, native=False, get=None, set=None,
       ``"new"`` (``new T(...)``), ``"mnew"`` (GC ``m_new_class``), ``"expr"``
       (the single arg is a bare expression), default ``"method"``.
     * ``native`` — body supplied by ``native/*.cpp``.
+    * ``kw`` — the native body accepts keyword arguments (``mp_map_t *kw_args``).
     * ``get`` / ``set`` / ``get_raw`` — property accessor C++ (see model.py).
     * ``result`` / ``default`` — binary-operator result / fall-through.
     * ``error`` — message raised when no overload matches.
     """
-    info = dict(call=call, args=args, emit=emit, native=native, get=get,
+    info = dict(call=call, args=args, emit=emit, native=native, kw=kw, get=get,
                 set=set, get_raw=get_raw, error=error, result=result,
                 default=default, recv=recv, box=box)
     info = {k: v for k, v in info.items() if v not in (None, False)}

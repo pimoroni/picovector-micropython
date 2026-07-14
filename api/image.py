@@ -31,8 +31,10 @@ class image:
     BICUBIC = const("filter_t::BICUBIC", "Texture filter: bicubic (highest quality).")
 
     @cpp(emit="image")
-    def __init__(self, width: int, height: int, buffer: Buffer = None):
-        "image(width, height) allocates a buffer; pass an existing buffer to wrap it."
+    def __init__(self, width: int, height: int, buffer: Buffer = None,
+                 rows: int = 1, cols: int = 1):
+        "image(width, height) allocates a buffer; pass an existing buffer to wrap it. "
+        "rows/cols declare a spritesheet grid (default 1x1) for sprite()."
 
     # ── properties ──────────────────────────────────────────────────────────
     @property
@@ -77,9 +79,11 @@ class image:
 
     # ── construction / IO (procedural → native) ─────────────────────────────
     @staticmethod
-    @native
-    def load(path_or_bytes, width: int = 0, height: int = 0) -> image:
-        "Load a PNG/JPEG from a path or buffer. Returns an image."
+    @cpp(native=True, kw=True)
+    def load(path_or_bytes, width: int = 0, height: int = 0,
+             rows: int = 1, cols: int = 1) -> image:
+        "Load a PNG/JPEG from a path or buffer. Returns an image. "
+        "rows/cols declare a spritesheet grid (default 1x1) for sprite()."
 
     @native
     def load_into(self, path_or_bytes) -> None:
@@ -88,6 +92,12 @@ class image:
     @native
     def window(self, area: XYWH) -> image:
         "Return a sub-image view of this canvas (shares pixels)."
+
+    @native
+    def sprite(self, x: int, y: int) -> image:
+        "Return the spritesheet cell at grid (x, y) as a sub-image view (shares "
+        "pixels). x is the column, y the row; cell size is the sheet divided by "
+        "its cols x rows layout."
 
     # ── raster primitives ───────────────────────────────────────────────────
     def clear(self) -> None: "Fill the whole image with the current pen."

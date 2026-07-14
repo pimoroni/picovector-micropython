@@ -232,13 +232,15 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
-extern "C" mp_obj_t image_load(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_obj, 1, image_load);
+extern "C" mp_obj_t image_load(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_image_load_obj, 1, image_load);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_load_static_obj, MP_ROM_PTR(&mpy_image_load_obj));
 extern "C" mp_obj_t image_load_into(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_into_obj, 2, image_load_into);
 extern "C" mp_obj_t image_window(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_window_obj, 2, image_window);
+extern "C" mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_sprite_obj, 3, image_sprite);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_clear_obj, 1, mpy_image_clear);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_rectangle_obj, 2, mpy_image_rectangle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_line_obj, 3, mpy_image_line);
@@ -265,14 +267,24 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_batch_obj, 2, image_batch);
 
 static mp_obj_t image_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
   image_obj_t *self = mp_obj_malloc_with_finaliser(image_obj_t, type);
-  int w = mp_obj_get_int(args[0]);
-  int h = mp_obj_get_int(args[1]);
-  if (n_args > 2) {
+  enum { ARG_width, ARG_height, ARG_buffer, ARG_rows, ARG_cols };
+  static const mp_arg_t allowed[] = {
+    { MP_QSTR_width,  MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
+    { MP_QSTR_height, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
+    { MP_QSTR_buffer, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    { MP_QSTR_rows,   MP_ARG_INT, {.u_int = 1} },
+    { MP_QSTR_cols,   MP_ARG_INT, {.u_int = 1} },
+  };
+  mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+  mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
+  int w = vals[ARG_width].u_int, h = vals[ARG_height].u_int;
+  int rows = vals[ARG_rows].u_int, cols = vals[ARG_cols].u_int;
+  if (vals[ARG_buffer].u_obj != mp_const_none) {
     mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
-    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h);
+    mp_get_buffer_raise(vals[ARG_buffer].u_obj, &bufinfo, MP_BUFFER_WRITE);
+    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h, rows, cols);
   } else {
-    self->image = new (m_malloc(sizeof(image_t))) image_t(w, h);
+    self->image = new (m_malloc(sizeof(image_t))) image_t(w, h, rows, cols);
   }
   return MP_OBJ_FROM_PTR(self);
 }
@@ -385,6 +397,7 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },
+  { MP_ROM_QSTR(MP_QSTR_sprite), MP_ROM_PTR(&mpy_image_sprite_obj) },
   { MP_ROM_QSTR(MP_QSTR_clear), MP_ROM_PTR(&mpy_image_clear_obj) },
   { MP_ROM_QSTR(MP_QSTR_rectangle), MP_ROM_PTR(&mpy_image_rectangle_obj) },
   { MP_ROM_QSTR(MP_QSTR_line), MP_ROM_PTR(&mpy_image_line_obj) },
