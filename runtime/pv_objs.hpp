@@ -11,6 +11,7 @@
 #include "color.hpp"
 #include "pixel_font.hpp"
 #include "blend.hpp"
+#include "tween/tween.hpp"
 #include "PNGdec.h"
 #endif
 
@@ -87,6 +88,29 @@ extern "C" {
     mp_obj_base_t base;
     vec2_t v;
   } vec2_obj_t;
+
+  // A tween carries one value type, tagged by `kind`. The active union member is
+  // placement-new'd by tween_make_new_impl; the members are trivially
+  // destructible, so no finaliser is needed. A mat3 tween interpolates through a
+  // decomposed xform_t (translate/rotate/scale) — a raw matrix can't be lerped
+  // element-wise — so its member is a tween_t<xform_t> recomposed on read.
+  enum { TWEEN_FLOAT, TWEEN_VEC2, TWEEN_RECT, TWEEN_MAT3 };
+  typedef struct _tween_obj_t {
+    mp_obj_base_t base;
+    uint8_t kind;
+    union {
+      tween_t<float>   f;
+      tween_t<vec2_t>  v;
+      tween_t<rect_t>  r;
+      tween_t<xform_t> x;
+    };
+  } tween_obj_t;
+
+  // tween endpoint/duration accessors (native/tween_native.cpp); the generated
+  // attr getters box these by reference to the type-tagged union.
+  extern mp_obj_t tween_box_start(tween_obj_t *self);
+  extern mp_obj_t tween_box_end(tween_obj_t *self);
+  extern mp_obj_t tween_box_duration(tween_obj_t *self);
 
   // used by image.pen = N and picovector.pen() (global pen)
   extern brush_obj_t *mp_obj_to_brush(size_t n_args, const mp_obj_t *args);

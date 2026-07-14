@@ -16,6 +16,7 @@ from . import brush         # noqa: F401
 from . import shape         # noqa: F401
 from . import image         # noqa: F401
 from . import algorithm     # noqa: F401
+from . import tween         # noqa: F401
 
 #: MicroPython module name.
 MODULE_NAME = "picovector"

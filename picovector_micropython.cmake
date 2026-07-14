@@ -32,6 +32,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/tween.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pv_metrics_names.cpp
   # shared glue + hand-written (native) bodies + companion image decoders
   ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_support.cpp
@@ -39,6 +40,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/native/font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/pixel_font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/tween_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_jpeg.cpp

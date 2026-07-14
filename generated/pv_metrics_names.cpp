@@ -87,5 +87,6 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "algorithm.clip_line",
   "algorithm.dda",
   "algorithm.raycast",
+  "tween.at",
 };
 #endif

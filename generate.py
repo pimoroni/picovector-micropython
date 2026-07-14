@@ -338,6 +338,16 @@ def emit_member_obj(o, t, m):
 # ─────────────────────────────────────────────────────────────────────────────
 def emit_make_new(o, t):
     mk = t.make_new
+    if mk.kind == "native":
+        # the whole body is hand-written in native/<type>_native.cpp
+        o(f"extern \"C\" mp_obj_t {t.name}_make_new_impl(const mp_obj_type_t *type, "
+          "size_t n_args, size_t n_kw, const mp_obj_t *args);")
+        o(f"static mp_obj_t {t.name}_make_new(const mp_obj_type_t *type, "
+          "size_t n_args, size_t n_kw, const mp_obj_t *args) {")
+        o(f"return {t.name}_make_new_impl(type, n_args, n_kw, args);", 1)
+        o("}")
+        o("")
+        return
     o(f"static mp_obj_t {t.name}_make_new(const mp_obj_type_t *type, "
       "size_t n_args, size_t n_kw, const mp_obj_t *args) {")
     alloc = "mp_obj_malloc_with_finaliser" if mk.finaliser else "mp_obj_malloc"

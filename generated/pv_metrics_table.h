@@ -90,5 +90,6 @@ enum {
   PV_M_algorithm_clip_line,  // algorithm.clip_line
   PV_M_algorithm_dda,  // algorithm.dda
   PV_M_algorithm_raycast,  // algorithm.raycast
+  PV_M_tween_at,  // tween.at
   PV_METRIC_COUNT
 };

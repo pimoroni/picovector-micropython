@@ -458,6 +458,10 @@ def _build_make_new(func, api, ns, classes):
     if meta.get("emit") == "image":
         return New(kind="image", finaliser=api["finaliser"],
                    doc=(func.__doc__ or "").strip())
+    if meta.get("emit") == "native":
+        # make_new body is hand-written in native/<type>_native.cpp
+        return New(kind="native", finaliser=api["finaliser"],
+                   doc=(func.__doc__ or "").strip())
     field = api["field"]
     overloads = typing.get_overloads(func) or [func]
     variants = []
