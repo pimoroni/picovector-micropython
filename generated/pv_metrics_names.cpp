@@ -64,6 +64,7 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "image.load",
   "image.load_into",
   "image.window",
+  "image.spritesheet",
   "image.sprite",
   "image.clear",
   "image.rectangle",

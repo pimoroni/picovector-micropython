@@ -57,26 +57,15 @@ extern "C" {
     }
   }
 
-  mp_obj_t image_load(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+  mp_obj_t image_load(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_load);
 #endif
-    enum { ARG_source, ARG_width, ARG_height, ARG_rows, ARG_cols };
-    static const mp_arg_t allowed[] = {
-      { MP_QSTR_path_or_bytes, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-      { MP_QSTR_width,  MP_ARG_INT, {.u_int = 0} },
-      { MP_QSTR_height, MP_ARG_INT, {.u_int = 0} },
-      { MP_QSTR_rows,   MP_ARG_INT, {.u_int = 1} },
-      { MP_QSTR_cols,   MP_ARG_INT, {.u_int = 1} },
-    };
-    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
-    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed), allowed, vals);
     image_obj_t *result = mp_obj_malloc_with_finaliser(image_obj_t, &type_image);
     result->image = nullptr;
-    image_open_helper(*result, vals[ARG_source].u_obj,
-                      vals[ARG_width].u_int, vals[ARG_height].u_int);
-    result->image->rows(vals[ARG_rows].u_int);
-    result->image->cols(vals[ARG_cols].u_int);
+    int target_width  = n_args >= 2 ? (int)mp_obj_get_float(args[1]) : 0;
+    int target_height = n_args >= 3 ? (int)mp_obj_get_float(args[2]) : 0;
+    image_open_helper(*result, args[0], target_width, target_height);
     return MP_OBJ_FROM_PTR(result);
   }
 
@@ -106,6 +95,16 @@ extern "C" {
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image, rect_t(x, y, w, h));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);
+  }
+
+  mp_obj_t image_spritesheet(size_t n_args, const mp_obj_t *args) {
+    self(args[0], image_obj_t);
+#if PV_METRICS
+    pv::metric_scope _pvm(PV_M_image_spritesheet);
+#endif
+    self->image->cols(mp_obj_get_int(args[1]));
+    self->image->rows(mp_obj_get_int(args[2]));
+    return args[0];
   }
 
   mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args) {

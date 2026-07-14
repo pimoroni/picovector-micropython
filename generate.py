@@ -320,14 +320,9 @@ def emit_member_obj(o, t, m):
     fn = native_name(t, m) if m.native else fn_name(t, m)
     obj = f"{fn_name(t, m)}_obj"
     n = min_args(t, m.params, m.kind)
-    if m.native and m.kw:
-        o(f"extern \"C\" mp_obj_t {fn}(size_t n_args, const mp_obj_t *pos_args, "
-          "mp_map_t *kw_args);")
-        o(f"static MP_DEFINE_CONST_FUN_OBJ_KW({obj}, {n}, {fn});")
-    else:
-        if m.native:
-            o(f"extern \"C\" mp_obj_t {fn}(size_t n_args, const mp_obj_t *args);")
-        o(f"static MP_DEFINE_CONST_FUN_OBJ_VAR({obj}, {n}, {fn});")
+    if m.native:
+        o(f"extern \"C\" mp_obj_t {fn}(size_t n_args, const mp_obj_t *args);")
+    o(f"static MP_DEFINE_CONST_FUN_OBJ_VAR({obj}, {n}, {fn});")
     if m.is_static:
         o(f"static MP_DEFINE_CONST_STATICMETHOD_OBJ({fn_name(t, m)}_static_obj, "
           f"MP_ROM_PTR(&{obj}));")
@@ -353,24 +348,14 @@ def emit_make_new(o, t):
     alloc = "mp_obj_malloc_with_finaliser" if mk.finaliser else "mp_obj_malloc"
     o(f"{t.obj_struct} *self = {alloc}({t.obj_struct}, type);", 1)
     if mk.kind == "image":
-        o("enum { ARG_width, ARG_height, ARG_buffer, ARG_rows, ARG_cols };", 1)
-        o("static const mp_arg_t allowed[] = {", 1)
-        o("{ MP_QSTR_width,  MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },", 2)
-        o("{ MP_QSTR_height, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },", 2)
-        o("{ MP_QSTR_buffer, MP_ARG_OBJ, {.u_obj = mp_const_none} },", 2)
-        o("{ MP_QSTR_rows,   MP_ARG_INT, {.u_int = 1} },", 2)
-        o("{ MP_QSTR_cols,   MP_ARG_INT, {.u_int = 1} },", 2)
-        o("};", 1)
-        o("mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];", 1)
-        o("mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);", 1)
-        o("int w = vals[ARG_width].u_int, h = vals[ARG_height].u_int;", 1)
-        o("int rows = vals[ARG_rows].u_int, cols = vals[ARG_cols].u_int;", 1)
-        o("if (vals[ARG_buffer].u_obj != mp_const_none) {", 1)
+        o("int w = mp_obj_get_int(args[0]);", 1)
+        o("int h = mp_obj_get_int(args[1]);", 1)
+        o("if (n_args > 2) {", 1)
         o("mp_buffer_info_t bufinfo;", 2)
-        o("mp_get_buffer_raise(vals[ARG_buffer].u_obj, &bufinfo, MP_BUFFER_WRITE);", 2)
-        o("self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h, rows, cols);", 2)
+        o("mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);", 2)
+        o("self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h);", 2)
         o("} else {", 1)
-        o("self->image = new (m_malloc(sizeof(image_t))) image_t(w, h, rows, cols);", 2)
+        o("self->image = new (m_malloc(sizeof(image_t))) image_t(w, h);", 2)
         o("}", 1)
     elif len(mk.variants) == 1:
         for lhs, rhs in mk.variants[0].assigns:
