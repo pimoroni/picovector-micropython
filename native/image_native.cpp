@@ -12,6 +12,11 @@
 
 #include "pv_bindings.hpp"
 
+// JPEG_* error codes, for descriptive load errors. PNG_* arrive via pv_objs.hpp.
+#ifndef NO_QSTR
+  #include "JPEGDEC.h"
+#endif
+
 extern "C" {
   #include "py/stream.h"
   #include "py/reader.h"
@@ -34,26 +39,92 @@ extern "C" {
   extern mp_obj_t mpy_image_blit_hspan(size_t, const mp_obj_t *);
   extern mp_obj_t image_text(size_t, const mp_obj_t *);
 
+  // Raise a descriptive error for a failed decode. Each message is a complete
+  // MP_ERROR_TEXT literal so it participates in ROM text compression; composing
+  // one with %s would store the substituted phrase uncompressed. The rare/
+  // internal codes fall through to the numeric form (a compressed format string
+  // with the code as %d). mp_raise_* is noreturn, so cases need no break.
+  static void raise_png_error(int status) {
+    switch (status) {
+      case PNG_UNSUPPORTED_FEATURE:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load PNG: interlaced and 16-bit are not supported"));
+      case PNG_TOO_BIG:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load PNG: image line too wide for the decoder"));
+      case PNG_DECODE_ERROR:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load PNG: corrupt or truncated data"));
+      case PNG_MEM_ERROR:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load PNG: out of memory"));
+      default:
+        mp_raise_msg_varg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load PNG (error %d)"), status);
+    }
+  }
+
+  static void raise_jpeg_error(int status) {
+    switch (status) {
+      case JPEG_UNSUPPORTED_FEATURE:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load JPEG: unsupported feature"));
+      case JPEG_DECODE_ERROR:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load JPEG: corrupt or truncated data"));
+      default:
+        mp_raise_msg_varg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load JPEG (error %d)"), status);
+    }
+  }
+
+  // Try PNG first; only if the data isn't a PNG at all (PNG_INVALID_FILE) fall
+  // back to JPEG. Track which decoder produced the final status so the raised
+  // message names the real problem rather than a bare, enum-ambiguous number
+  // (PNG and JPEG have separate error enums that collide numerically).
   static void image_open_helper(image_obj_t &target, mp_obj_t path_or_bytes_in,
                                 int target_width, int target_height) {
-    int status = 0;
+    int png_status;
+    int jpeg_status = JPEG_SUCCESS;
+    bool tried_jpeg = false;
+
     if (mp_obj_is_str(path_or_bytes_in)) {
       const char *path = mp_obj_str_get_str(path_or_bytes_in);
-      status = pngdec_open_file(target, path, target_width, target_height);
-      if (status == PNG_INVALID_FILE) {
-        status = jpegdec_open_file(target, path, target_width, target_height);
+      png_status = pngdec_open_file(target, path, target_width, target_height);
+      if (png_status == PNG_INVALID_FILE) {
+        tried_jpeg = true;
+        jpeg_status = jpegdec_open_file(target, path, target_width, target_height);
       }
     } else {
       mp_buffer_info_t buf;
       mp_get_buffer_raise(path_or_bytes_in, &buf, MP_BUFFER_READ);
-      status = pngdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
-      if (status == PNG_INVALID_FILE) {
-        status = jpegdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
+      png_status = pngdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
+      if (png_status == PNG_INVALID_FILE) {
+        tried_jpeg = true;
+        jpeg_status = jpegdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
       }
     }
-    if (status != 0) {
-      mp_raise_msg_varg(&mp_type_ValueError,
-                        MP_ERROR_TEXT("unable to read image! %d"), status);
+
+    if (png_status != PNG_SUCCESS && !(tried_jpeg && jpeg_status == JPEG_SUCCESS)) {
+      if (!tried_jpeg) {
+        // PNG signature matched but the decode failed: a genuine PNG problem.
+        raise_png_error(png_status);
+      } else if (jpeg_status != JPEG_INVALID_FILE) {
+        // JPEG signature matched but the decode failed: a genuine JPEG problem.
+        raise_jpeg_error(jpeg_status);
+      } else {
+        // Neither decoder recognised the data (e.g. an AppleDouble ._ file, a
+        // renamed non-image, or a truncated download).
+        mp_raise_msg(&mp_type_ValueError,
+                     MP_ERROR_TEXT("unrecognised image format (not a PNG or JPEG)"));
+      }
+    }
+
+    // A file with a valid PNG signature but no IHDR chunk parses as 0x0 and
+    // "succeeds"; reject that so it surfaces rather than yielding a blank image.
+    if (target.image == nullptr ||
+        target.image->bounds().w == 0 || target.image->bounds().h == 0) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image has zero dimensions"));
     }
   }
 
