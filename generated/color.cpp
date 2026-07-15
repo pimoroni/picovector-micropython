@@ -54,7 +54,7 @@ mp_obj_t mpy_color_rgb(size_t n_args, const mp_obj_t *args) {
   return pv::box_color(rgb_color_t(r, g, b, a));
 }
 
-// color.hsv: Create a colour from HSV components.
+// color.hsv: Create a colour from HSV components (0–255 each; hue wraps).
 mp_obj_t mpy_color_hsv(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_color_hsv);
@@ -65,7 +65,7 @@ mp_obj_t mpy_color_hsv(size_t n_args, const mp_obj_t *args) {
   int v = (int)mp_obj_get_float(args[_i]); _i++;
   int a = 255;
   if (n_args > _i) { a = (int)mp_obj_get_float(args[_i]); _i++; }
-  return pv::box_color(hsv_color_t((int)fmod((float)h,360.0f), s, v, a));
+  return pv::box_color(hsv_color_t((h&0xff), s, v, a));
 }
 
 // color.oklch: Create a colour from OKLCH components.
