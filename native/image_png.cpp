@@ -25,6 +25,27 @@ extern "C" {
     image_t* image;
   };
 
+  // Extract palette index x from a row packed at 1/2/4/8 bits per pixel, MSB first.
+  static inline uint8_t pngdec_indexed_pixel(const uint8_t *p, int x, int bpp) {
+    switch(bpp) {
+      case 4: return (p[x >> 1] >> ((x & 1) ? 0 : 4)) & 0x0f;
+      case 2: return (p[x >> 2] >> ((3 - (x & 3)) << 1)) & 0x03;
+      case 1: return (p[x >> 3] >> (7 - (x & 7))) & 0x01;
+      default: return p[x];
+    }
+  }
+
+  // Extract grayscale sample x, scaled from its 1/2/4/8-bit depth up to 8 bits.
+  static inline uint8_t pngdec_gray_pixel(const uint8_t *p, int x, int bpp) {
+    uint8_t s = pngdec_indexed_pixel(p, x, bpp);
+    switch(bpp) {
+      case 1: return s ? 255 : 0;
+      case 2: return s * 85;  // 0..3   -> 0..255
+      case 4: return s * 17;  // 0..15  -> 0..255
+      default: return s;
+    }
+  }
+
   static inline int pngdec_decode(image_obj_t &target, PNG *png, int target_width, int target_height) {
     pngdec_decode_data_t decode_data;
 
@@ -184,6 +205,8 @@ extern "C" {
       } break;
 
       case PNG_PIXEL_INDEXED: {
+        int bpp = pDraw->iBpp;
+        int src_x = 0;
         if(target->has_palette()) {
           if (!decode_data->set_palette) {
             for(int i = 0; i < 256; i++) {
@@ -200,65 +223,65 @@ extern "C" {
 
           uint8_t *pdst = (uint8_t *)target->ptr(0, decode_data->cur_y >> 16);
           while(w--) {
-            *pdst = *psrc;
+            *pdst = pngdec_indexed_pixel(psrc, src_x, bpp);
             pdst++;
 
             fx16_t last_x = cur_x >> 16;
             do {
-              psrc++;
+              src_x++;
               cur_x += decode_data->step_x;
             } while (cur_x >> 16 == last_x);
           }
         } else {
           uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
           while(w--) {
+            uint8_t idx = pngdec_indexed_pixel(psrc, src_x, bpp);
             *pdst = rgb_color_t(
-              pDraw->pPalette[*psrc * 3 + 0],
-              pDraw->pPalette[*psrc * 3 + 1],
-              pDraw->pPalette[*psrc * 3 + 2],
-              pDraw->iHasAlpha ? pDraw->pPalette[768 + *psrc] : 255
+              pDraw->pPalette[idx * 3 + 0],
+              pDraw->pPalette[idx * 3 + 1],
+              pDraw->pPalette[idx * 3 + 2],
+              pDraw->iHasAlpha ? pDraw->pPalette[768 + idx] : 255
             )._p;
             pdst++;
 
             fx16_t last_x = cur_x >> 16;
             do {
-              psrc++;
+              src_x++;
               cur_x += decode_data->step_x;
             } while (cur_x >> 16 == last_x);
           }
         }
       } break;
       case PNG_PIXEL_GRAYSCALE: {
+        int bpp = pDraw->iBpp;
+        int src_x = 0;
         uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
         while(w--) {
-          uint8_t src = *psrc;
-          // do something with index here
-          switch(pDraw->iBpp) {
-            case 8: {
-              *pdst = rgb_color_t(src, src, src, 255)._p;
-              pdst++;
-            } break;
-
-            case 4: {
-              int src1 = (src & 0xf0) | ((src & 0xf0) >> 4);
-              int src2 = (src & 0x0f) | ((src & 0x0f) << 4);
-              *pdst = rgb_color_t(src1, src1, src1, 255)._p;
-              pdst++;
-              *pdst = rgb_color_t(src2, src2, src2, 255)._p;
-              pdst++;
-            } break;
-
-            case 1: {
-              for(uint8_t mask = 0b10000000; mask < 0; mask >>= 1) {
-                int v = (src & mask) ? 255 : 0;
-                *pdst++ = rgb_color_t(v, v, v, 255)._p;
-              }
-            } break;
-          }
+          uint8_t v = pngdec_gray_pixel(psrc, src_x, bpp);
+          *pdst = rgb_color_t(v, v, v, 255)._p;
+          pdst++;
 
           fx16_t last_x = cur_x >> 16;
           do {
-            psrc++;
+            src_x++;
+            cur_x += decode_data->step_x;
+          } while (cur_x >> 16 == last_x);
+        }
+      } break;
+
+      case PNG_PIXEL_GRAY_ALPHA: {
+        // Two 8-bit samples per pixel: gray then alpha (16-bit depth is rejected at open).
+        int src_x = 0;
+        uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        while(w--) {
+          uint8_t v = psrc[src_x * 2 + 0];
+          uint8_t a = psrc[src_x * 2 + 1];
+          *pdst = rgb_color_t(v, v, v, a)._p;
+          pdst++;
+
+          fx16_t last_x = cur_x >> 16;
+          do {
+            src_x++;
             cur_x += decode_data->step_x;
           } while (cur_x >> 16 == last_x);
         }
