@@ -14,6 +14,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "py/mphal.h"
+
 #if MICROPY_MALLOC_USES_ALLOCATED_SIZE
   void *m_malloc(size_t num_bytes);
   void *m_malloc_no_scan(size_t num_bytes);
@@ -29,6 +32,7 @@ extern "C" {
 }
 #endif
 
+#define PV_TICKS mp_hal_ticks_ms()
 #define PV_STD_ALLOCATOR MPAllocator
 #define PV_MALLOC m_malloc
 #define PV_MALLOC_NO_SCAN m_malloc_no_scan

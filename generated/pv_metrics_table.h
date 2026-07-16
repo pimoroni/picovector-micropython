@@ -92,5 +92,7 @@ enum {
   PV_M_algorithm_dda,  // algorithm.dda
   PV_M_algorithm_raycast,  // algorithm.raycast
   PV_M_tween_at,  // tween.at
+  PV_M_tween_start,  // tween.start
+  PV_M_tween_stop,  // tween.stop
   PV_METRIC_COUNT
 };

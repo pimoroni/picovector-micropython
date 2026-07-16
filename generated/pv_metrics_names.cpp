@@ -89,5 +89,7 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "algorithm.dda",
   "algorithm.raycast",
   "tween.at",
+  "tween.start",
+  "tween.stop",
 };
 #endif

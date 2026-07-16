@@ -78,15 +78,43 @@ class tween:
         "duration was set. Progress clamps to the endpoints; returns the endpoint "
         "type (float, vec2, rect or mat3)."
 
+    # ── self-timing playback (reads the PV_TICKS clock) ─────────────────────
+    @native
+    def start(self, t: float = None):
+        "Start (or restart) self-timing from the current clock and return self for "
+        "chaining. Pass t to start from an explicit clock value. elapsed, now and "
+        "done then track time since this call."
+
+    @native
+    def stop(self):
+        "Stop self-timing. elapsed holds at 0 and done reads False until the next "
+        "start()."
+
     # ── properties (read-only, type-dispatched → native) ────────────────────
     @property
-    @cpp(get_raw="tween_box_start(self)")
-    def start(self) -> None: "Start endpoint (read-only)."
+    @cpp(get_raw="tween_box_from(self)")
+    def from_(self) -> None: "Start endpoint (read-only)."
 
     @property
-    @cpp(get_raw="tween_box_end(self)")
-    def end(self) -> None: "End endpoint (read-only)."
+    @cpp(get_raw="tween_box_to(self)")
+    def to(self) -> None: "End endpoint (read-only)."
 
     @property
     @cpp(get_raw="tween_box_duration(self)")
-    def duration(self) -> None: "Duration in seconds (read-only; 1.0 = normalised 0..1)."
+    def duration(self) -> None: "Duration (read-only; 1.0 = normalised 0..1)."
+
+    @property
+    @cpp(get_raw="tween_box_elapsed(self)")
+    def elapsed(self) -> None: "Time since start() in the same unit as duration (0 before the first start())."
+
+    @property
+    @cpp(get_raw="tween_box_now(self)")
+    def now(self) -> None: "Value at the current clock time (the endpoint type); needs start()."
+
+    @property
+    @cpp(get_raw="tween_box_done(self)")
+    def done(self) -> None: "True once duration has elapsed since start(); False until started."
+
+    @property
+    @cpp(get_raw="tween_box_running(self)")
+    def running(self) -> None: "True between start() and stop()."

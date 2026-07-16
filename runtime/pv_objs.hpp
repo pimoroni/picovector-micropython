@@ -106,11 +106,15 @@ extern "C" {
     };
   } tween_obj_t;
 
-  // tween endpoint/duration accessors (native/tween_native.cpp); the generated
+  // tween endpoint/timing accessors (native/tween_native.cpp); the generated
   // attr getters box these by reference to the type-tagged union.
-  extern mp_obj_t tween_box_start(tween_obj_t *self);
-  extern mp_obj_t tween_box_end(tween_obj_t *self);
+  extern mp_obj_t tween_box_from(tween_obj_t *self);
+  extern mp_obj_t tween_box_to(tween_obj_t *self);
   extern mp_obj_t tween_box_duration(tween_obj_t *self);
+  extern mp_obj_t tween_box_now(tween_obj_t *self);
+  extern mp_obj_t tween_box_elapsed(tween_obj_t *self);
+  extern mp_obj_t tween_box_done(tween_obj_t *self);
+  extern mp_obj_t tween_box_running(tween_obj_t *self);
 
   // used by image.pen = N and picovector.pen() (global pen)
   extern brush_obj_t *mp_obj_to_brush(size_t n_args, const mp_obj_t *args);

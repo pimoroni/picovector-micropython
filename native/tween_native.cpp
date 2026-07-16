@@ -68,7 +68,7 @@ extern "C" {
     }
   }
 
-  mp_obj_t tween_box_start(tween_obj_t *self) {
+  mp_obj_t tween_box_from(tween_obj_t *self) {
     switch (self->kind) {
       case TWEEN_VEC2: return pv::box_vec2(self->v.from());
       case TWEEN_RECT: return pv::box_rect(self->r.from());
@@ -77,7 +77,7 @@ extern "C" {
     }
   }
 
-  mp_obj_t tween_box_end(tween_obj_t *self) {
+  mp_obj_t tween_box_to(tween_obj_t *self) {
     switch (self->kind) {
       case TWEEN_VEC2: return pv::box_vec2(self->v.to());
       case TWEEN_RECT: return pv::box_rect(self->r.to());
@@ -93,5 +93,77 @@ extern "C" {
       case TWEEN_MAT3: return mp_obj_new_float(self->x.duration());
       default:         return mp_obj_new_float(self->f.duration());
     }
+  }
+
+  // Value at the current clock time (PV_TICKS). Boxes per tag like tween_at.
+  mp_obj_t tween_box_now(tween_obj_t *self) {
+    switch (self->kind) {
+      case TWEEN_VEC2: return pv::box_vec2(self->v.now());
+      case TWEEN_RECT: return pv::box_rect(self->r.now());
+      case TWEEN_MAT3: return pv::box_mat3(self->x.now().to_mat3());
+      default:         return mp_obj_new_float(self->f.now());
+    }
+  }
+
+  mp_obj_t tween_box_elapsed(tween_obj_t *self) {
+    switch (self->kind) {
+      case TWEEN_VEC2: return mp_obj_new_float(self->v.elapsed());
+      case TWEEN_RECT: return mp_obj_new_float(self->r.elapsed());
+      case TWEEN_MAT3: return mp_obj_new_float(self->x.elapsed());
+      default:         return mp_obj_new_float(self->f.elapsed());
+    }
+  }
+
+  mp_obj_t tween_box_done(tween_obj_t *self) {
+    switch (self->kind) {
+      case TWEEN_VEC2: return mp_obj_new_bool(self->v.done());
+      case TWEEN_RECT: return mp_obj_new_bool(self->r.done());
+      case TWEEN_MAT3: return mp_obj_new_bool(self->x.done());
+      default:         return mp_obj_new_bool(self->f.done());
+    }
+  }
+
+  mp_obj_t tween_box_running(tween_obj_t *self) {
+    switch (self->kind) {
+      case TWEEN_VEC2: return mp_obj_new_bool(self->v.running());
+      case TWEEN_RECT: return mp_obj_new_bool(self->r.running());
+      case TWEEN_MAT3: return mp_obj_new_bool(self->x.running());
+      default:         return mp_obj_new_bool(self->f.running());
+    }
+  }
+
+  // start([t]) — save the start time and begin running; returns self so it can
+  // chain off the constructor. With t, start from an explicit clock value.
+  mp_obj_t tween_start(size_t n_args, const mp_obj_t *args) {
+    self(args[0], tween_obj_t);
+    if (n_args > 1) {
+      float t = mp_obj_get_float(args[1]);
+      switch (self->kind) {
+        case TWEEN_VEC2: self->v.start(t); break;
+        case TWEEN_RECT: self->r.start(t); break;
+        case TWEEN_MAT3: self->x.start(t); break;
+        default:         self->f.start(t); break;
+      }
+    } else {
+      switch (self->kind) {
+        case TWEEN_VEC2: self->v.start(); break;
+        case TWEEN_RECT: self->r.start(); break;
+        case TWEEN_MAT3: self->x.start(); break;
+        default:         self->f.start(); break;
+      }
+    }
+    return args[0];
+  }
+
+  mp_obj_t tween_stop(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    self(args[0], tween_obj_t);
+    switch (self->kind) {
+      case TWEEN_VEC2: self->v.stop(); break;
+      case TWEEN_RECT: self->r.stop(); break;
+      case TWEEN_MAT3: self->x.stop(); break;
+      default:         self->f.stop(); break;
+    }
+    return mp_const_none;
   }
 }

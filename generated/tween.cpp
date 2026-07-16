@@ -7,6 +7,10 @@ extern "C" {
 
 extern "C" mp_obj_t tween_at(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_tween_at_obj, 2, tween_at);
+extern "C" mp_obj_t tween_start(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_tween_start_obj, 1, tween_start);
+extern "C" mp_obj_t tween_stop(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_tween_stop_obj, 1, tween_stop);
 
 extern "C" mp_obj_t tween_make_new_impl(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
 static mp_obj_t tween_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -17,17 +21,33 @@ void tween_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
   self(self_in, tween_obj_t);
   action_t action = m_attr_action(dest);
   switch (attr) {
-    case MP_QSTR_start:
+    case MP_QSTR_from_:
     {
-      if (action == GET) { dest[0] = tween_box_start(self); return; }
+      if (action == GET) { dest[0] = tween_box_from(self); return; }
     }
-    case MP_QSTR_end:
+    case MP_QSTR_to:
     {
-      if (action == GET) { dest[0] = tween_box_end(self); return; }
+      if (action == GET) { dest[0] = tween_box_to(self); return; }
     }
     case MP_QSTR_duration:
     {
       if (action == GET) { dest[0] = tween_box_duration(self); return; }
+    }
+    case MP_QSTR_elapsed:
+    {
+      if (action == GET) { dest[0] = tween_box_elapsed(self); return; }
+    }
+    case MP_QSTR_now:
+    {
+      if (action == GET) { dest[0] = tween_box_now(self); return; }
+    }
+    case MP_QSTR_done:
+    {
+      if (action == GET) { dest[0] = tween_box_done(self); return; }
+    }
+    case MP_QSTR_running:
+    {
+      if (action == GET) { dest[0] = tween_box_running(self); return; }
     }
   }
   dest[1] = MP_OBJ_SENTINEL;
@@ -66,6 +86,8 @@ static const mp_rom_map_elem_t tween_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_BOUNCE_OUT), MP_ROM_INT((uint8_t)easing_t::bounce_out) },
   { MP_ROM_QSTR(MP_QSTR_BOUNCE_INOUT), MP_ROM_INT((uint8_t)easing_t::bounce_inout) },
   { MP_ROM_QSTR(MP_QSTR_at), MP_ROM_PTR(&mpy_tween_at_obj) },
+  { MP_ROM_QSTR(MP_QSTR_start), MP_ROM_PTR(&mpy_tween_start_obj) },
+  { MP_ROM_QSTR(MP_QSTR_stop), MP_ROM_PTR(&mpy_tween_stop_obj) },
 };
 static MP_DEFINE_CONST_DICT(tween_locals_dict, tween_locals_dict_table);
 
