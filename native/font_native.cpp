@@ -1,9 +1,9 @@
-// native/font.cpp — hand-written bodies for font.load / font.__del__.
+// native/font.cpp — hand-written body for font.load.
 //
-// These parse the binary .af font container and free its backing buffer:
-// file I/O and manual heap layout that don't reduce to "call X, convert the
-// result", so they're maintained here rather than generated. The DSL
-// (api/font.py) still owns the type, registration and docstrings.
+// It parses the binary .af font container: file I/O and manual heap layout that
+// don't reduce to "call X, convert the result", so it's maintained here rather
+// than generated. The DSL (api/font.py) still owns the type, registration and
+// docstrings.
 
 #include "pv_bindings.hpp"
 
@@ -13,22 +13,12 @@ extern "C" {
   #include "py/runtime.h"
   #include "extmod/vfs.h"
 
-  mp_obj_t font__del__(mp_obj_t self_in) {
-    self(self_in, font_obj_t);
-#if MICROPY_MALLOC_USES_ALLOCATED_SIZE
-    m_free(self->buffer, self->buffer_size);
-#else
-    m_free(self->buffer);
-#endif
-    return mp_const_none;
-  }
-
   mp_obj_t font_load(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_font_load);
 #endif
     mp_obj_t path = args[0];
-    font_obj_t *result = mp_obj_malloc_with_finaliser(font_obj_t, &type_font);
+    font_obj_t *result = mp_obj_malloc(font_obj_t, &type_font);
 
     mp_obj_t open_args[2] = { path, MP_ROM_QSTR(MP_QSTR_r) };
     mp_obj_t file = mp_vfs_open(MP_ARRAY_SIZE(open_args), open_args,

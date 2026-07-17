@@ -8,9 +8,6 @@ extern "C" mp_obj_t pixel_font_load(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_pixel_font_load_obj, 1, pixel_font_load);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_pixel_font_load_static_obj, MP_ROM_PTR(&mpy_pixel_font_load_obj));
 
-extern "C" mp_obj_t pixel_font__del__(mp_obj_t self_in);
-static MP_DEFINE_CONST_FUN_OBJ_1(pixel_font__del___obj, pixel_font__del__);
-
 static void pixel_font_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
   mp_printf(print, "pixel_font()");
 }
@@ -32,7 +29,6 @@ void pixel_font_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
 }
 
 static const mp_rom_map_elem_t pixel_font_locals_dict_table[] = {
-  { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&pixel_font__del___obj) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_pixel_font_load_static_obj) },
 };
 static MP_DEFINE_CONST_DICT(pixel_font_locals_dict, pixel_font_locals_dict_table);

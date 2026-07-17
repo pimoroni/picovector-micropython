@@ -13,8 +13,7 @@ from pv import (api, cpp, native, overload, const,
                 XY, XYWH, Filter, Buffer, ShapeOrList, NEAREST)
 
 
-@api("image_t", field="image", ptr=True, finaliser=True, buffer=True,
-     del_stmt="if(self->image) { m_del_class(image_t, self->image); }",
+@api("image_t", field="image", ptr=True, buffer=True,
      print=("image(%d x %d)", "int(self->image->bounds().w)", "int(self->image->bounds().h)"),
      arg_read="((image_obj_t *)MP_OBJ_TO_PTR({0}))->image", arg_type="image_t *")
 class image:

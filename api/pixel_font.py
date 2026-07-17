@@ -9,7 +9,7 @@ from __future__ import annotations
 from pv import api, cpp, native
 
 
-@api("pixel_font_t", field="font", ptr=True, del_native=True,
+@api("pixel_font_t", field="font", ptr=True,
      print=("pixel_font()",),
      arg_read="((pixel_font_obj_t *)MP_OBJ_TO_PTR({0}))->font", arg_type="pixel_font_t *")
 class pixel_font:

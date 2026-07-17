@@ -7,8 +7,7 @@ from typing import Self, Annotated
 from pv import api, cpp, const, same, Range, XY, XYWH, PathList
 
 
-@api("shape_t", field="shape", ptr=True, finaliser=True, box="pv::box_shape({0})",
-     del_stmt="m_del_class(shape_t, self->shape)",
+@api("shape_t", field="shape", ptr=True, box="pv::box_shape({0})",
      arg_read="((shape_obj_t *)MP_OBJ_TO_PTR({0}))->shape", arg_type="shape_t *")
 class shape:
     """A filled/stroked vector shape. Build with the static factories; assign a

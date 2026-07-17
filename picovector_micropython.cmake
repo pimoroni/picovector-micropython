@@ -73,6 +73,13 @@ target_compile_definitions(usermod_picovector INTERFACE
   PV_WORKING_BUFFER_SIZE=81920
 )
 
+# NOTE: PV_GC_MANAGED is deliberately NOT set here. It is not an optional feature
+# but a property of the allocator, so it is defined (=1) in picovector.config.hpp
+# right next to the PV_MALLOC/PV_FREE = m_malloc/m_free wiring it depends on. That
+# keeps the two in lockstep: picovector must not explicitly free or run finalisers
+# that free on a tracing-GC allocator (it double-frees during gc_sweep). Defining
+# it here instead would let the allocator and this flag drift apart.
+
 # Rasterise on core1. Off by default (the core library is single-core); enable
 # per-board with set(PV_DUAL_CORE ON) before find_package(PICOVECTOR_MICROPYTHON
 # ...), or cmake -DPV_DUAL_CORE=ON.

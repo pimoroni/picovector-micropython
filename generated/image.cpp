@@ -268,7 +268,7 @@ extern "C" mp_obj_t image_batch(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_batch_obj, 2, image_batch);
 
 static mp_obj_t image_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-  image_obj_t *self = mp_obj_malloc_with_finaliser(image_obj_t, type);
+  image_obj_t *self = mp_obj_malloc(image_obj_t, type);
   int w = mp_obj_get_int(args[0]);
   int h = mp_obj_get_int(args[1]);
   if (n_args > 2) {
@@ -280,13 +280,6 @@ static mp_obj_t image_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
   }
   return MP_OBJ_FROM_PTR(self);
 }
-
-static mp_obj_t image__del__(mp_obj_t self_in) {
-  self(self_in, image_obj_t);
-  if(self->image) { m_del_class(image_t, self->image); };
-  return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_1(image__del___obj, image__del__);
 
 static void image_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
   self(self_in, image_obj_t);
@@ -377,7 +370,6 @@ static mp_int_t image_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp
 }
 
 static const mp_rom_map_elem_t image_locals_dict_table[] = {
-  { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&image__del___obj) },
   { MP_ROM_QSTR(MP_QSTR_X4), MP_ROM_INT(antialias_t::X4) },
   { MP_ROM_QSTR(MP_QSTR_X2), MP_ROM_INT(antialias_t::X2) },
   { MP_ROM_QSTR(MP_QSTR_OFF), MP_ROM_INT(antialias_t::OFF) },

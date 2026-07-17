@@ -132,7 +132,7 @@ extern "C" {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_load);
 #endif
-    image_obj_t *result = mp_obj_malloc_with_finaliser(image_obj_t, &type_image);
+    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
     result->image = nullptr;
     int target_width  = n_args >= 2 ? (int)mp_obj_get_float(args[1]) : 0;
     int target_height = n_args >= 3 ? (int)mp_obj_get_float(args[2]) : 0;
@@ -162,7 +162,7 @@ extern "C" {
       x = mp_obj_get_float(args[1]); y = mp_obj_get_float(args[2]);
       w = mp_obj_get_float(args[3]); h = mp_obj_get_float(args[4]);
     }
-    image_obj_t *result = mp_obj_malloc_with_finaliser(image_obj_t, &type_image);
+    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image, rect_t(x, y, w, h));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);
@@ -185,7 +185,7 @@ extern "C" {
 #endif
     int x = mp_obj_get_int(args[1]);
     int y = mp_obj_get_int(args[2]);
-    image_obj_t *result = mp_obj_malloc_with_finaliser(image_obj_t, &type_image);
+    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image->sprite(x, y));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);

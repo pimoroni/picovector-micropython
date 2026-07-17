@@ -126,7 +126,7 @@ namespace pv {
 
   // shapes own heap-allocated geometry, so they get a finaliser.
   static inline mp_obj_t box_shape(shape_t *s) {
-    shape_obj_t *o = mp_obj_malloc_with_finaliser(shape_obj_t, &type_shape);
+    shape_obj_t *o = mp_obj_malloc(shape_obj_t, &type_shape);
     o->shape = s;
     o->brush = nullptr;
     return MP_OBJ_FROM_PTR(o);

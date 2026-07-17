@@ -11,7 +11,7 @@ from __future__ import annotations
 from pv import api, native
 
 
-@api("font_t", field="font", del_native=True, print=("font()",),
+@api("font_t", field="font", print=("font()",),
      arg_read="&((font_obj_t *)MP_OBJ_TO_PTR({0}))->font", arg_type="font_t *")
 class font:
     """Vector font loaded from a .af file."""

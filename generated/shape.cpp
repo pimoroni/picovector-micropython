@@ -210,13 +210,6 @@ static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_line_static_obj, MP_ROM_PTR(&m
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_stroke_obj, 2, mpy_shape_stroke);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_bounds_obj, 1, mpy_shape_bounds);
 
-static mp_obj_t shape__del__(mp_obj_t self_in) {
-  self(self_in, shape_obj_t);
-  m_del_class(shape_t, self->shape);
-  return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_1(shape__del___obj, shape__del__);
-
 void shape_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
   self(self_in, shape_obj_t);
   action_t action = m_attr_action(dest);
@@ -231,7 +224,6 @@ void shape_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
 }
 
 static const mp_rom_map_elem_t shape_locals_dict_table[] = {
-  { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&shape__del___obj) },
   { MP_ROM_QSTR(MP_QSTR_ALIGN_OUTER), MP_ROM_INT(ALIGN_OUTER) },
   { MP_ROM_QSTR(MP_QSTR_ALIGN_INNER), MP_ROM_INT(ALIGN_INNER) },
   { MP_ROM_QSTR(MP_QSTR_ALIGN_CENTER), MP_ROM_INT(ALIGN_CENTER) },

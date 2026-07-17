@@ -38,3 +38,11 @@ extern "C" {
 #define PV_MALLOC_NO_SCAN m_malloc_no_scan
 #define PV_FREE m_free
 #define PV_REALLOC m_realloc
+
+// The allocator above is MicroPython's tracing GC: blocks are reclaimed
+// automatically once unreferenced. PicoVector must therefore NOT explicitly free
+// or run finalisers that free — doing so double-frees the same block during
+// gc_sweep (the finaliser and the sweep both release it), corrupting the heap.
+// Frees/finalisers are guarded on this flag so GC builds skip them while non-GC
+// builds (bare Pico / host C++, which own their allocations) keep them.
+#define PV_GC_MANAGED 1

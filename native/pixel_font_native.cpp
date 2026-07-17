@@ -1,5 +1,5 @@
-// native/pixel_font.cpp — hand-written bodies for pixel_font.load / __del__.
-// See native/font.cpp for why these live here rather than being generated.
+// native/pixel_font.cpp — hand-written body for pixel_font.load.
+// See native/font.cpp for why this lives here rather than being generated.
 
 #include "pv_bindings.hpp"
 
@@ -10,25 +10,13 @@ extern "C" {
   #include "py/runtime.h"
   #include "extmod/vfs.h"
 
-  mp_obj_t pixel_font__del__(mp_obj_t self_in) {
-    self(self_in, pixel_font_obj_t);
-#if MICROPY_MALLOC_USES_ALLOCATED_SIZE
-    m_free(self->glyph_buffer, self->glyph_buffer_size);
-    m_free(self->glyph_data_buffer, self->glyph_data_buffer_size);
-#else
-    m_free(self->glyph_buffer);
-    m_free(self->glyph_data_buffer);
-#endif
-    return mp_const_none;
-  }
-
   mp_obj_t pixel_font_load(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_pixel_font_load);
 #endif
     mp_obj_t path = args[0];
     pixel_font_obj_t *result =
-        mp_obj_malloc_with_finaliser(pixel_font_obj_t, &type_pixel_font);
+        mp_obj_malloc(pixel_font_obj_t, &type_pixel_font);
 
     mp_obj_t open_args[2] = { path, MP_ROM_QSTR(MP_QSTR_r) };
     mp_obj_t file = mp_vfs_open(MP_ARRAY_SIZE(open_args), open_args,
