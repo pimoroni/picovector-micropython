@@ -11,6 +11,7 @@
 #include "color.hpp"
 #include "pixel_font.hpp"
 #include "blend.hpp"
+#include "rasteriser.hpp"
 #include "tween/tween.hpp"
 #include "PNGdec.h"
 #endif
