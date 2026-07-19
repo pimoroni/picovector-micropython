@@ -105,8 +105,7 @@ extern "C" {
                        (mp_map_t *)&mp_const_empty_map);
   }
 
-  static bool name_is_explicit(const char *name) {
-    if (strchr(name, '/')) return true;
+  static bool name_has_ext(const char *name) {
     size_t n = strlen(name);
     if (n >= 3 && strcmp(name + n - 3, ".af") == 0) return true;
     if (n >= 4 && strcmp(name + n - 4, ".ppf") == 0) return true;
@@ -130,18 +129,23 @@ extern "C" {
 
   static mp_obj_t font_load_name(mp_obj_t name_obj) {
     const char *name = mp_obj_str_get_str(name_obj);
-    if (name_is_explicit(name)) {
-      // an explicit path or filename: open directly (raises OSError if missing).
+    if (strchr(name, '/')) {
+      // an explicit path: open directly (raises OSError if missing).
       return parse_by_marker(font_open_read(name), name);
     }
-    // a bare short name: probe search paths x extensions with a single VFS stat.
-    // vstr keeps the candidate path on the heap (no per-iteration stack buffer).
+    // a bare name: probe the search paths. If it already carries a .af/.ppf
+    // extension, use it as-is; otherwise try both extensions. vstr keeps the
+    // candidate path on the heap (no per-iteration stack buffer).
+    static const char *const NO_EXT[] = { "" };
+    const char *const *exts = name_has_ext(name) ? NO_EXT : FONT_EXTS;
+    size_t n_exts = name_has_ext(name) ? 1 : MP_ARRAY_SIZE(FONT_EXTS);
+
     vstr_t vs;
     vstr_init(&vs, 64);
     for (size_t p = 0; p < MP_ARRAY_SIZE(FONT_SEARCH_PATHS); p++) {
-      for (size_t e = 0; e < MP_ARRAY_SIZE(FONT_EXTS); e++) {
+      for (size_t e = 0; e < n_exts; e++) {
         vstr_reset(&vs);
-        vstr_printf(&vs, "%s/%s%s", FONT_SEARCH_PATHS[p], name, FONT_EXTS[e]);
+        vstr_printf(&vs, "%s/%s%s", FONT_SEARCH_PATHS[p], name, exts[e]);
         const char *path = vstr_null_terminated_str(&vs);
         if (mp_vfs_import_stat(path) == MP_IMPORT_STAT_FILE) {
           // parse (which copies `path`) before releasing the vstr buffer.
