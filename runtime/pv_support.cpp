@@ -72,7 +72,14 @@ extern "C" {
 
   #include "py/runtime.h"
 
-  mp_obj_t modpicovector___init__(void) { return mp_const_none; }
+  mp_obj_t modpicovector___init__(void) {
+    // Called on the first `import picovector` per soft-reset (MODULE_BUILTIN_INIT).
+    // Clear the ROM font cache: MP_REGISTER_ROOT_POINTER fields are NOT zeroed by
+    // mp_init() on soft reset, so the pointer would otherwise dangle into the
+    // previous (freed) GC heap and the next font.<name> would deref freed memory.
+    MP_STATE_VM(pv_font_rom_cache) = MP_OBJ_NULL;
+    return mp_const_none;
+  }
 
   // Coerce a brush or colour argument into a brush object (used by image.pen).
   brush_obj_t *mp_obj_to_brush(size_t n_args, const mp_obj_t *args) {
