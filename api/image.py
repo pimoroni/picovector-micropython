@@ -78,9 +78,9 @@ class image:
     @property
     @cpp(get="self->image->text_cursor()", set="self->image->text_cursor({0})")
     def cursor(self) -> vec2:
-        "Text caret as a vec2. Read it to find where the last text() left off; "
-        "set it to position the next text() (which may omit its x, y). A newline "
-        "in the text returns to the x the cursor was last set to."
+        "Text caret as a vec2. text() leaves it at the start of the next line "
+        "(each call ends with an implicit newline). Set it to position the next "
+        "text() (which may omit its x, y); newlines return to the x it was set to."
 
     # ── construction / IO (procedural → native) ─────────────────────────────
     @staticmethod
@@ -142,12 +142,14 @@ class image:
     # ── text (font branching → native) ──────────────────────────────────────
     @native
     def text(self, text: str, at: XY = None, size: float = 0) -> None:
-        "Draw text with the current font, advancing an internal cursor. "
-        "at (a vec2 or x, y) is optional: omit it to continue where the last "
-        "text() left off; a '\\n' in the text starts a new line at the x it was "
-        "last positioned at. size (sentinel 0 = the font's default): point size "
-        "for vector fonts (default 12), or the integer nearest-neighbour scale "
-        "for pixel fonts (default 1; 2 = double size, 3 = triple, ...)."
+        "Draw text with the current font, advancing an internal cursor. Each "
+        "call ends with an implicit newline, so a following text() with no "
+        "position starts on the next line (print-style). at (a vec2 or x, y) is "
+        "optional: omit it to continue at the cursor; a '\\n' in the text also "
+        "starts a new line at the x it was last positioned at. size (sentinel 0 "
+        "= the font's default): point size for vector fonts (default 12), or the "
+        "integer nearest-neighbour scale for pixel fonts (default 1; 2 = double "
+        "size, 3 = triple, ...)."
 
     @native
     def measure_text(self, text: str, size: float = 0) -> tuple[float, float]:
