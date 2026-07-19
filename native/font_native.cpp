@@ -16,11 +16,21 @@ extern "C" {
   #include "extmod/vfs.h"
 
   // ── .af (vector) parser ───────────────────────────────────────────────────
+  // Copy a resolved path into a GC block for a font object's repr. The block is
+  // pointer-free; the scanned obj holds it alive.
+  static char *dup_path(const char *path) {
+    size_t n = strlen(path);
+    char *p = (char *)m_malloc_no_scan(n + 1);
+    memcpy(p, path, n + 1);
+    return p;
+  }
+
   // `file` is an open stream positioned just after the 4-byte "af!?" marker.
   // Builds one self-contained non-scanned block (its internal glyph->paths /
   // path->points pointers stay within it, kept alive by the scanned obj).
-  mp_obj_t parse_vector_font(mp_obj_t file) {
+  mp_obj_t parse_vector_font(mp_obj_t file, const char *path) {
     vector_font_obj_t *result = mp_obj_malloc(vector_font_obj_t, &type_vector_font);
+    result->path = dup_path(path);
 
     uint16_t flags       = ru16(file);
     uint16_t glyph_count = ru16(file);
@@ -103,17 +113,18 @@ extern "C" {
     return false;
   }
 
-  // Read the 4-byte marker and dispatch to the matching parser. Consumes/closes
-  // `file` on error.
-  static mp_obj_t parse_by_marker(mp_obj_t file, const char *name) {
+  // Read the 4-byte marker and dispatch to the matching parser, passing the
+  // resolved `path` (stored on the font for its repr). Consumes/closes `file`
+  // on error.
+  static mp_obj_t parse_by_marker(mp_obj_t file, const char *path) {
     int error;
     char marker[4];
     mp_stream_read_exactly(file, &marker, sizeof(marker), &error);
-    if (memcmp(marker, "af!?", 4) == 0) return parse_vector_font(file);
-    if (memcmp(marker, "ppf!", 4) == 0) return parse_pixel_font(file);
+    if (memcmp(marker, "af!?", 4) == 0) return parse_vector_font(file, path);
+    if (memcmp(marker, "ppf!", 4) == 0) return parse_pixel_font(file, path);
     mp_stream_close(file);
     mp_raise_msg_varg(&mp_type_OSError,
-                      MP_ERROR_TEXT("'%s' is not a font (bad magic marker)"), name);
+                      MP_ERROR_TEXT("'%s' is not a font (bad magic marker)"), path);
     return mp_const_none;  // unreachable
   }
 
@@ -133,9 +144,10 @@ extern "C" {
         vstr_printf(&vs, "%s/%s%s", FONT_SEARCH_PATHS[p], name, FONT_EXTS[e]);
         const char *path = vstr_null_terminated_str(&vs);
         if (mp_vfs_import_stat(path) == MP_IMPORT_STAT_FILE) {
-          mp_obj_t file = font_open_read(path);
+          // parse (which copies `path`) before releasing the vstr buffer.
+          mp_obj_t f = parse_by_marker(font_open_read(path), path);
           vstr_clear(&vs);
-          return parse_by_marker(file, name);
+          return f;
         }
       }
     }
@@ -170,9 +182,9 @@ extern "C" {
       vstr_clear(&vs);
       return MP_OBJ_NULL;  // miss -> AttributeError
     }
-    mp_obj_t file = font_open_read(path);
+    // parse (which copies `path`) before releasing the vstr buffer.
+    mp_obj_t f = parse_by_marker(font_open_read(path), path);
     vstr_clear(&vs);
-    mp_obj_t f = parse_by_marker(file, qstr_str(q));
     mp_obj_dict_store(cache, key, f);
     return f;
   }

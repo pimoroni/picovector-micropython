@@ -13,10 +13,15 @@ extern "C" {
   #include "py/runtime.h"
   #include "extmod/vfs.h"
 
-  // `file` is an open stream positioned just after the 4-byte "ppf!" marker.
-  mp_obj_t parse_pixel_font(mp_obj_t file) {
+  // `file` is an open stream positioned just after the 4-byte "ppf!" marker;
+  // `path` is the resolved file path, copied onto the object for its repr.
+  mp_obj_t parse_pixel_font(mp_obj_t file, const char *path) {
     pixel_font_obj_t *result =
         mp_obj_malloc(pixel_font_obj_t, &type_pixel_font);
+
+    size_t plen = strlen(path);
+    result->path = (char *)m_malloc_no_scan(plen + 1);
+    memcpy(result->path, path, plen + 1);
 
     int error;
     uint16_t flags        = ru16(file);

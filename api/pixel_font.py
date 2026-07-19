@@ -12,7 +12,7 @@ from pv import api, cpp
 
 
 @api("pixel_font_t", field="font", ptr=True,
-     print=("pixel_font()",),
+     print=('pixel_font(\\"%s\\")', "self->path"),
      arg_read="((pixel_font_obj_t *)MP_OBJ_TO_PTR({0}))->font", arg_type="pixel_font_t *")
 class pixel_font:
     """A bitmap font loaded from a .ppf file.

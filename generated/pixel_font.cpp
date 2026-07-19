@@ -6,7 +6,8 @@ extern "C" {
 
 
 static void pixel_font_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-  mp_printf(print, "pixel_font()");
+  self(self_in, pixel_font_obj_t);
+  mp_printf(print, "pixel_font(\"%s\")", self->path);
 }
 
 void pixel_font_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {

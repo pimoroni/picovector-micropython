@@ -50,6 +50,7 @@ extern "C" {
     font_t font;
     uint8_t *buffer;
     uint32_t buffer_size;
+    char *path;   // resolved file path this font was loaded from (for repr)
   } vector_font_obj_t;
 
   typedef struct _color_obj_t {
@@ -69,6 +70,7 @@ extern "C" {
     uint32_t glyph_buffer_size;
     uint8_t *glyph_data_buffer;
     uint32_t glyph_data_buffer_size;
+    char *path;   // resolved file path this font was loaded from (for repr)
   } pixel_font_obj_t;
 
   typedef struct _image_obj_t {
@@ -130,9 +132,10 @@ extern "C" {
 
   // Font loaders. `font` is a namespace singleton (native/font_native.cpp) whose
   // `load` sniffs the file and returns a vector_font or pixel_font. The two
-  // parsers take an open file stream with the 4-byte marker already consumed.
-  extern mp_obj_t parse_vector_font(mp_obj_t file);  // -> vector_font_obj_t
-  extern mp_obj_t parse_pixel_font(mp_obj_t file);   // -> pixel_font_obj_t
+  // parsers take an open file stream with the 4-byte marker already consumed,
+  // plus the resolved path the font was loaded from (stored for its repr).
+  extern mp_obj_t parse_vector_font(mp_obj_t file, const char *path);  // -> vector_font_obj_t
+  extern mp_obj_t parse_pixel_font(mp_obj_t file, const char *path);   // -> pixel_font_obj_t
 
   // The `font` namespace singleton object, registered in the module globals.
   typedef struct _font_ns_obj_t { mp_obj_base_t base; } font_ns_obj_t;

@@ -12,7 +12,7 @@ from __future__ import annotations
 from pv import api
 
 
-@api("font_t", field="font", print=("font()",),
+@api("font_t", field="font", print=('vector_font(\\"%s\\")', "self->path"),
      arg_read="&((vector_font_obj_t *)MP_OBJ_TO_PTR({0}))->font", arg_type="font_t *")
 class vector_font:
     """A scalable vector font (.af). Draw at a point size via image.text()."""

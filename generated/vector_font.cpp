@@ -6,7 +6,8 @@ extern "C" {
 
 
 static void vector_font_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-  mp_printf(print, "font()");
+  self(self_in, vector_font_obj_t);
+  mp_printf(print, "vector_font(\"%s\")", self->path);
 }
 
 MP_DEFINE_CONST_OBJ_TYPE(
