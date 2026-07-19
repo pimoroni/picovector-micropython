@@ -191,6 +191,10 @@ extern "C" {
     return MP_OBJ_FROM_PTR(result);
   }
 
+  static inline bool pv_is_num(mp_obj_t o) {
+    return mp_obj_is_int(o) || mp_obj_is_float(o);
+  }
+
   mp_obj_t image_text(size_t n_args, const mp_obj_t *args) {
     self(args[0], image_obj_t);
 #if PV_METRICS
@@ -200,17 +204,44 @@ extern "C" {
     if (!self->font && !self->pixel_font) {
       mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("target image has no font"));
     }
-    size_t _i = 2;
-    vec2_t at = pv::get_xy(args, &_i, n_args);
+
+    // Resolve an optional position and size from a flexible arg grammar:
+    //   text(s)                 -> continue at the caret, font default size
+    //   text(s, size)           -> continue at the caret, explicit size
+    //   text(s, vec2 [, size])  -> draw at vec2
+    //   text(s, x, y [, size])  -> draw at (x, y)
+    // A lone trailing number is a size: a single number was never a position,
+    // so this stays backward compatible with text(s, x, y[, size]).
+    bool has_at = false;
+    vec2_t at{0, 0};
+    float size = 0.0f;
+    if (n_args >= 3 && mp_obj_is_vec2(args[2])) {
+      at = mp_obj_get_vec2(args[2]);
+      has_at = true;
+      if (n_args > 3) size = mp_obj_get_float(args[3]);
+    } else if (n_args >= 4 && pv_is_num(args[2]) && pv_is_num(args[3])) {
+      at.x = mp_obj_get_float(args[2]);
+      at.y = mp_obj_get_float(args[3]);
+      has_at = true;
+      if (n_args > 4) size = mp_obj_get_float(args[4]);
+    } else if (n_args == 3 && pv_is_num(args[2])) {
+      size = mp_obj_get_float(args[2]);
+    }
+
     // size is a sentinel-0 optional: 0 (or omitted) means "font's default" —
     // 12pt for vector fonts, 1x for pixel fonts (where it's the integer scale).
-    float size = n_args > _i ? mp_obj_get_float(args[_i]) : 0.0f;
-    if (self->font) {
-      self->image->font()->draw(self->image, text, at.x, at.y, size > 0.0f ? size : 12.0f);
+    text_cursor_t *c = self->image->text_cursor_state();
+    if (has_at) {
+      c->x = at.x; c->y = at.y; c->origin_x = at.x; c->valid = true;
+    } else if (!c->valid) {
+      c->x = 0.0f; c->y = 0.0f; c->origin_x = 0.0f; c->valid = true;
     }
-    if (self->pixel_font) {
+
+    if (self->font) {
+      self->image->font()->draw(self->image, text, size > 0.0f ? size : 12.0f);
+    } else {
       int scale = size > 0.0f ? (int)size : 1;
-      self->image->pixel_font()->draw(self->image, text, at.x, at.y, scale);
+      self->image->pixel_font()->draw(self->image, text, scale);
     }
     return mp_const_none;
   }

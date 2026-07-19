@@ -10,7 +10,7 @@ from . import mat3          # noqa: F401  (vec2 references mat3)
 from . import vec2          # noqa: F401
 from . import rect          # noqa: F401
 from . import color         # noqa: F401
-from . import font          # noqa: F401
+from . import vector_font    # noqa: F401
 from . import pixel_font    # noqa: F401
 from . import brush         # noqa: F401
 from . import shape         # noqa: F401

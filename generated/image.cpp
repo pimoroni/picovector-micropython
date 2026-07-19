@@ -258,7 +258,7 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shape_obj, 2, mpy_image_shape);
 extern "C" mp_obj_t image_shapes(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shapes_obj, 2, image_shapes);
 extern "C" mp_obj_t image_text(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_text_obj, 3, image_text);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_text_obj, 2, image_text);
 extern "C" mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_measure_text_obj, 2, image_measure_text);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blit_obj, 1, mpy_image_blit);
@@ -345,17 +345,22 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         return;
       }
       if (action == SET) {
-        if (mp_obj_is_type(dest[1], &type_font)) {
-          self->font = (font_obj_t *)dest[1]; self->pixel_font = nullptr;
+        if (mp_obj_is_type(dest[1], &type_vector_font)) {
+          self->font = (vector_font_obj_t *)dest[1]; self->pixel_font = nullptr;
           self->image->font(&self->font->font);
         } else if (mp_obj_is_type(dest[1], &type_pixel_font)) {
           self->pixel_font = (pixel_font_obj_t *)dest[1]; self->font = nullptr;
           self->image->pixel_font(self->pixel_font->font);
         } else {
-          mp_raise_TypeError(MP_ERROR_TEXT("value must be of type Font or PixelFont"));
+          mp_raise_TypeError(MP_ERROR_TEXT("value must be of type vector_font or pixel_font"));
         }
         dest[0] = MP_OBJ_NULL; return;
       }
+    }
+    case MP_QSTR_cursor:
+    {
+      if (action == GET) { dest[0] = pv::box_vec2(self->image->text_cursor()); return; }
+      if (action == SET) { self->image->text_cursor(mp_obj_get_vec2(dest[1])); dest[0] = MP_OBJ_NULL; return; }
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

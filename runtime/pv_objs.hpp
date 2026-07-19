@@ -45,12 +45,12 @@ extern "C" {
     mp_obj_t fhandle;
   } jpeg_handle_t;
 
-  typedef struct _font_obj_t {
+  typedef struct _vector_font_obj_t {
     mp_obj_base_t base;
     font_t font;
     uint8_t *buffer;
     uint32_t buffer_size;
-  } font_obj_t;
+  } vector_font_obj_t;
 
   typedef struct _color_obj_t {
     mp_obj_base_t base;
@@ -75,7 +75,7 @@ extern "C" {
     mp_obj_base_t base;
     image_t *image;
     brush_obj_t *brush;
-    font_obj_t *font;
+    vector_font_obj_t *font;
     pixel_font_obj_t *pixel_font;
     void *parent;
   } image_obj_t;
@@ -127,6 +127,16 @@ extern "C" {
   // ... and jpegdec_open_file and jpegdec_open_ram from image_jpeg
   extern int jpegdec_open_file(image_obj_t &target, const char* path, int target_width, int target_height);
   extern int jpegdec_open_ram(image_obj_t &target, const void* buffer, const size_t size, int target_width, int target_height);
+
+  // Font loaders. `font` is a namespace singleton (native/font_native.cpp) whose
+  // `load` sniffs the file and returns a vector_font or pixel_font. The two
+  // parsers take an open file stream with the 4-byte marker already consumed.
+  extern mp_obj_t parse_vector_font(mp_obj_t file);  // -> vector_font_obj_t
+  extern mp_obj_t parse_pixel_font(mp_obj_t file);   // -> pixel_font_obj_t
+
+  // The `font` namespace singleton object, registered in the module globals.
+  typedef struct _font_ns_obj_t { mp_obj_base_t base; } font_ns_obj_t;
+  extern const font_ns_obj_t pv_font_ns_obj;
 }
 
 extern rect_t mp_obj_get_rect(mp_obj_t rect_in);

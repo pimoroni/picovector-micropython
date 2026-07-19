@@ -1,5 +1,8 @@
-// native/pixel_font.cpp — hand-written body for pixel_font.load.
-// See native/font.cpp for why this lives here rather than being generated.
+// native/pixel_font_native.cpp — the .ppf (bitmap) font parser.
+//
+// Invoked by the `font` loader (native/font_native.cpp) once it has sniffed a
+// "ppf!" marker; there is no pixel_font.load. See native/font_native.cpp for
+// why this file/heap work lives here rather than being generated.
 
 #include "pv_bindings.hpp"
 
@@ -10,26 +13,12 @@ extern "C" {
   #include "py/runtime.h"
   #include "extmod/vfs.h"
 
-  mp_obj_t pixel_font_load(size_t n_args, const mp_obj_t *args) {
-#if PV_METRICS
-    pv::metric_scope _pvm(PV_M_pixel_font_load);
-#endif
-    mp_obj_t path = args[0];
+  // `file` is an open stream positioned just after the 4-byte "ppf!" marker.
+  mp_obj_t parse_pixel_font(mp_obj_t file) {
     pixel_font_obj_t *result =
         mp_obj_malloc(pixel_font_obj_t, &type_pixel_font);
 
-    mp_obj_t open_args[2] = { path, MP_ROM_QSTR(MP_QSTR_r) };
-    mp_obj_t file = mp_vfs_open(MP_ARRAY_SIZE(open_args), open_args,
-                               (mp_map_t *)&mp_const_empty_map);
-
     int error;
-    char marker[4];
-    mp_stream_read_exactly(file, &marker, sizeof(marker), &error);
-    if (memcmp(marker, "ppf!", 4) != 0) {
-      mp_raise_msg_varg(&mp_type_OSError,
-                        MP_ERROR_TEXT("failed to load font, missing PPF header"));
-    }
-
     uint16_t flags        = ru16(file);
     uint32_t glyph_count  = ru32(file);
     uint16_t glyph_width  = ru16(file);

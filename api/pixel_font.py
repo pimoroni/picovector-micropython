@@ -1,19 +1,21 @@
-"""pixel_font — bitmap font loaded from a .ppf file.
+"""pixel_font — a bitmap font loaded from a .ppf file.
 
-As with :mod:`font`, ``load`` and ``__del__`` are file/heap procedures and live
-in ``native/pixel_font.cpp``; the attributes and registration are declarative.
+Instances are produced by ``font.load()`` (which sniffs the file and returns a
+``vector_font`` or a ``pixel_font``); there is no ``pixel_font.load``. Parsing
+the .ppf container is procedural file/heap work in
+``native/pixel_font_native.cpp``; the attributes and registration are declarative.
 """
 
 from __future__ import annotations
 
-from pv import api, cpp, native
+from pv import api, cpp
 
 
 @api("pixel_font_t", field="font", ptr=True,
      print=("pixel_font()",),
      arg_read="((pixel_font_obj_t *)MP_OBJ_TO_PTR({0}))->font", arg_type="pixel_font_t *")
 class pixel_font:
-    """Bitmap font loaded from a .ppf file.
+    """A bitmap font loaded from a .ppf file.
 
     Pixel fonts render at integer sizes only. Assign one with ``screen.font =``
     then pass an integer scale as the ``size`` argument to :meth:`image.text` /
@@ -21,13 +23,8 @@ class pixel_font:
     glyph pixel to a 2x2 block (nearest-neighbour), and so on. Layout (advance,
     spacing and reported height) scales to match, so ``measure_text`` with the
     same scale gives the box you'll actually draw. For fractional/point sizing
-    use a vector :class:`font` instead.
+    use a vector_font instead.
     """
-
-    @staticmethod
-    @native
-    def load(path: str) -> pixel_font:
-        "Load a bitmap font from a .ppf file path. Returns a pixel_font."
 
     @property
     @cpp(get="self->font->height")

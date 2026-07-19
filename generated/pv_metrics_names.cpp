@@ -38,8 +38,6 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "color.rgb",
   "color.hsv",
   "color.oklch",
-  "font.load",
-  "pixel_font.load",
   "brush.pattern",
   "brush.image",
   "brush.gradient",

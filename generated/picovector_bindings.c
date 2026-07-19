@@ -9,15 +9,22 @@ static MP_DEFINE_CONST_FUN_OBJ_0(modpicovector___init___obj, modpicovector___ini
 // reports metrics.enabled == False and zeros when built without PV_METRICS.
 extern const mp_obj_module_t modpicovector_metrics;
 
+// picovector.font — a namespace singleton (native/font_native.cpp), not a
+// type: font.load() sniffs a file and returns a vector_font/pixel_font, and
+// font.<name> loads a ROM font by short name. Its first member is an
+// mp_obj_base_t, so this decl matches for taking its address in the table.
+extern const mp_obj_base_t pv_font_ns_obj;
+
 static const mp_rom_map_elem_t modpicovector_globals_table[] = {
   { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_modpicovector) },
   { MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&modpicovector___init___obj) },
   { MP_ROM_QSTR(MP_QSTR_metrics), MP_ROM_PTR(&modpicovector_metrics) },
+  { MP_ROM_QSTR(MP_QSTR_font), MP_ROM_PTR(&pv_font_ns_obj) },
   { MP_ROM_QSTR(MP_QSTR_mat3), MP_ROM_PTR(&type_mat3) },
   { MP_ROM_QSTR(MP_QSTR_vec2), MP_ROM_PTR(&type_vec2) },
   { MP_ROM_QSTR(MP_QSTR_rect), MP_ROM_PTR(&type_rect) },
   { MP_ROM_QSTR(MP_QSTR_color), MP_ROM_PTR(&type_color) },
-  { MP_ROM_QSTR(MP_QSTR_font), MP_ROM_PTR(&type_font) },
+  { MP_ROM_QSTR(MP_QSTR_vector_font), MP_ROM_PTR(&type_vector_font) },
   { MP_ROM_QSTR(MP_QSTR_pixel_font), MP_ROM_PTR(&type_pixel_font) },
   { MP_ROM_QSTR(MP_QSTR_brush), MP_ROM_PTR(&type_brush) },
   { MP_ROM_QSTR(MP_QSTR_shape), MP_ROM_PTR(&type_shape) },

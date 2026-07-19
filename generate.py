@@ -443,14 +443,14 @@ def _emit_font(o):
     o("return;", 4)
     o("}", 3)
     o("if (action == SET) {", 3)
-    o("if (mp_obj_is_type(dest[1], &type_font)) {", 4)
-    o("self->font = (font_obj_t *)dest[1]; self->pixel_font = nullptr;", 5)
+    o("if (mp_obj_is_type(dest[1], &type_vector_font)) {", 4)
+    o("self->font = (vector_font_obj_t *)dest[1]; self->pixel_font = nullptr;", 5)
     o("self->image->font(&self->font->font);", 5)
     o("} else if (mp_obj_is_type(dest[1], &type_pixel_font)) {", 4)
     o("self->pixel_font = (pixel_font_obj_t *)dest[1]; self->font = nullptr;", 5)
     o("self->image->pixel_font(self->pixel_font->font);", 5)
     o("} else {", 4)
-    o('mp_raise_TypeError(MP_ERROR_TEXT("value must be of type Font or PixelFont"));', 5)
+    o('mp_raise_TypeError(MP_ERROR_TEXT("value must be of type vector_font or pixel_font"));', 5)
     o("}", 4)
     o("dest[0] = MP_OBJ_NULL; return;", 4)
     o("}", 3)
@@ -561,22 +561,34 @@ def emit_locals(o, t):
     o("")
 
 
+def _has_locals(t):
+    # locals_dict entries come from __del__, class constants, a palette or
+    # members (staticmethods/methods). Properties live in the attr switch, not
+    # here, so a props-only type (e.g. pixel_font) has an empty locals dict.
+    return t.has_del or bool(t.consts) or bool(t.palette) or bool(t.members)
+
+
 def emit_type(o, t):
+    slots = []
+    if t.has_make_new:
+        slots.append(f"make_new, (const void *){t.name}_make_new")
+    if t.has_print:
+        slots.append(f"print, (const void *){t.name}_print")
+    if t.has_binary_op:
+        slots.append(f"binary_op, (const void *){t.name}_binary_op")
+    if t.has_attr:
+        slots.append(f"attr, (const void *){t.name}_attr")
+    if t.has_buffer:
+        slots.append(f"buffer, (const void *){t.name}_get_buffer")
+    if _has_locals(t):
+        slots.append(f"locals_dict, &{t.name}_locals_dict")
     o(f"MP_DEFINE_CONST_OBJ_TYPE(")
     o(f"{t.mp_type},", 1)
     o(f"MP_QSTR_{t.name},", 1)
-    o("MP_TYPE_FLAG_NONE,", 1)
-    if t.has_make_new:
-        o(f"make_new, (const void *){t.name}_make_new,", 1)
-    if t.has_print:
-        o(f"print, (const void *){t.name}_print,", 1)
-    if t.has_binary_op:
-        o(f"binary_op, (const void *){t.name}_binary_op,", 1)
-    if t.has_attr:
-        o(f"attr, (const void *){t.name}_attr,", 1)
-    if t.has_buffer:
-        o(f"buffer, (const void *){t.name}_get_buffer,", 1)
-    o(f"locals_dict, &{t.name}_locals_dict", 1)
+    # A slot-less type (e.g. vector_font) ends on the flags line with no comma.
+    o("MP_TYPE_FLAG_NONE" + ("," if slots else ""), 1)
+    for i, slot in enumerate(slots):
+        o(slot + ("," if i < len(slots) - 1 else ""), 1)
     o(");")
     o("")
 
@@ -613,7 +625,8 @@ def emit_type_file(t):
         emit_attr(o, t)
     if t.has_buffer:
         emit_buffer(o, t)
-    emit_locals(o, t)
+    if _has_locals(t):
+        emit_locals(o, t)
     emit_type(o, t)
     o("}")
     return str(o)
@@ -684,10 +697,17 @@ def emit_bindings_c(types):
     o("// reports metrics.enabled == False and zeros when built without PV_METRICS.")
     o("extern const mp_obj_module_t modpicovector_metrics;")
     o("")
+    o("// picovector.font — a namespace singleton (native/font_native.cpp), not a")
+    o("// type: font.load() sniffs a file and returns a vector_font/pixel_font, and")
+    o("// font.<name> loads a ROM font by short name. Its first member is an")
+    o("// mp_obj_base_t, so this decl matches for taking its address in the table.")
+    o("extern const mp_obj_base_t pv_font_ns_obj;")
+    o("")
     o("static const mp_rom_map_elem_t modpicovector_globals_table[] = {")
     o("{ MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_modpicovector) },", 1)
     o("{ MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&modpicovector___init___obj) },", 1)
     o("{ MP_ROM_QSTR(MP_QSTR_metrics), MP_ROM_PTR(&modpicovector_metrics) },", 1)
+    o("{ MP_ROM_QSTR(MP_QSTR_font), MP_ROM_PTR(&pv_font_ns_obj) },", 1)
     for t in types:
         o(f"{{ MP_ROM_QSTR(MP_QSTR_{t.name}), MP_ROM_PTR(&{t.mp_type}) }},", 1)
     o("};")

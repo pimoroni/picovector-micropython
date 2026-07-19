@@ -41,8 +41,6 @@ enum {
   PV_M_color_rgb,  // color.rgb
   PV_M_color_hsv,  // color.hsv
   PV_M_color_oklch,  // color.oklch
-  PV_M_font_load,  // font.load
-  PV_M_pixel_font_load,  // pixel_font.load
   PV_M_brush_pattern,  // brush.pattern
   PV_M_brush_image,  // brush.image
   PV_M_brush_gradient,  // brush.gradient

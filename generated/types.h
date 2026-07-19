@@ -6,7 +6,7 @@ extern const mp_obj_type_t type_mat3;
 extern const mp_obj_type_t type_vec2;
 extern const mp_obj_type_t type_rect;
 extern const mp_obj_type_t type_color;
-extern const mp_obj_type_t type_font;
+extern const mp_obj_type_t type_vector_font;
 extern const mp_obj_type_t type_pixel_font;
 extern const mp_obj_type_t type_brush;
 extern const mp_obj_type_t type_shape;

@@ -29,7 +29,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/brush.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/shape.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/image.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/font.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/vector_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/tween.cpp
