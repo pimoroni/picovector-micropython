@@ -204,12 +204,12 @@ mp_obj_t mpy_image_blit_vspan(size_t n_args, const mp_obj_t *args) {
   image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
-  int c = (int)mp_obj_get_float(args[_i]); _i++;
+  float len = mp_obj_get_float(args[_i]); _i++;
   vec2_t uv0 = pv::get_xy(args, &_i, n_args);
   vec2_t uv1 = pv::get_xy(args, &_i, n_args);
   filter_t filter = NEAREST;
   if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
-  src->blit_vspan(self->image, p, c, uv0, uv1, filter);
+  src->blit_vspan(self->image, p, len, uv0, uv1, filter);
   return mp_const_none;
 }
 
@@ -223,12 +223,12 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
   image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
-  int c = (int)mp_obj_get_float(args[_i]); _i++;
+  float len = mp_obj_get_float(args[_i]); _i++;
   vec2_t uv0 = pv::get_xy(args, &_i, n_args);
   vec2_t uv1 = pv::get_xy(args, &_i, n_args);
   filter_t filter = NEAREST;
   if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
-  src->blit_hspan(self->image, p, c, uv0, uv1, filter);
+  src->blit_hspan(self->image, p, len, uv0, uv1, filter);
   return mp_const_none;
 }
 

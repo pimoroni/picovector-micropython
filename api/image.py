@@ -167,13 +167,13 @@ class image:
     def blit(self, src, *args) -> None:
         "Blit another image onto this one (point, rect, or src-rect → dst-rect)."
 
-    @cpp(recv="src", args="self->image p c uv0 uv1 filter")
-    def blit_vspan(self, src: image, p: XY, c: int, uv0: XY, uv1: XY,
+    @cpp(recv="src", args="self->image p len uv0 uv1 filter")
+    def blit_vspan(self, src: image, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a vertical texture span (advanced; used by raycasters)."
 
-    @cpp(recv="src", args="self->image p c uv0 uv1 filter")
-    def blit_hspan(self, src: image, p: XY, c: int, uv0: XY, uv1: XY,
+    @cpp(recv="src", args="self->image p len uv0 uv1 filter")
+    def blit_hspan(self, src: image, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a horizontal texture span (advanced)."
 
