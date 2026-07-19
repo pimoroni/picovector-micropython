@@ -51,6 +51,9 @@ enum {
   PV_M_brush_blur,  // brush.blur
   PV_M_brush_lighten,  // brush.lighten
   PV_M_brush_darken,  // brush.darken
+  PV_M_brush_monochrome,  // brush.monochrome
+  PV_M_brush_dither,  // brush.dither
+  PV_M_brush_onebit,  // brush.onebit
   PV_M_shape_custom,  // shape.custom
   PV_M_shape_regular_polygon,  // shape.regular_polygon
   PV_M_shape_circle,  // shape.circle

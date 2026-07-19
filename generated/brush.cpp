@@ -134,6 +134,30 @@ mp_obj_t mpy_brush_darken(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(brightness_brush_t, -amount));
 }
 
+// brush.monochrome: Replace the shape's content with its green-biased luminance (greyscale).
+mp_obj_t mpy_brush_monochrome(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_monochrome);
+#endif
+  return pv::box_brush(m_new_class(monochrome_brush_t));
+}
+
+// brush.dither: Ordered 4-level dither of the shape's content (4x4 Bayer matrix).
+mp_obj_t mpy_brush_dither(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_dither);
+#endif
+  return pv::box_brush(m_new_class(dither_brush_t));
+}
+
+// brush.onebit: Threshold the shape's content to 1-bit black/white by luminance.
+mp_obj_t mpy_brush_onebit(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_onebit);
+#endif
+  return pv::box_brush(m_new_class(onebit_brush_t));
+}
+
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_pattern_obj, 0, mpy_brush_pattern);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_pattern_static_obj, MP_ROM_PTR(&mpy_brush_pattern_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_image_obj, 0, mpy_brush_image);
@@ -150,6 +174,12 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_lighten_obj, 1, mpy_brush_lighten);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_lighten_static_obj, MP_ROM_PTR(&mpy_brush_lighten_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_darken_obj, 1, mpy_brush_darken);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_darken_static_obj, MP_ROM_PTR(&mpy_brush_darken_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_monochrome_obj, 0, mpy_brush_monochrome);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_monochrome_static_obj, MP_ROM_PTR(&mpy_brush_monochrome_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_dither_obj, 0, mpy_brush_dither);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_dither_static_obj, MP_ROM_PTR(&mpy_brush_dither_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_onebit_obj, 0, mpy_brush_onebit);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_onebit_static_obj, MP_ROM_PTR(&mpy_brush_onebit_obj));
 
 static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_LINEAR), MP_ROM_INT(GRADIENT_LINEAR) },
@@ -162,6 +192,9 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_brush_blur_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_lighten), MP_ROM_PTR(&mpy_brush_lighten_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_darken), MP_ROM_PTR(&mpy_brush_darken_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_monochrome), MP_ROM_PTR(&mpy_brush_monochrome_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_dither), MP_ROM_PTR(&mpy_brush_dither_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_onebit), MP_ROM_PTR(&mpy_brush_onebit_static_obj) },
 };
 static MP_DEFINE_CONST_DICT(brush_locals_dict, brush_locals_dict_table);
 

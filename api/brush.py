@@ -88,3 +88,19 @@ class brush:
     @cpp(call="brightness_brush_t", emit="mnew", args="-amount")
     def darken(amount: int) -> brush:
         "Subtract amount (0–255) from each channel of the backdrop."
+
+    # zero-arg effect brushes (image filters, applied through shape coverage) --
+    @staticmethod
+    @cpp(call="monochrome_brush_t", emit="mnew")
+    def monochrome() -> brush:
+        "Replace the shape's content with its green-biased luminance (greyscale)."
+
+    @staticmethod
+    @cpp(call="dither_brush_t", emit="mnew")
+    def dither() -> brush:
+        "Ordered 4-level dither of the shape's content (4x4 Bayer matrix)."
+
+    @staticmethod
+    @cpp(call="onebit_brush_t", emit="mnew")
+    def onebit() -> brush:
+        "Threshold the shape's content to 1-bit black/white by luminance."
