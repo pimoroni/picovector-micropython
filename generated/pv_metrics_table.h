@@ -94,6 +94,9 @@ enum {
   PV_M_image_triangle,  // image.triangle
   PV_M_image_blur,  // image.blur
   PV_M_image_bloom,  // image.bloom
+  PV_M_image_edgeglow,  // image.edgeglow
+  PV_M_image_wave,  // image.wave
+  PV_M_image_zoom,  // image.zoom
   PV_M_image_dither,  // image.dither
   PV_M_image_onebit,  // image.onebit
   PV_M_image_monochrome,  // image.monochrome

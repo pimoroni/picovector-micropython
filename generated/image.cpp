@@ -103,7 +103,9 @@ mp_obj_t mpy_image_blur(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   float radius = mp_obj_get_float(args[_i]); _i++;
-  self->image->blur(radius);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->blur(radius, strength);
   return mp_const_none;
 }
 
@@ -120,7 +122,54 @@ mp_obj_t mpy_image_bloom(size_t n_args, const mp_obj_t *args) {
   if (n_args > _i) { intensity = (int)mp_obj_get_float(args[_i]); _i++; }
   float radius = 4.0;
   if (n_args > _i) { radius = mp_obj_get_float(args[_i]); _i++; }
-  self->image->bloom(threshold, intensity, radius);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->bloom(threshold, intensity, radius, strength);
+  return mp_const_none;
+}
+
+// image.edgeglow: Glowing edges: bright coloured Sobel edges on black with a bloom glow. strength scales edge sensitivity.
+mp_obj_t mpy_image_edgeglow(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_edgeglow);
+#endif
+  size_t _i = 1;
+  int strength = 220;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  self->image->edgeglow(strength);
+  return mp_const_none;
+}
+
+// image.wave: Animated sine warp (dream-sequence wobble). horizontal/vertical are px amplitudes; 0 disables that axis.
+mp_obj_t mpy_image_wave(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_wave);
+#endif
+  size_t _i = 1;
+  int horizontal = 4;
+  if (n_args > _i) { horizontal = (int)mp_obj_get_float(args[_i]); _i++; }
+  int vertical = 4;
+  if (n_args > _i) { vertical = (int)mp_obj_get_float(args[_i]); _i++; }
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  bool bilinear = false;
+  if (n_args > _i) { bilinear = mp_obj_is_true(args[_i]); _i++; }
+  self->image->wave(horizontal, vertical, strength, bilinear);
+  return mp_const_none;
+}
+
+// image.zoom: Radial zoom blur: streaks from the image centre. strength sets the streak length.
+mp_obj_t mpy_image_zoom(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_zoom);
+#endif
+  size_t _i = 1;
+  int strength = 200;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  self->image->zoom(strength);
   return mp_const_none;
 }
 
@@ -224,7 +273,9 @@ mp_obj_t mpy_image_crt(size_t n_args, const mp_obj_t *args) {
   size_t _i = 1;
   int spacing = (int)mp_obj_get_float(args[_i]); _i++;
   int darkness = (int)mp_obj_get_float(args[_i]); _i++;
-  self->image->crt(spacing, darkness);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->crt(spacing, darkness, strength);
   return mp_const_none;
 }
 
@@ -237,7 +288,9 @@ mp_obj_t mpy_image_grid(size_t n_args, const mp_obj_t *args) {
   size_t _i = 1;
   int spacing = (int)mp_obj_get_float(args[_i]); _i++;
   int darkness = (int)mp_obj_get_float(args[_i]); _i++;
-  self->image->grid(spacing, darkness);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->grid(spacing, darkness, strength);
   return mp_const_none;
 }
 
@@ -273,7 +326,9 @@ mp_obj_t mpy_image_noise(size_t n_args, const mp_obj_t *args) {
   int amount = (int)mp_obj_get_float(args[_i]); _i++;
   int interval = 0;
   if (n_args > _i) { interval = (int)mp_obj_get_float(args[_i]); _i++; }
-  self->image->noise(amount, interval);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->noise(amount, interval, strength);
   return mp_const_none;
 }
 
@@ -285,7 +340,9 @@ mp_obj_t mpy_image_glitch(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   int amount = (int)mp_obj_get_float(args[_i]); _i++;
-  self->image->glitch(amount);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->glitch(amount, strength);
   return mp_const_none;
 }
 
@@ -384,7 +441,9 @@ mp_obj_t mpy_image_chromatic(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   int offset = (int)mp_obj_get_float(args[_i]); _i++;
-  self->image->chromatic(offset);
+  float strength = 1.0;
+  if (n_args > _i) { strength = mp_obj_get_float(args[_i]); _i++; }
+  self->image->chromatic(offset, strength);
   return mp_const_none;
 }
 
@@ -531,6 +590,9 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_circle_obj, 3, mpy_image_circle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_triangle_obj, 4, mpy_image_triangle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blur_obj, 2, mpy_image_blur);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_bloom_obj, 1, mpy_image_bloom);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_edgeglow_obj, 1, mpy_image_edgeglow);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_wave_obj, 1, mpy_image_wave);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_zoom_obj, 1, mpy_image_zoom);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_dither_obj, 1, mpy_image_dither);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_onebit_obj, 1, mpy_image_onebit);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_monochrome_obj, 1, mpy_image_monochrome);
@@ -698,6 +760,9 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_triangle), MP_ROM_PTR(&mpy_image_triangle_obj) },
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_image_blur_obj) },
   { MP_ROM_QSTR(MP_QSTR_bloom), MP_ROM_PTR(&mpy_image_bloom_obj) },
+  { MP_ROM_QSTR(MP_QSTR_edgeglow), MP_ROM_PTR(&mpy_image_edgeglow_obj) },
+  { MP_ROM_QSTR(MP_QSTR_wave), MP_ROM_PTR(&mpy_image_wave_obj) },
+  { MP_ROM_QSTR(MP_QSTR_zoom), MP_ROM_PTR(&mpy_image_zoom_obj) },
   { MP_ROM_QSTR(MP_QSTR_dither), MP_ROM_PTR(&mpy_image_dither_obj) },
   { MP_ROM_QSTR(MP_QSTR_onebit), MP_ROM_PTR(&mpy_image_onebit_obj) },
   { MP_ROM_QSTR(MP_QSTR_monochrome), MP_ROM_PTR(&mpy_image_monochrome_obj) },
