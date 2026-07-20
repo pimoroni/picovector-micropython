@@ -26,6 +26,34 @@ mp_obj_t mpy_image_rectangle(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
+// image.hspan: Horizontal 1px-tall run in the current pen; skips the span buffer (fast path).
+mp_obj_t mpy_image_hspan(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_hspan);
+#endif
+  size_t _i = 1;
+  int x = (int)mp_obj_get_float(args[_i]); _i++;
+  int y = (int)mp_obj_get_float(args[_i]); _i++;
+  int w = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->hspan(x, y, w);
+  return mp_const_none;
+}
+
+// image.vspan: Vertical 1px-wide run in the current pen; skips the span buffer (fast path).
+mp_obj_t mpy_image_vspan(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_vspan);
+#endif
+  size_t _i = 1;
+  int x = (int)mp_obj_get_float(args[_i]); _i++;
+  int y = (int)mp_obj_get_float(args[_i]); _i++;
+  int h = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->vspan(x, y, h);
+  return mp_const_none;
+}
+
 // image.line: Line between two points.
 mp_obj_t mpy_image_line(size_t n_args, const mp_obj_t *args) {
   self(args[0], image_obj_t);
@@ -79,6 +107,23 @@ mp_obj_t mpy_image_blur(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
+// image.bloom: Bloom: soft halo around pixels brighter than `threshold`, added back scaled by `intensity`.
+mp_obj_t mpy_image_bloom(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_bloom);
+#endif
+  size_t _i = 1;
+  int threshold = 180;
+  if (n_args > _i) { threshold = (int)mp_obj_get_float(args[_i]); _i++; }
+  int intensity = 150;
+  if (n_args > _i) { intensity = (int)mp_obj_get_float(args[_i]); _i++; }
+  float radius = 4.0;
+  if (n_args > _i) { radius = mp_obj_get_float(args[_i]); _i++; }
+  self->image->bloom(threshold, intensity, radius);
+  return mp_const_none;
+}
+
 // image.dither: Dither the whole image in place.
 mp_obj_t mpy_image_dither(size_t n_args, const mp_obj_t *args) {
   self(args[0], image_obj_t);
@@ -106,6 +151,240 @@ mp_obj_t mpy_image_monochrome(size_t n_args, const mp_obj_t *args) {
   pv::metric_scope _pvm(PV_M_image_monochrome);
 #endif
   self->image->monochrome();
+  return mp_const_none;
+}
+
+// image.invert: Photonegative the whole image in place.
+mp_obj_t mpy_image_invert(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_invert);
+#endif
+  self->image->invert();
+  return mp_const_none;
+}
+
+// image.threshold: Two-level luminance threshold to colours lo/hi.
+mp_obj_t mpy_image_threshold(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_threshold);
+#endif
+  size_t _i = 1;
+  int level = (int)mp_obj_get_float(args[_i]); _i++;
+  color_t lo = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  color_t hi = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  self->image->threshold(level, lo, hi);
+  return mp_const_none;
+}
+
+// image.saturation: Adjust saturation (amount>0 boosts, -256 = greyscale).
+mp_obj_t mpy_image_saturation(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_saturation);
+#endif
+  size_t _i = 1;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->saturation(amount);
+  return mp_const_none;
+}
+
+// image.contrast: Adjust contrast around mid-grey (amount>0 more).
+mp_obj_t mpy_image_contrast(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_contrast);
+#endif
+  size_t _i = 1;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->contrast(amount);
+  return mp_const_none;
+}
+
+// image.duotone: Map luminance onto a shadow→highlight ramp.
+mp_obj_t mpy_image_duotone(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_duotone);
+#endif
+  size_t _i = 1;
+  color_t shadow = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  color_t highlight = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  self->image->duotone(shadow, highlight);
+  return mp_const_none;
+}
+
+// image.crt: CRT tube: darken every `spacing`-th row by `darkness`, with a rounded corner falloff.
+mp_obj_t mpy_image_crt(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_crt);
+#endif
+  size_t _i = 1;
+  int spacing = (int)mp_obj_get_float(args[_i]); _i++;
+  int darkness = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->crt(spacing, darkness);
+  return mp_const_none;
+}
+
+// image.grid: Gentle pixel grid: darken every `spacing`-th row and column by `darkness`.
+mp_obj_t mpy_image_grid(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_grid);
+#endif
+  size_t _i = 1;
+  int spacing = (int)mp_obj_get_float(args[_i]); _i++;
+  int darkness = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->grid(spacing, darkness);
+  return mp_const_none;
+}
+
+// image.vignette: Darken by distance from the image centre.
+mp_obj_t mpy_image_vignette(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_vignette);
+#endif
+  size_t _i = 1;
+  int strength = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->vignette(strength);
+  return mp_const_none;
+}
+
+// image.gameboy: Map the whole image to the 4 Game Boy greens.
+mp_obj_t mpy_image_gameboy(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_gameboy);
+#endif
+  self->image->gameboy();
+  return mp_const_none;
+}
+
+// image.noise: Add per-pixel film grain (+/- amount). interval = refresh period in ms (0 = static).
+mp_obj_t mpy_image_noise(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_noise);
+#endif
+  size_t _i = 1;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  int interval = 0;
+  if (n_args > _i) { interval = (int)mp_obj_get_float(args[_i]); _i++; }
+  self->image->noise(amount, interval);
+  return mp_const_none;
+}
+
+// image.glitch: VHS channel-shift glitch bands.
+mp_obj_t mpy_image_glitch(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_glitch);
+#endif
+  size_t _i = 1;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->glitch(amount);
+  return mp_const_none;
+}
+
+// image.oilpaint: Oil paint: dominant colour in a radius, eased back toward the original by strength (0-255).
+mp_obj_t mpy_image_oilpaint(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_oilpaint);
+#endif
+  size_t _i = 1;
+  int radius = (int)mp_obj_get_float(args[_i]); _i++;
+  int strength = 255;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  self->image->oilpaint(radius, strength);
+  return mp_const_none;
+}
+
+// image.cga: CGA 4-colour palette.
+mp_obj_t mpy_image_cga(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_cga);
+#endif
+  self->image->cga();
+  return mp_const_none;
+}
+
+// image.palette_dither: Map to a restricted palette (list of colours). strength is the dither
+mp_obj_t mpy_image_palette_dither(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_palette_dither);
+#endif
+  size_t _i = 1;
+  size_t palette_n; mp_obj_t *palette_items;
+  mp_obj_get_array(args[_i], &palette_n, &palette_items); _i++;
+  if (palette_n < 1 || palette_n > 64) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("palette must have 1 to 64 colours"));
+  uint32_t palette[64];
+  for (size_t _s = 0; _s < palette_n; _s++) {
+    if (!mp_obj_is_type(palette_items[_s], &type_color)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("palette must be a list of colours"));
+    palette[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(palette_items[_s]))->c._p;
+  }
+  int strength = 64;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  self->image->palette_dither(palette, palette_n, strength);
+  return mp_const_none;
+}
+
+// image.phosphor: CRT phosphor glow toward tint.
+mp_obj_t mpy_image_phosphor(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_phosphor);
+#endif
+  size_t _i = 1;
+  color_t tint = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  self->image->phosphor(tint);
+  return mp_const_none;
+}
+
+// image.synthwave: Synthwave: neon cyan/magenta/white palette dither with a bloom glow.
+mp_obj_t mpy_image_synthwave(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_synthwave);
+#endif
+  self->image->synthwave();
+  return mp_const_none;
+}
+
+// image.c64: Commodore 64 16-colour palette.
+mp_obj_t mpy_image_c64(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_c64);
+#endif
+  self->image->c64();
+  return mp_const_none;
+}
+
+// image.nightvision: Green amplify + grain + edge darkening.
+mp_obj_t mpy_image_nightvision(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_nightvision);
+#endif
+  self->image->nightvision();
+  return mp_const_none;
+}
+
+// image.chromatic: Chromatic aberration RGB split.
+mp_obj_t mpy_image_chromatic(size_t n_args, const mp_obj_t *args) {
+  self(args[0], image_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_image_chromatic);
+#endif
+  size_t _i = 1;
+  int offset = (int)mp_obj_get_float(args[_i]); _i++;
+  self->image->chromatic(offset);
   return mp_const_none;
 }
 
@@ -204,12 +483,12 @@ mp_obj_t mpy_image_blit_vspan(size_t n_args, const mp_obj_t *args) {
   image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
-  int c = (int)mp_obj_get_float(args[_i]); _i++;
+  float len = mp_obj_get_float(args[_i]); _i++;
   vec2_t uv0 = pv::get_xy(args, &_i, n_args);
   vec2_t uv1 = pv::get_xy(args, &_i, n_args);
   filter_t filter = NEAREST;
   if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
-  src->blit_vspan(self->image, p, c, uv0, uv1, filter);
+  src->blit_vspan(self->image, p, len, uv0, uv1, filter);
   return mp_const_none;
 }
 
@@ -223,12 +502,12 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
   image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
-  int c = (int)mp_obj_get_float(args[_i]); _i++;
+  float len = mp_obj_get_float(args[_i]); _i++;
   vec2_t uv0 = pv::get_xy(args, &_i, n_args);
   vec2_t uv1 = pv::get_xy(args, &_i, n_args);
   filter_t filter = NEAREST;
   if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
-  src->blit_hspan(self->image, p, c, uv0, uv1, filter);
+  src->blit_hspan(self->image, p, len, uv0, uv1, filter);
   return mp_const_none;
 }
 
@@ -245,13 +524,35 @@ extern "C" mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_sprite_obj, 3, image_sprite);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_clear_obj, 1, mpy_image_clear);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_rectangle_obj, 2, mpy_image_rectangle);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_hspan_obj, 4, mpy_image_hspan);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_vspan_obj, 4, mpy_image_vspan);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_line_obj, 3, mpy_image_line);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_circle_obj, 3, mpy_image_circle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_triangle_obj, 4, mpy_image_triangle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blur_obj, 2, mpy_image_blur);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_bloom_obj, 1, mpy_image_bloom);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_dither_obj, 1, mpy_image_dither);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_onebit_obj, 1, mpy_image_onebit);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_monochrome_obj, 1, mpy_image_monochrome);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_invert_obj, 1, mpy_image_invert);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_threshold_obj, 4, mpy_image_threshold);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_saturation_obj, 2, mpy_image_saturation);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_contrast_obj, 2, mpy_image_contrast);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_duotone_obj, 3, mpy_image_duotone);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_crt_obj, 3, mpy_image_crt);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_grid_obj, 3, mpy_image_grid);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_vignette_obj, 2, mpy_image_vignette);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_gameboy_obj, 1, mpy_image_gameboy);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_noise_obj, 2, mpy_image_noise);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_glitch_obj, 2, mpy_image_glitch);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_oilpaint_obj, 2, mpy_image_oilpaint);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_cga_obj, 1, mpy_image_cga);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_palette_dither_obj, 2, mpy_image_palette_dither);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_phosphor_obj, 2, mpy_image_phosphor);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_synthwave_obj, 1, mpy_image_synthwave);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_c64_obj, 1, mpy_image_c64);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_nightvision_obj, 1, mpy_image_nightvision);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_chromatic_obj, 2, mpy_image_chromatic);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_get_obj, 2, mpy_image_get);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_put_obj, 2, mpy_image_put);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shape_obj, 2, mpy_image_shape);
@@ -393,13 +694,35 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_sprite), MP_ROM_PTR(&mpy_image_sprite_obj) },
   { MP_ROM_QSTR(MP_QSTR_clear), MP_ROM_PTR(&mpy_image_clear_obj) },
   { MP_ROM_QSTR(MP_QSTR_rectangle), MP_ROM_PTR(&mpy_image_rectangle_obj) },
+  { MP_ROM_QSTR(MP_QSTR_hspan), MP_ROM_PTR(&mpy_image_hspan_obj) },
+  { MP_ROM_QSTR(MP_QSTR_vspan), MP_ROM_PTR(&mpy_image_vspan_obj) },
   { MP_ROM_QSTR(MP_QSTR_line), MP_ROM_PTR(&mpy_image_line_obj) },
   { MP_ROM_QSTR(MP_QSTR_circle), MP_ROM_PTR(&mpy_image_circle_obj) },
   { MP_ROM_QSTR(MP_QSTR_triangle), MP_ROM_PTR(&mpy_image_triangle_obj) },
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_image_blur_obj) },
+  { MP_ROM_QSTR(MP_QSTR_bloom), MP_ROM_PTR(&mpy_image_bloom_obj) },
   { MP_ROM_QSTR(MP_QSTR_dither), MP_ROM_PTR(&mpy_image_dither_obj) },
   { MP_ROM_QSTR(MP_QSTR_onebit), MP_ROM_PTR(&mpy_image_onebit_obj) },
   { MP_ROM_QSTR(MP_QSTR_monochrome), MP_ROM_PTR(&mpy_image_monochrome_obj) },
+  { MP_ROM_QSTR(MP_QSTR_invert), MP_ROM_PTR(&mpy_image_invert_obj) },
+  { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&mpy_image_threshold_obj) },
+  { MP_ROM_QSTR(MP_QSTR_saturation), MP_ROM_PTR(&mpy_image_saturation_obj) },
+  { MP_ROM_QSTR(MP_QSTR_contrast), MP_ROM_PTR(&mpy_image_contrast_obj) },
+  { MP_ROM_QSTR(MP_QSTR_duotone), MP_ROM_PTR(&mpy_image_duotone_obj) },
+  { MP_ROM_QSTR(MP_QSTR_crt), MP_ROM_PTR(&mpy_image_crt_obj) },
+  { MP_ROM_QSTR(MP_QSTR_grid), MP_ROM_PTR(&mpy_image_grid_obj) },
+  { MP_ROM_QSTR(MP_QSTR_vignette), MP_ROM_PTR(&mpy_image_vignette_obj) },
+  { MP_ROM_QSTR(MP_QSTR_gameboy), MP_ROM_PTR(&mpy_image_gameboy_obj) },
+  { MP_ROM_QSTR(MP_QSTR_noise), MP_ROM_PTR(&mpy_image_noise_obj) },
+  { MP_ROM_QSTR(MP_QSTR_glitch), MP_ROM_PTR(&mpy_image_glitch_obj) },
+  { MP_ROM_QSTR(MP_QSTR_oilpaint), MP_ROM_PTR(&mpy_image_oilpaint_obj) },
+  { MP_ROM_QSTR(MP_QSTR_cga), MP_ROM_PTR(&mpy_image_cga_obj) },
+  { MP_ROM_QSTR(MP_QSTR_palette_dither), MP_ROM_PTR(&mpy_image_palette_dither_obj) },
+  { MP_ROM_QSTR(MP_QSTR_phosphor), MP_ROM_PTR(&mpy_image_phosphor_obj) },
+  { MP_ROM_QSTR(MP_QSTR_synthwave), MP_ROM_PTR(&mpy_image_synthwave_obj) },
+  { MP_ROM_QSTR(MP_QSTR_c64), MP_ROM_PTR(&mpy_image_c64_obj) },
+  { MP_ROM_QSTR(MP_QSTR_nightvision), MP_ROM_PTR(&mpy_image_nightvision_obj) },
+  { MP_ROM_QSTR(MP_QSTR_chromatic), MP_ROM_PTR(&mpy_image_chromatic_obj) },
   { MP_ROM_QSTR(MP_QSTR_get), MP_ROM_PTR(&mpy_image_get_obj) },
   { MP_ROM_QSTR(MP_QSTR_put), MP_ROM_PTR(&mpy_image_put_obj) },
   { MP_ROM_QSTR(MP_QSTR_shape), MP_ROM_PTR(&mpy_image_shape_obj) },

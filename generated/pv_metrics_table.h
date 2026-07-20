@@ -51,6 +51,22 @@ enum {
   PV_M_brush_blur,  // brush.blur
   PV_M_brush_lighten,  // brush.lighten
   PV_M_brush_darken,  // brush.darken
+  PV_M_brush_monochrome,  // brush.monochrome
+  PV_M_brush_dither,  // brush.dither
+  PV_M_brush_invert,  // brush.invert
+  PV_M_brush_threshold,  // brush.threshold
+  PV_M_brush_saturation,  // brush.saturation
+  PV_M_brush_contrast,  // brush.contrast
+  PV_M_brush_duotone,  // brush.duotone
+  PV_M_brush_crt,  // brush.crt
+  PV_M_brush_grid,  // brush.grid
+  PV_M_brush_vignette,  // brush.vignette
+  PV_M_brush_noise,  // brush.noise
+  PV_M_brush_glitch,  // brush.glitch
+  PV_M_brush_oilpaint,  // brush.oilpaint
+  PV_M_brush_phosphor,  // brush.phosphor
+  PV_M_brush_nightvision,  // brush.nightvision
+  PV_M_brush_chromatic,  // brush.chromatic
   PV_M_shape_custom,  // shape.custom
   PV_M_shape_regular_polygon,  // shape.regular_polygon
   PV_M_shape_circle,  // shape.circle
@@ -71,13 +87,35 @@ enum {
   PV_M_image_sprite,  // image.sprite
   PV_M_image_clear,  // image.clear
   PV_M_image_rectangle,  // image.rectangle
+  PV_M_image_hspan,  // image.hspan
+  PV_M_image_vspan,  // image.vspan
   PV_M_image_line,  // image.line
   PV_M_image_circle,  // image.circle
   PV_M_image_triangle,  // image.triangle
   PV_M_image_blur,  // image.blur
+  PV_M_image_bloom,  // image.bloom
   PV_M_image_dither,  // image.dither
   PV_M_image_onebit,  // image.onebit
   PV_M_image_monochrome,  // image.monochrome
+  PV_M_image_invert,  // image.invert
+  PV_M_image_threshold,  // image.threshold
+  PV_M_image_saturation,  // image.saturation
+  PV_M_image_contrast,  // image.contrast
+  PV_M_image_duotone,  // image.duotone
+  PV_M_image_crt,  // image.crt
+  PV_M_image_grid,  // image.grid
+  PV_M_image_vignette,  // image.vignette
+  PV_M_image_gameboy,  // image.gameboy
+  PV_M_image_noise,  // image.noise
+  PV_M_image_glitch,  // image.glitch
+  PV_M_image_oilpaint,  // image.oilpaint
+  PV_M_image_cga,  // image.cga
+  PV_M_image_palette_dither,  // image.palette_dither
+  PV_M_image_phosphor,  // image.phosphor
+  PV_M_image_synthwave,  // image.synthwave
+  PV_M_image_c64,  // image.c64
+  PV_M_image_nightvision,  // image.nightvision
+  PV_M_image_chromatic,  // image.chromatic
   PV_M_image_get,  // image.get
   PV_M_image_put,  // image.put
   PV_M_image_shape,  // image.shape

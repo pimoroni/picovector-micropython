@@ -11,6 +11,7 @@
 // functions (mpy_image_*) and image_attr, which batch dispatches to.
 
 #include "pv_bindings.hpp"
+#include "rasteriser.hpp" // picovector::render (image.shapes / batched shape draw)
 
 // JPEG_* error codes, for descriptive load errors. PNG_* arrive via pv_objs.hpp.
 #ifndef NO_QSTR

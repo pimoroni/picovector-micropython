@@ -71,6 +71,8 @@ PATTERN8 = Converter("pattern8", "", consumes=1, kind="pattern8",
                      _is_check="mp_obj_is_type({0}, &mp_type_tuple)")
 PATHLIST = Converter("pathlist", "", consumes=1, kind="pathlist")
 SHAPELIST = Converter("shapelist", "", consumes=1, kind="shapelist")
+COLORLIST = Converter("colorlist", "", consumes=1, kind="colorlist",
+                      _is_check="mp_obj_is_type({0}, &mp_type_list)")
 
 _PSEUDO = {
     "XY": XY, "XYWH": XYWH, "ColorStops": STOPS, "Pattern8": PATTERN8,
@@ -296,6 +298,8 @@ def _conv_for(ann, ns, classes):
         return BOOL, rng
     if ann is str:
         return STR, rng
+    if ann is list:
+        return COLORLIST, rng
     if isinstance(ann, pv._Pseudo):
         return _PSEUDO[ann.name], rng
     if ann in classes:

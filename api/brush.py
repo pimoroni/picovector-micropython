@@ -88,3 +88,90 @@ class brush:
     @cpp(call="brightness_brush_t", emit="mnew", args="-amount")
     def darken(amount: int) -> brush:
         "Subtract amount (0–255) from each channel of the backdrop."
+
+    @staticmethod
+    @cpp(call="monochrome_brush_t", emit="mnew")
+    def monochrome() -> brush:
+        "Greyscale the shape's area (per-pixel green-biased luminance)."
+
+    @staticmethod
+    @cpp(call="dither_brush_t", emit="mnew")
+    def dither() -> brush:
+        "Ordered-dither the shape's area to a 4-level palette (screen-aligned)."
+
+    @staticmethod
+    @cpp(call="invert_brush_t", emit="mnew")
+    def invert() -> brush:
+        "Photonegative the shape's area."
+
+    @staticmethod
+    @cpp(call="threshold_brush_t", emit="mnew")
+    def threshold(level: int, lo: color, hi: color) -> brush:
+        "Two-level threshold on luminance: <= level -> colour lo, else hi."
+
+    @staticmethod
+    @cpp(call="saturation_brush_t", emit="mnew")
+    def saturation(amount: int) -> brush:
+        "Saturation: amount>0 boosts, <0 desaturates (-256 = greyscale)."
+
+    @staticmethod
+    @cpp(call="contrast_brush_t", emit="mnew")
+    def contrast(amount: int) -> brush:
+        "Contrast around mid-grey: amount>0 more, <0 less."
+
+    @staticmethod
+    @cpp(call="duotone_brush_t", emit="mnew")
+    def duotone(shadow: color, highlight: color) -> brush:
+        "Map luminance onto a shadow->highlight two-colour ramp (e.g. sepia)."
+
+    @staticmethod
+    @cpp(call="crt_brush_t", emit="mnew")
+    def crt(spacing: int, darkness: int) -> brush:
+        "CRT tube: darken every `spacing`-th row by `darkness` (0-255) with a rounded corner falloff."
+
+    @staticmethod
+    @cpp(call="grid_brush_t", emit="mnew")
+    def grid(spacing: int, darkness: int) -> brush:
+        "Gentle pixel grid: darken every `spacing`-th row and column by `darkness` (0-255)."
+
+    @staticmethod
+    @cpp(call="vignette_brush_t", emit="mnew")
+    def vignette(strength: int) -> brush:
+        "Darken by distance from the centre (strength 0-255)."
+
+    # ── playful / retro ────────────────────────────────────────────────────
+
+    @staticmethod
+    @cpp(call="noise_brush_t", emit="mnew")
+    def noise(amount: int, interval: int = 0) -> brush:
+        "Per-pixel film grain, +/- up to `amount`. interval is the refresh period "
+        "in ms (0 = static)."
+
+    @staticmethod
+    @cpp(call="glitch_brush_t", emit="mnew")
+    def glitch(amount: int) -> brush:
+        "VHS channel-shift glitch bands; `amount` sets how many bands."
+
+    # ── artwork ────────────────────────────────────────────────────────────
+    @staticmethod
+    @cpp(call="oilpaint_brush_t", emit="mnew")
+    def oilpaint(radius: int, strength: int = 255) -> brush:
+        "Oil paint: dominant colour in a `radius` neighbourhood, eased back toward "
+        "the original by `strength` (0-255)."
+
+    # ── retro ──────────────────────────────────────────────────────────────
+    @staticmethod
+    @cpp(call="phosphor_brush_t", emit="mnew")
+    def phosphor(tint: color) -> brush:
+        "CRT phosphor glow toward `tint` (e.g. green or amber)."
+
+    # ── futuristic ─────────────────────────────────────────────────────────
+    @staticmethod
+    @cpp(call="nightvision_brush_t", emit="mnew")
+    def nightvision() -> brush:
+        "Night vision: green amplify + grain + edge darkening."
+
+    @staticmethod
+    @cpp(call="chromatic_brush_t", emit="mnew")
+    def chromatic(offset: int) -> brush:
+        "Chromatic aberration: shift R left / B right by `offset` px."
