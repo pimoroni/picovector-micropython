@@ -113,6 +113,12 @@ class image:
     @cpp(args="r")
     def rectangle(self, r: XYWH) -> None: "Filled rectangle (rect, or x, y, w, h)."
 
+    @cpp(args="x y w")
+    def hspan(self, x: int, y: int, w: int) -> None: "Horizontal 1px-tall run in the current pen; skips the span buffer (fast path)."
+
+    @cpp(args="x y h")
+    def vspan(self, x: int, y: int, h: int) -> None: "Vertical 1px-wide run in the current pen; skips the span buffer (fast path)."
+
     @cpp(args="a b")
     def line(self, a: XY, b: XY) -> None: "Line between two points."
 
@@ -123,9 +129,34 @@ class image:
     def triangle(self, a: XY, b: XY, c: XY) -> None: "Filled triangle."
 
     def blur(self, radius: float) -> None: "Box-blur the whole image in place."
+    def bloom(self, threshold: int = 180, intensity: int = 150, radius: float = 4.0) -> None: "Bloom: soft halo around pixels brighter than `threshold`, added back scaled by `intensity`."
     def dither(self) -> None: "Dither the whole image in place."
     def onebit(self) -> None: "Convert to 1-bit black/white in place."
     def monochrome(self) -> None: "Convert to monochrome in place."
+    def invert(self) -> None: "Photonegative the whole image in place."
+    def threshold(self, level: int, lo: color, hi: color) -> None: "Two-level luminance threshold to colours lo/hi."
+    def saturation(self, amount: int) -> None: "Adjust saturation (amount>0 boosts, -256 = greyscale)."
+    def contrast(self, amount: int) -> None: "Adjust contrast around mid-grey (amount>0 more)."
+    def duotone(self, shadow: color, highlight: color) -> None: "Map luminance onto a shadow→highlight ramp."
+    def crt(self, spacing: int, darkness: int) -> None: "CRT tube: darken every `spacing`-th row by `darkness`, with a rounded corner falloff."
+    def grid(self, spacing: int, darkness: int) -> None: "Gentle pixel grid: darken every `spacing`-th row and column by `darkness`."
+    def vignette(self, strength: int) -> None: "Darken by distance from the image centre."
+    def gameboy(self) -> None: "Map the whole image to the 4 Game Boy greens."
+    def noise(self, amount: int, interval: int = 0) -> None: "Add per-pixel film grain (+/- amount). interval = refresh period in ms (0 = static)."
+    def glitch(self, amount: int) -> None: "VHS channel-shift glitch bands."
+    def oilpaint(self, radius: int, strength: int = 255) -> None: "Oil paint: dominant colour in a radius, eased back toward the original by strength (0-255)."
+    def cga(self) -> None: "CGA 4-colour palette."
+
+    @cpp(args="palette palette_n strength")
+    def palette_dither(self, palette: list, strength: int = 64) -> None:
+        "Map to a restricted palette (list of colours). strength is the dither "
+        "amount: 0 clamps every pixel to its solid nearest colour, ~64 is subtle, "
+        "128 medium, 255 heavy."
+    def phosphor(self, tint: color) -> None: "CRT phosphor glow toward tint."
+    def synthwave(self) -> None: "Synthwave: neon cyan/magenta/white palette dither with a bloom glow."
+    def c64(self) -> None: "Commodore 64 16-colour palette."
+    def nightvision(self) -> None: "Green amplify + grain + edge darkening."
+    def chromatic(self, offset: int) -> None: "Chromatic aberration RGB split."
 
     @cpp(args="p.x p.y", box="pv::box_color_packed({0})")
     def get(self, p: XY) -> color: "Read the pixel colour at p."

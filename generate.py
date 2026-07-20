@@ -133,7 +133,7 @@ def emit_params(o, params, base, indent):
         remaining = params[k:]
         c = p.conv
         # consolidated remaining-required check after any composite
-        is_composite = c.kind in ("xy", "xywh", "stops", "pattern8")
+        is_composite = c.kind in ("xy", "xywh", "stops", "pattern8", "colorlist")
         if saw_composite and not checked and not is_composite and not p.optional:
             rem = sum(0 if q.optional else 1 for q in remaining)
             o(f"pv::need(n_args, _i + {rem});", indent)
@@ -150,6 +150,9 @@ def emit_params(o, params, base, indent):
             saw_composite = True
         elif c.kind == "pattern8":
             _emit_pattern8(o, p, indent)
+            saw_composite = True
+        elif c.kind == "colorlist":
+            _emit_colorlist(o, p, indent)
             saw_composite = True
         elif p.optional and c.cpp_type.endswith("*"):
             chk = c.is_check("args[_i]")
@@ -177,6 +180,20 @@ def _emit_stops(o, p, indent):
       '&mp_type_TypeError, MP_ERROR_TEXT("each stop must be (position, color)"));', indent + 1)
     o(f"{n}_positions[_s] = mp_obj_get_float(_stop[0]);", indent + 1)
     o(f"{n}_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c._p;", indent + 1)
+    o("}", indent)
+
+
+def _emit_colorlist(o, p, indent):
+    n = p.name
+    o(f"size_t {n}_n; mp_obj_t *{n}_items;", indent)
+    o(f"mp_obj_get_array(args[_i], &{n}_n, &{n}_items); _i++;", indent)
+    o(f"if ({n}_n < 1 || {n}_n > 64) mp_raise_msg_varg(&mp_type_ValueError, "
+      f'MP_ERROR_TEXT("palette must have 1 to 64 colours"));', indent)
+    o(f"uint32_t {n}[64];", indent)
+    o(f"for (size_t _s = 0; _s < {n}_n; _s++) {{", indent)
+    o(f"if (!mp_obj_is_type({n}_items[_s], &type_color)) mp_raise_msg_varg("
+      '&mp_type_TypeError, MP_ERROR_TEXT("palette must be a list of colours"));', indent + 1)
+    o(f"{n}[_s] = ((color_obj_t *)MP_OBJ_TO_PTR({n}_items[_s]))->c._p;", indent + 1)
     o("}", indent)
 
 

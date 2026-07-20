@@ -134,7 +134,7 @@ mp_obj_t mpy_brush_darken(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(brightness_brush_t, -amount));
 }
 
-// brush.monochrome: Replace the shape's content with its green-biased luminance (greyscale).
+// brush.monochrome: Greyscale the shape's area (per-pixel green-biased luminance).
 mp_obj_t mpy_brush_monochrome(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_monochrome);
@@ -142,7 +142,7 @@ mp_obj_t mpy_brush_monochrome(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(monochrome_brush_t));
 }
 
-// brush.dither: Ordered 4-level dither of the shape's content (4x4 Bayer matrix).
+// brush.dither: Ordered-dither the shape's area to a 4-level palette (screen-aligned).
 mp_obj_t mpy_brush_dither(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_dither);
@@ -150,12 +150,149 @@ mp_obj_t mpy_brush_dither(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(dither_brush_t));
 }
 
-// brush.onebit: Threshold the shape's content to 1-bit black/white by luminance.
-mp_obj_t mpy_brush_onebit(size_t n_args, const mp_obj_t *args) {
+// brush.invert: Photonegative the shape's area.
+mp_obj_t mpy_brush_invert(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
-  pv::metric_scope _pvm(PV_M_brush_onebit);
+  pv::metric_scope _pvm(PV_M_brush_invert);
 #endif
-  return pv::box_brush(m_new_class(onebit_brush_t));
+  return pv::box_brush(m_new_class(invert_brush_t));
+}
+
+// brush.threshold: Two-level threshold on luminance: <= level -> colour lo, else hi.
+mp_obj_t mpy_brush_threshold(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_threshold);
+#endif
+  size_t _i = 0;
+  int level = (int)mp_obj_get_float(args[_i]); _i++;
+  color_t lo = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  color_t hi = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  return pv::box_brush(m_new_class(threshold_brush_t, level, lo, hi));
+}
+
+// brush.saturation: Saturation: amount>0 boosts, <0 desaturates (-256 = greyscale).
+mp_obj_t mpy_brush_saturation(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_saturation);
+#endif
+  size_t _i = 0;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(saturation_brush_t, amount));
+}
+
+// brush.contrast: Contrast around mid-grey: amount>0 more, <0 less.
+mp_obj_t mpy_brush_contrast(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_contrast);
+#endif
+  size_t _i = 0;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(contrast_brush_t, amount));
+}
+
+// brush.duotone: Map luminance onto a shadow->highlight two-colour ramp (e.g. sepia).
+mp_obj_t mpy_brush_duotone(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_duotone);
+#endif
+  size_t _i = 0;
+  color_t shadow = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  color_t highlight = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  return pv::box_brush(m_new_class(duotone_brush_t, shadow, highlight));
+}
+
+// brush.crt: CRT tube: darken every `spacing`-th row by `darkness` (0-255) with a rounded corner falloff.
+mp_obj_t mpy_brush_crt(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_crt);
+#endif
+  size_t _i = 0;
+  int spacing = (int)mp_obj_get_float(args[_i]); _i++;
+  int darkness = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(crt_brush_t, spacing, darkness));
+}
+
+// brush.grid: Gentle pixel grid: darken every `spacing`-th row and column by `darkness` (0-255).
+mp_obj_t mpy_brush_grid(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_grid);
+#endif
+  size_t _i = 0;
+  int spacing = (int)mp_obj_get_float(args[_i]); _i++;
+  int darkness = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(grid_brush_t, spacing, darkness));
+}
+
+// brush.vignette: Darken by distance from the centre (strength 0-255).
+mp_obj_t mpy_brush_vignette(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_vignette);
+#endif
+  size_t _i = 0;
+  int strength = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(vignette_brush_t, strength));
+}
+
+// brush.noise: Per-pixel film grain, +/- up to `amount`. interval is the refresh period
+mp_obj_t mpy_brush_noise(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_noise);
+#endif
+  size_t _i = 0;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  int interval = 0;
+  if (n_args > _i) { interval = (int)mp_obj_get_float(args[_i]); _i++; }
+  return pv::box_brush(m_new_class(noise_brush_t, amount, interval));
+}
+
+// brush.glitch: VHS channel-shift glitch bands; `amount` sets how many bands.
+mp_obj_t mpy_brush_glitch(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_glitch);
+#endif
+  size_t _i = 0;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(glitch_brush_t, amount));
+}
+
+// brush.oilpaint: Oil paint: dominant colour in a `radius` neighbourhood, eased back toward
+mp_obj_t mpy_brush_oilpaint(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_oilpaint);
+#endif
+  size_t _i = 0;
+  int radius = (int)mp_obj_get_float(args[_i]); _i++;
+  int strength = 255;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  return pv::box_brush(m_new_class(oilpaint_brush_t, radius, strength));
+}
+
+// brush.phosphor: CRT phosphor glow toward `tint` (e.g. green or amber).
+mp_obj_t mpy_brush_phosphor(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_phosphor);
+#endif
+  size_t _i = 0;
+  color_t tint = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  return pv::box_brush(m_new_class(phosphor_brush_t, tint));
+}
+
+// brush.nightvision: Night vision: green amplify + grain + edge darkening.
+mp_obj_t mpy_brush_nightvision(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_nightvision);
+#endif
+  return pv::box_brush(m_new_class(nightvision_brush_t));
+}
+
+// brush.chromatic: Chromatic aberration: shift R left / B right by `offset` px.
+mp_obj_t mpy_brush_chromatic(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_chromatic);
+#endif
+  size_t _i = 0;
+  int offset = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_brush(m_new_class(chromatic_brush_t, offset));
 }
 
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_pattern_obj, 0, mpy_brush_pattern);
@@ -178,8 +315,34 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_monochrome_obj, 0, mpy_brush_monoch
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_monochrome_static_obj, MP_ROM_PTR(&mpy_brush_monochrome_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_dither_obj, 0, mpy_brush_dither);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_dither_static_obj, MP_ROM_PTR(&mpy_brush_dither_obj));
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_onebit_obj, 0, mpy_brush_onebit);
-static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_onebit_static_obj, MP_ROM_PTR(&mpy_brush_onebit_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_invert_obj, 0, mpy_brush_invert);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_invert_static_obj, MP_ROM_PTR(&mpy_brush_invert_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_threshold_obj, 3, mpy_brush_threshold);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_threshold_static_obj, MP_ROM_PTR(&mpy_brush_threshold_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_saturation_obj, 1, mpy_brush_saturation);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_saturation_static_obj, MP_ROM_PTR(&mpy_brush_saturation_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_contrast_obj, 1, mpy_brush_contrast);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_contrast_static_obj, MP_ROM_PTR(&mpy_brush_contrast_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_duotone_obj, 2, mpy_brush_duotone);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_duotone_static_obj, MP_ROM_PTR(&mpy_brush_duotone_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_crt_obj, 2, mpy_brush_crt);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_crt_static_obj, MP_ROM_PTR(&mpy_brush_crt_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_grid_obj, 2, mpy_brush_grid);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_grid_static_obj, MP_ROM_PTR(&mpy_brush_grid_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_vignette_obj, 1, mpy_brush_vignette);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_vignette_static_obj, MP_ROM_PTR(&mpy_brush_vignette_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_noise_obj, 1, mpy_brush_noise);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_noise_static_obj, MP_ROM_PTR(&mpy_brush_noise_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_glitch_obj, 1, mpy_brush_glitch);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_glitch_static_obj, MP_ROM_PTR(&mpy_brush_glitch_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_oilpaint_obj, 1, mpy_brush_oilpaint);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_oilpaint_static_obj, MP_ROM_PTR(&mpy_brush_oilpaint_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_phosphor_obj, 1, mpy_brush_phosphor);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_phosphor_static_obj, MP_ROM_PTR(&mpy_brush_phosphor_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_nightvision_obj, 0, mpy_brush_nightvision);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_nightvision_static_obj, MP_ROM_PTR(&mpy_brush_nightvision_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_chromatic_obj, 1, mpy_brush_chromatic);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_chromatic_static_obj, MP_ROM_PTR(&mpy_brush_chromatic_obj));
 
 static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_LINEAR), MP_ROM_INT(GRADIENT_LINEAR) },
@@ -194,7 +357,20 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_darken), MP_ROM_PTR(&mpy_brush_darken_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_monochrome), MP_ROM_PTR(&mpy_brush_monochrome_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_dither), MP_ROM_PTR(&mpy_brush_dither_static_obj) },
-  { MP_ROM_QSTR(MP_QSTR_onebit), MP_ROM_PTR(&mpy_brush_onebit_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_invert), MP_ROM_PTR(&mpy_brush_invert_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&mpy_brush_threshold_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_saturation), MP_ROM_PTR(&mpy_brush_saturation_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_contrast), MP_ROM_PTR(&mpy_brush_contrast_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_duotone), MP_ROM_PTR(&mpy_brush_duotone_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_crt), MP_ROM_PTR(&mpy_brush_crt_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_grid), MP_ROM_PTR(&mpy_brush_grid_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_vignette), MP_ROM_PTR(&mpy_brush_vignette_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_noise), MP_ROM_PTR(&mpy_brush_noise_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_glitch), MP_ROM_PTR(&mpy_brush_glitch_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_oilpaint), MP_ROM_PTR(&mpy_brush_oilpaint_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_phosphor), MP_ROM_PTR(&mpy_brush_phosphor_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_nightvision), MP_ROM_PTR(&mpy_brush_nightvision_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_chromatic), MP_ROM_PTR(&mpy_brush_chromatic_static_obj) },
 };
 static MP_DEFINE_CONST_DICT(brush_locals_dict, brush_locals_dict_table);
 
