@@ -121,8 +121,11 @@ class image:
     @cpp(args="a b c")
     def triangle(self, a: XY, b: XY, c: XY) -> None: "Filled triangle."
 
-    def blur(self, radius: float) -> None: "Box-blur the whole image in place."
-    def bloom(self, threshold: int = 180, intensity: int = 150, radius: float = 4.0) -> None: "Bloom: soft halo around pixels brighter than `threshold`, added back scaled by `intensity`."
+    def blur(self, radius: float, strength: float = 1.0) -> None: "Box-blur the whole image in place."
+    def bloom(self, threshold: int = 180, intensity: int = 150, radius: float = 4.0, strength: float = 1.0) -> None: "Bloom: soft halo around pixels brighter than `threshold`, added back scaled by `intensity`."
+    def edgeglow(self, strength: int = 220) -> None: "Glowing edges: bright coloured Sobel edges on black with a bloom glow. strength scales edge sensitivity."
+    def wave(self, horizontal: int = 4, vertical: int = 4, strength: float = 1.0, bilinear: bool = False) -> None: "Animated sine warp (dream-sequence wobble). horizontal/vertical are px amplitudes; 0 disables that axis."
+    def zoom(self, strength: int = 200) -> None: "Radial zoom blur: streaks from the image centre. strength sets the streak length."
     def dither(self) -> None: "Dither the whole image in place."
     def onebit(self) -> None: "Convert to 1-bit black/white in place."
     def monochrome(self) -> None: "Convert to monochrome in place."
@@ -131,12 +134,12 @@ class image:
     def saturation(self, amount: int) -> None: "Adjust saturation (amount>0 boosts, -256 = greyscale)."
     def contrast(self, amount: int) -> None: "Adjust contrast around mid-grey (amount>0 more)."
     def duotone(self, shadow: color, highlight: color) -> None: "Map luminance onto a shadow→highlight ramp."
-    def crt(self, spacing: int, darkness: int) -> None: "CRT tube: darken every `spacing`-th row by `darkness`, with a rounded corner falloff."
-    def grid(self, spacing: int, darkness: int) -> None: "Gentle pixel grid: darken every `spacing`-th row and column by `darkness`."
+    def crt(self, spacing: int, darkness: int, strength: float = 1.0) -> None: "CRT tube: darken every `spacing`-th row by `darkness`, with a rounded corner falloff."
+    def grid(self, spacing: int, darkness: int, strength: float = 1.0) -> None: "Gentle pixel grid: darken every `spacing`-th row and column by `darkness`."
     def vignette(self, strength: int) -> None: "Darken by distance from the image centre."
     def gameboy(self) -> None: "Map the whole image to the 4 Game Boy greens."
-    def noise(self, amount: int, interval: int = 0) -> None: "Add per-pixel film grain (+/- amount). interval = refresh period in ms (0 = static)."
-    def glitch(self, amount: int) -> None: "VHS channel-shift glitch bands."
+    def noise(self, amount: int, interval: int = 0, strength: float = 1.0) -> None: "Add per-pixel film grain (+/- amount). interval = refresh period in ms (0 = static)."
+    def glitch(self, amount: int, strength: float = 1.0) -> None: "VHS channel-shift glitch bands."
     def oilpaint(self, radius: int, strength: int = 255) -> None: "Oil paint: dominant colour in a radius, eased back toward the original by strength (0-255)."
     def cga(self) -> None: "CGA 4-colour palette."
 
@@ -149,7 +152,7 @@ class image:
     def synthwave(self) -> None: "Synthwave: neon cyan/magenta/white palette dither with a bloom glow."
     def c64(self) -> None: "Commodore 64 16-colour palette."
     def nightvision(self) -> None: "Green amplify + grain + edge darkening."
-    def chromatic(self, offset: int) -> None: "Chromatic aberration RGB split."
+    def chromatic(self, offset: int, strength: float = 1.0) -> None: "Chromatic aberration RGB split."
 
     @cpp(args="p.x p.y", box="pv::box_color_packed({0})")
     def get(self, p: XY) -> color: "Read the pixel colour at p."
