@@ -622,6 +622,12 @@ extern "C" mp_obj_t image_shapes(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shapes_obj, 2, image_shapes);
 extern "C" mp_obj_t image_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
 static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_image_text_obj, 2, image_text);
+extern "C" mp_obj_t image__set_glyph_registry(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image__set_glyph_registry_obj, 1, image__set_glyph_registry);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image__set_glyph_registry_static_obj, MP_ROM_PTR(&mpy_image__set_glyph_registry_obj));
+extern "C" mp_obj_t image_add_glyph(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_add_glyph_obj, 2, image_add_glyph);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_add_glyph_static_obj, MP_ROM_PTR(&mpy_image_add_glyph_obj));
 extern "C" mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
 static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_image_measure_text_obj, 2, image_measure_text);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blit_obj, 1, mpy_image_blit);
@@ -798,6 +804,8 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_shape), MP_ROM_PTR(&mpy_image_shape_obj) },
   { MP_ROM_QSTR(MP_QSTR_shapes), MP_ROM_PTR(&mpy_image_shapes_obj) },
   { MP_ROM_QSTR(MP_QSTR_text), MP_ROM_PTR(&mpy_image_text_obj) },
+  { MP_ROM_QSTR(MP_QSTR__set_glyph_registry), MP_ROM_PTR(&mpy_image__set_glyph_registry_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_add_glyph), MP_ROM_PTR(&mpy_image_add_glyph_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_measure_text), MP_ROM_PTR(&mpy_image_measure_text_obj) },
   { MP_ROM_QSTR(MP_QSTR_blit), MP_ROM_PTR(&mpy_image_blit_obj) },
   { MP_ROM_QSTR(MP_QSTR_blit_vspan), MP_ROM_PTR(&mpy_image_blit_vspan_obj) },

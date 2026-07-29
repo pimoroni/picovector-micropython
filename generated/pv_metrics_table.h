@@ -123,6 +123,8 @@ enum {
   PV_M_image_shape,  // image.shape
   PV_M_image_shapes,  // image.shapes
   PV_M_image_text,  // image.text
+  PV_M_image__set_glyph_registry,  // image._set_glyph_registry
+  PV_M_image_add_glyph,  // image.add_glyph
   PV_M_image_measure_text,  // image.measure_text
   PV_M_image_blit,  // image.blit
   PV_M_image_blit_vspan,  // image.blit_vspan

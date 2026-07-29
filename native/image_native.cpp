@@ -212,17 +212,65 @@ extern "C" {
                   : self->image->pixel_font()->measure(self->image, ws, we, scale).w;
   }
 
-  // Lay out one visual line by greedy word wrap. Advances *pp past the line and
-  // returns the line width. In draw mode each word is drawn at ox + its offset,
-  // y; otherwise the line is only measured. *hard_break reports a '\n' end. This
-  // mirrors the Python text.draw wrap so the two produce identical layout.
+  // Inline glyph-renderer registry: the Python dict text.GLYPH_RENDERERS,
+  // name -> callable fn(image, params, measure). It is owned by the frozen text
+  // module (a rooted global) and handed to us once via set_glyph_registry, so
+  // this plain static reference is safe without a GC root pointer: the dict is
+  // kept alive by Python and MicroPython never moves objects.
+  static mp_obj_t s_glyph_registry = MP_OBJ_NULL;
+
+  mp_obj_t image__set_glyph_registry(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    s_glyph_registry = args[0];
+    return mp_const_none;
+  }
+
+  // Resolve a [name] markup code to its renderer, or MP_OBJ_NULL if unregistered.
+  // Compares against the registry keys directly: no temporary string is
+  // allocated, so this can't trigger a GC mid-layout (we hold interior pointers
+  // into the source string). The registry is small, so the linear scan is cheap.
+  static mp_obj_t glyph_lookup(const char *name, size_t len) {
+    if (s_glyph_registry == MP_OBJ_NULL) return MP_OBJ_NULL;
+    mp_map_t *map = mp_obj_dict_get_map(s_glyph_registry);
+    for (size_t i = 0; i < map->alloc; i++) {
+      if (!mp_map_slot_is_filled(map, i)) continue;
+      if (!mp_obj_is_str(map->table[i].key)) continue;
+      size_t klen;
+      const char *k = mp_obj_str_get_data(map->table[i].key, &klen);
+      if (klen == len && memcmp(k, name, len) == 0) return map->table[i].value;
+    }
+    return MP_OBJ_NULL;
+  }
+
+  // Build the params tuple for [name:a,b,...] (comma-split strings). Capped at a
+  // small fixed count to keep it off the RP2 stack; extra params are ignored.
+  static mp_obj_t glyph_params(const char *p, const char *end) {
+    mp_obj_t items[8];
+    size_t n = 0;
+    const char *s = p;
+    while (p <= end && n < MP_ARRAY_SIZE(items)) {
+      if (p == end || *p == ',') {
+        items[n++] = mp_obj_new_str(s, p - s);
+        s = p + 1;
+        if (p == end) break;
+      }
+      p += 1;
+    }
+    return mp_obj_new_tuple(n, items);
+  }
+
+  // Lay out one visual line by greedy word wrap, honouring inline [code] /
+  // [code:params] markup (and "[[" as a literal "["). Advances *pp past the line
+  // and returns its width. In draw mode words are drawn and glyph renderers
+  // invoked at ox + offset, y; otherwise the line is only measured. *hard_break
+  // reports a '\n' end. Mirrors the Python text.draw wrap for identical layout.
   static float image_layout_line(image_obj_t *self, bool vector, float fs,
                                   int scale, const char **pp, const char *end,
                                   float max_w, float space_w, bool draw,
                                   float ox, float y, bool *hard_break) {
     const char *p = *pp;
     float x = 0.0f;        // placed line width so far
-    float pending = 0.0f;  // space width accumulated before the next word
+    float pending = 0.0f;  // space width accumulated before the next item
     bool started = false;
     *hard_break = false;
 
@@ -232,17 +280,64 @@ extern "C" {
       if (ch == '\r') { p += 1; continue; }
       if (ch == ' ')  { pending += space_w; p += 1; continue; }
 
-      const char *ws = p;
-      while (p < end && *p != ' ' && *p != '\n' && *p != '\r') p += 1;
-      const char *we = p;
-      float w = image_measure_span(self, vector, fs, scale, ws, we);
+      // Resolve the next item: a word span [ws, we), or a glyph renderer (fn,
+      // params). item_start is where this item began, for the wrap rewind.
+      const char *item_start = p;
+      const char *ws = nullptr, *we = nullptr;
+      mp_obj_t fn = MP_OBJ_NULL, params = MP_OBJ_NULL;
+      float w = 0.0f;
+      bool handled = false;
 
-      // wrap: a word past the first that would overrun starts the next line
-      if (started && x + pending + w > max_w) { p = ws; break; }
+      if (ch == '[') {
+        if (p + 1 < end && p[1] == '[') {        // "[[" -> a literal "["
+          ws = p; we = p + 1; p += 2;
+          w = image_measure_span(self, vector, fs, scale, ws, we);
+          handled = true;
+        } else {                                 // [code] / [code:params]
+          const char *close = p + 1;
+          while (close < end && *close != ']' && *close != '\n') close += 1;
+          if (close < end && *close == ']') {
+            const char *colon = p + 1;
+            while (colon < close && *colon != ':') colon += 1;
+            fn = glyph_lookup(p + 1, colon - (p + 1));
+            if (fn != MP_OBJ_NULL) {
+              params = glyph_params(colon < close ? colon + 1 : close, close);
+              mp_obj_t margs[3] = { MP_OBJ_FROM_PTR(self), params, mp_const_true };
+              mp_obj_t wobj = mp_call_function_n_kw(fn, 3, 0, margs);
+              w = wobj == mp_const_none ? 0.0f : mp_obj_get_float(wobj);
+              p = close + 1;
+              handled = true;
+            }
+          }
+          // unterminated / unknown markup falls through to the word branch
+        }
+      }
 
-      float ix = x + (started ? pending : 0.0f);
-      if (draw) image_draw_span(self, vector, fs, scale, ws, we, ox + ix, y);
-      x = ix + w;
+      if (!handled) {
+        // a word: up to the next space / newline / '[' (the first char may be a
+        // literal '[' that was not valid markup)
+        ws = p; we = nullptr; fn = MP_OBJ_NULL;
+        p += 1;
+        while (p < end && *p != ' ' && *p != '\n' && *p != '\r' && *p != '[') p += 1;
+        we = p;
+        w = image_measure_span(self, vector, fs, scale, ws, we);
+      }
+
+      // wrap: an item past the first that would overrun starts the next line
+      if (started && x + pending + w > max_w) { p = item_start; break; }
+
+      float px = ox + x + (started ? pending : 0.0f);
+      if (draw) {
+        if (fn != MP_OBJ_NULL) {
+          text_cursor_t *c = self->image->text_cursor_state();
+          c->x = px; c->y = y; c->origin_x = px; c->valid = true;
+          mp_obj_t dargs[3] = { MP_OBJ_FROM_PTR(self), params, mp_const_false };
+          mp_call_function_n_kw(fn, 3, 0, dargs);
+        } else {
+          image_draw_span(self, vector, fs, scale, ws, we, px, y);
+        }
+      }
+      x = px - ox + w;
       pending = 0.0f;
       started = true;
     }
@@ -358,6 +453,22 @@ extern "C" {
 
     float w = max_x - min_x;
     return rect_t{min_x, y0, w > 0.0f ? w : 0.0f, total_h};
+  }
+
+  // add_glyph(name, fn): register an inline [name] / [name:params] renderer for
+  // text(). fn(image, params, measure) returns the advance width when measure is
+  // True, else draws at image.cursor. Re-registering a name overwrites it;
+  // fn=None removes it (a no-op if it was not registered). Static: (name, fn).
+  mp_obj_t image_add_glyph(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    if (s_glyph_registry == MP_OBJ_NULL) return mp_const_none;
+    if (args[1] == mp_const_none) {
+      mp_map_lookup(mp_obj_dict_get_map(s_glyph_registry), args[0],
+                    MP_MAP_LOOKUP_REMOVE_IF_FOUND);
+    } else {
+      mp_obj_dict_store(s_glyph_registry, args[0], args[1]);
+    }
+    return mp_const_none;
   }
 
   mp_obj_t image_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {

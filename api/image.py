@@ -203,6 +203,22 @@ class image:
         "(default CLIP); line_height scales the per-line advance; word_spacing "
         "scales the space width."
 
+    @staticmethod
+    @native
+    def _set_glyph_registry(registry) -> None:
+        "Hand the native text() layout the dict to resolve [name] markup against "
+        "(text.GLYPH_RENDERERS). Kept alive by that module global, so no GC root "
+        "pointer is needed here."
+
+    @staticmethod
+    @native
+    def add_glyph(name: str, fn) -> None:
+        "Register an inline glyph renderer for text() markup. In the drawn "
+        "string, [name] or [name:a,b] invokes fn(image, params, measure): return "
+        "the advance width when measure is True, else draw at image.cursor and "
+        "return None. '[[' renders a literal '['. Re-registering a name "
+        "overwrites it; pass fn=None to remove it (a no-op if unregistered)."
+
     @cpp(native=True, kw=True)
     def measure_text(self, text: str, at: XY = None, font_size: float = 0,
                      line_height: float = 1, word_spacing: float = 1) -> tuple[float, float]:

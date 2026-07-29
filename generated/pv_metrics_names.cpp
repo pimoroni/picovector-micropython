@@ -120,6 +120,8 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "image.shape",
   "image.shapes",
   "image.text",
+  "image._set_glyph_registry",
+  "image.add_glyph",
   "image.measure_text",
   "image.blit",
   "image.blit_vspan",
