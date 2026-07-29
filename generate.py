@@ -763,20 +763,29 @@ def main():
         return
 
     os.makedirs(args.out, exist_ok=True)
+
+    # Only rewrite a file when its content actually changes, so regenerating
+    # without an API change leaves mtimes untouched and doesn't force a rebuild
+    # of everything that includes the generated headers (types.h fans out wide).
+    def write_if_changed(path, content):
+        try:
+            with open(path) as f:
+                if f.read() == content:
+                    return
+        except OSError:
+            pass
+        with open(path, "w") as f:
+            f.write(content)
+
     written = []
     for t in types:
         path = os.path.join(args.out, f"{t.name}.cpp")
-        with open(path, "w") as f:
-            f.write(emit_type_file(t))
+        write_if_changed(path, emit_type_file(t))
         written.append(path)
-    with open(os.path.join(args.out, "types.h"), "w") as f:
-        f.write(emit_types_h(types))
-    with open(os.path.join(args.out, "picovector_bindings.c"), "w") as f:
-        f.write(emit_bindings_c(types))
-    with open(os.path.join(args.out, "pv_metrics_table.h"), "w") as f:
-        f.write(emit_metrics_table_h(types))
-    with open(os.path.join(args.out, "pv_metrics_names.cpp"), "w") as f:
-        f.write(emit_metrics_names_cpp(types))
+    write_if_changed(os.path.join(args.out, "types.h"), emit_types_h(types))
+    write_if_changed(os.path.join(args.out, "picovector_bindings.c"), emit_bindings_c(types))
+    write_if_changed(os.path.join(args.out, "pv_metrics_table.h"), emit_metrics_table_h(types))
+    write_if_changed(os.path.join(args.out, "pv_metrics_names.cpp"), emit_metrics_names_cpp(types))
 
     n_metrics = sum(1 for _ in metric_entries(types))
     print(f"generated {len(written)} type sources + types.h + "
