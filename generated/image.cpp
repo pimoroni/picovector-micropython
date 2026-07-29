@@ -620,10 +620,10 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_put_obj, 2, mpy_image_put);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shape_obj, 2, mpy_image_shape);
 extern "C" mp_obj_t image_shapes(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_shapes_obj, 2, image_shapes);
-extern "C" mp_obj_t image_text(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_text_obj, 2, image_text);
-extern "C" mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_measure_text_obj, 2, image_measure_text);
+extern "C" mp_obj_t image_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_image_text_obj, 2, image_text);
+extern "C" mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_image_measure_text_obj, 2, image_measure_text);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blit_obj, 1, mpy_image_blit);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blit_vspan_obj, 6, mpy_image_blit_vspan);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_blit_hspan_obj, 6, mpy_image_blit_hspan);
@@ -746,6 +746,14 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_NEAREST), MP_ROM_INT(filter_t::NEAREST) },
   { MP_ROM_QSTR(MP_QSTR_BILINEAR), MP_ROM_INT(filter_t::BILINEAR) },
   { MP_ROM_QSTR(MP_QSTR_BICUBIC), MP_ROM_INT(filter_t::BICUBIC) },
+  { MP_ROM_QSTR(MP_QSTR_LEFT), MP_ROM_INT(text_align_t::LEFT) },
+  { MP_ROM_QSTR(MP_QSTR_CENTER), MP_ROM_INT(text_align_t::CENTER) },
+  { MP_ROM_QSTR(MP_QSTR_RIGHT), MP_ROM_INT(text_align_t::RIGHT) },
+  { MP_ROM_QSTR(MP_QSTR_TOP), MP_ROM_INT(text_align_t::TOP) },
+  { MP_ROM_QSTR(MP_QSTR_MIDDLE), MP_ROM_INT(text_align_t::MIDDLE) },
+  { MP_ROM_QSTR(MP_QSTR_BOTTOM), MP_ROM_INT(text_align_t::BOTTOM) },
+  { MP_ROM_QSTR(MP_QSTR_CLIP), MP_ROM_INT(text_overflow_t::CLIP) },
+  { MP_ROM_QSTR(MP_QSTR_ELLIPSES), MP_ROM_INT(text_overflow_t::ELLIPSES) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },

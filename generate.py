@@ -337,6 +337,13 @@ def emit_member_obj(o, t, m):
     fn = native_name(t, m) if m.native else fn_name(t, m)
     obj = f"{fn_name(t, m)}_obj"
     n = min_args(t, m.params, m.kind)
+    if m.kw:
+        # keyword-argument native method: the body parses its own kwargs
+        if m.native:
+            o(f"extern \"C\" mp_obj_t {fn}(size_t n_args, const mp_obj_t *args, "
+              "mp_map_t *kw_args);")
+        o(f"static MP_DEFINE_CONST_FUN_OBJ_KW({obj}, {n}, {fn});")
+        return
     if m.native:
         o(f"extern \"C\" mp_obj_t {fn}(size_t n_args, const mp_obj_t *args);")
     o(f"static MP_DEFINE_CONST_FUN_OBJ_VAR({obj}, {n}, {fn});")

@@ -141,6 +141,7 @@ class Method:
     args: Optional[tuple] = None
     emit: str = "method"         # method | free | new | mnew | expr
     native: bool = False
+    kw: bool = False             # native body takes keyword args (OBJ_KW)
     overloads: tuple = ()
     error: str = "invalid parameters"
     recv: str = ""               # receive method-call on this param's local
@@ -394,6 +395,7 @@ def _build_method(name, func, kind, ns, classes, owner):
         name, kind, params=tuple(params), returns=returns,
         doc=(func.__doc__ or "").strip(), call=meta.get("call", name),
         args=_args_of(meta), emit=emit, native=meta.get("native", False),
+        kw=meta.get("kw", False),
         error=meta.get("error", "invalid parameters"),
         recv=meta.get("recv", ""), box=meta.get("box", ""),
     )

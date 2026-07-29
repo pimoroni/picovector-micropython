@@ -146,12 +146,15 @@ def _unwrap(fn):
     return fn
 
 
-def cpp(call=None, *, args=None, emit=None, native=False, get=None, set=None,
-        get_raw=None, error=None, result=None, default=None, recv=None, box=None):
+def cpp(call=None, *, args=None, emit=None, native=False, kw=False, get=None,
+        set=None, get_raw=None, error=None, result=None, default=None,
+        recv=None, box=None):
     """Method/property decorator for the cases convention can't express.
 
     * ``call`` — C++ callee name when it differs from the Python method name
       (e.g. ``rgb`` → ``rgb_color_t``).
+    * ``kw`` — the native body takes keyword arguments; bind with
+      MP_DEFINE_CONST_FUN_OBJ_KW and the (n_args, args, kw_args) signature.
     * ``args`` — explicit C++ call argument list (space-separated names /
       expressions) when the order differs from the Python signature, e.g.
       ``arc``'s ``"c.x c.y from_a to_a inner outer"``.
@@ -163,7 +166,7 @@ def cpp(call=None, *, args=None, emit=None, native=False, get=None, set=None,
     * ``result`` / ``default`` — binary-operator result / fall-through.
     * ``error`` — message raised when no overload matches.
     """
-    info = dict(call=call, args=args, emit=emit, native=native, get=get,
+    info = dict(call=call, args=args, emit=emit, native=native, kw=kw, get=get,
                 set=set, get_raw=get_raw, error=error, result=result,
                 default=default, recv=recv, box=box)
     info = {k: v for k, v in info.items() if v not in (None, False)}

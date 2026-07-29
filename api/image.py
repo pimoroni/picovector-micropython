@@ -29,6 +29,17 @@ class image:
     BILINEAR = const("filter_t::BILINEAR", "Texture filter: bilinear (smooth).")
     BICUBIC = const("filter_t::BICUBIC", "Texture filter: bicubic (highest quality).")
 
+    # text align / overflow — for text() bounded layout. align is a (horizontal,
+    # vertical) pair; a single CENTER reads for either axis.
+    LEFT = const("text_align_t::LEFT", "Text align: left (horizontal).")
+    CENTER = const("text_align_t::CENTER", "Text align: centre (either axis).")
+    RIGHT = const("text_align_t::RIGHT", "Text align: right (horizontal).")
+    TOP = const("text_align_t::TOP", "Text align: top (vertical).")
+    MIDDLE = const("text_align_t::MIDDLE", "Text align: middle (vertical).")
+    BOTTOM = const("text_align_t::BOTTOM", "Text align: bottom (vertical).")
+    CLIP = const("text_overflow_t::CLIP", "Text overflow: clip to bounds.")
+    ELLIPSES = const("text_overflow_t::ELLIPSES", "Text overflow: truncate with '...'.")
+
     @cpp(emit="image")
     def __init__(self, width: int, height: int, buffer: Buffer = None):
         "image(width, height) allocates a buffer; pass an existing buffer to wrap it."
@@ -173,24 +184,35 @@ class image:
     def shapes(self, entries) -> None:
         "Batched shape draw: each entry is a shape or (shape, brush/color)."
 
-    # ── text (font branching → native) ──────────────────────────────────────
-    @native
-    def text(self, text: str, at: XY = None, size: float = 0) -> None:
-        "Draw text with the current font, advancing an internal cursor. Each "
-        "call ends with an implicit newline, so a following text() with no "
-        "position starts on the next line (print-style). at (a vec2 or x, y) is "
-        "optional: omit it to continue at the cursor; a '\\n' in the text also "
-        "starts a new line at the x it was last positioned at. size (sentinel 0 "
-        "= the font's default): point size for vector fonts (default 12), or the "
-        "integer nearest-neighbour scale for pixel fonts (default 1; 2 = double "
-        "size, 3 = triple, ...)."
+    # ── text (font branching + bounds layout → native) ──────────────────────
+    @cpp(native=True, kw=True)
+    def text(self, text: str, at: XY = None, font_size: float = 0,
+             align=None, overflow=None, line_height: float = 1,
+             word_spacing: float = 1) -> rect:
+        "Draw text with the current font; returns the drawn bounding box as a "
+        "rect. at selects the mode: a vec2 or (x, y) "
+        "draws a single run from that point (resetting the caret); a rect lays "
+        "the text out word-wrapped inside those bounds; omit it to continue at "
+        "the caret (print-style, each call ending with an implicit newline). A "
+        "'\\n' always starts a new line. font_size (sentinel 0 = the font's "
+        "default): point size for vector fonts (default 12), or the integer "
+        "nearest-neighbour scale for pixel fonts (default 1; 2 = double, ...). "
+        "The remaining settings apply only with a rect: align is a "
+        "(horizontal, vertical) pair from LEFT/CENTER/RIGHT and "
+        "TOP/MIDDLE/BOTTOM (default (LEFT, TOP)); overflow is CLIP or ELLIPSES "
+        "(default CLIP); line_height scales the per-line advance; word_spacing "
+        "scales the space width."
 
-    @native
-    def measure_text(self, text: str, size: float = 0) -> tuple[float, float]:
-        "Measure text in the current font. Returns (width, height). "
-        "size (sentinel 0 = the font's default): point size for vector fonts "
-        "(default 12), or the integer scale for pixel fonts (default 1) — pass "
-        "the same value you draw with so layout matches."
+    @cpp(native=True, kw=True)
+    def measure_text(self, text: str, at: XY = None, font_size: float = 0,
+                     line_height: float = 1, word_spacing: float = 1) -> tuple[float, float]:
+        "Measure text in the current font. Returns (width, height). Pass a rect "
+        "as at to measure the text word-wrapped inside those bounds (font_size, "
+        "line_height and word_spacing then apply, matching text()); otherwise it "
+        "measures the string unwrapped (an embedded '\\n' still breaks lines). "
+        "font_size (sentinel 0 = the font's default): point size for vector "
+        "fonts (default 12), or the integer scale for pixel fonts (default 1) — "
+        "pass the same value you draw with so layout matches."
 
     # ── blitting ─────────────────────────────────────────────────────────────
     @overload

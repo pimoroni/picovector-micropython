@@ -38,7 +38,7 @@ extern "C" {
   extern mp_obj_t mpy_image_blit(size_t, const mp_obj_t *);
   extern mp_obj_t mpy_image_blit_vspan(size_t, const mp_obj_t *);
   extern mp_obj_t mpy_image_blit_hspan(size_t, const mp_obj_t *);
-  extern mp_obj_t image_text(size_t, const mp_obj_t *);
+  extern mp_obj_t image_text(size_t, const mp_obj_t *, mp_map_t *);
 
   // Raise a descriptive error for a failed decode. Each message is a complete
   // MP_ERROR_TEXT literal so it participates in ROM text compression; composing
@@ -196,7 +196,171 @@ extern "C" {
     return mp_obj_is_int(o) || mp_obj_is_float(o);
   }
 
-  mp_obj_t image_text(size_t n_args, const mp_obj_t *args) {
+  // Position the caret and draw one word span [ws, we) with the active font.
+  static inline void image_draw_span(image_obj_t *self, bool vector, float fs,
+                                     int scale, const char *ws, const char *we,
+                                     float px, float y) {
+    text_cursor_t *c = self->image->text_cursor_state();
+    c->x = px; c->y = y; c->origin_x = px; c->valid = true;
+    if (vector) self->image->font()->draw(self->image, ws, we, fs);
+    else        self->image->pixel_font()->draw(self->image, ws, we, scale);
+  }
+
+  static inline float image_measure_span(image_obj_t *self, bool vector, float fs,
+                                         int scale, const char *ws, const char *we) {
+    return vector ? self->image->font()->measure(self->image, ws, we, fs).w
+                  : self->image->pixel_font()->measure(self->image, ws, we, scale).w;
+  }
+
+  // Lay out one visual line by greedy word wrap. Advances *pp past the line and
+  // returns the line width. In draw mode each word is drawn at ox + its offset,
+  // y; otherwise the line is only measured. *hard_break reports a '\n' end. This
+  // mirrors the Python text.draw wrap so the two produce identical layout.
+  static float image_layout_line(image_obj_t *self, bool vector, float fs,
+                                  int scale, const char **pp, const char *end,
+                                  float max_w, float space_w, bool draw,
+                                  float ox, float y, bool *hard_break) {
+    const char *p = *pp;
+    float x = 0.0f;        // placed line width so far
+    float pending = 0.0f;  // space width accumulated before the next word
+    bool started = false;
+    *hard_break = false;
+
+    while (p < end) {
+      char ch = *p;
+      if (ch == '\n') { p += 1; *hard_break = true; break; }
+      if (ch == '\r') { p += 1; continue; }
+      if (ch == ' ')  { pending += space_w; p += 1; continue; }
+
+      const char *ws = p;
+      while (p < end && *p != ' ' && *p != '\n' && *p != '\r') p += 1;
+      const char *we = p;
+      float w = image_measure_span(self, vector, fs, scale, ws, we);
+
+      // wrap: a word past the first that would overrun starts the next line
+      if (started && x + pending + w > max_w) { p = ws; break; }
+
+      float ix = x + (started ? pending : 0.0f);
+      if (draw) image_draw_span(self, vector, fs, scale, ws, we, ox + ix, y);
+      x = ix + w;
+      pending = 0.0f;
+      started = true;
+    }
+    *pp = p;
+    return x;
+  }
+
+  // Word-wrapped, aligned text inside `bounds`. Two streaming passes (count,
+  // then draw) avoid holding a token list — no large stack arrays. Returns the
+  // drawn bounding box. With draw=false it lays out without drawing (or
+  // clipping), so measure_text can report the wrapped size.
+  static rect_t image_layout_text(image_obj_t *self, const char *text, rect_t bounds,
+                                  float size, text_align_t align_h,
+                                  text_align_t align_v, text_overflow_t overflow,
+                                  float line_height, float word_spacing, bool draw) {
+    bool vector = (bool)self->font;
+    float fs = size > 0.0f ? size : 12.0f;   // vector point size
+    int scale = size > 0.0f ? (int)size : 1; // pixel integer scale
+    if (scale < 1) scale = 1;
+
+    float font_height = vector ? fs
+                               : (float)(self->image->pixel_font()->height * scale);
+    float line_advance = font_height * line_height;
+
+    float space_w = vector
+      ? self->image->font()->measure(self->image, " ", fs).w
+      : self->image->pixel_font()->measure(self->image, " ", scale).w;
+    if (space_w == 0.0f) space_w = font_height / 3.0f;
+    space_w *= word_spacing;
+
+    const char *end = text + strlen(text);
+
+    // Pass 1: count wrapped lines.
+    int n = 0;
+    {
+      const char *p = text;
+      bool hard;
+      while (p < end) {
+        const char *ls = p;
+        image_layout_line(self, vector, fs, scale, &p, end, bounds.w, space_w,
+                          false, 0.0f, 0.0f, &hard);
+        n++;
+        if (p == ls && !hard) break;  // safety: no progress
+      }
+    }
+    if (n == 0) return rect_t{bounds.x, bounds.y, 0, 0};
+
+    float total_h = (n - 1) * line_advance + font_height;
+    int draw_count = n;
+    bool truncate = false;
+    if (overflow == ELLIPSES && line_advance > 0.0f && total_h > bounds.h) {
+      int fit = (int)((bounds.h - font_height) / line_advance) + 1;
+      if (fit < 1) fit = 1;
+      if (n > fit) {
+        draw_count = fit;
+        truncate = true;
+        total_h = (draw_count - 1) * line_advance + font_height;
+      }
+    }
+
+    float y = bounds.y;
+    if (align_v == MIDDLE)      y = bounds.y + (bounds.h - total_h) / 2.0f;
+    else if (align_v == BOTTOM) y = bounds.y + bounds.h - total_h;
+
+    static const char *ellipsis = "...";
+    float ew = 0.0f;
+    if (truncate)
+      ew = vector ? self->image->font()->measure(self->image, ellipsis, fs).w
+                  : self->image->pixel_font()->measure(self->image, ellipsis, scale).w;
+
+    rect_t old_clip{0, 0, 0, 0};
+    if (draw) { old_clip = self->image->clip(); self->image->clip(bounds); }
+
+    // Pass 2: place each line at its aligned x, tracking the bounds (and
+    // drawing, unless this is a measure-only run).
+    float y0 = y;
+    float min_x = bounds.x + bounds.w;
+    float max_x = bounds.x;
+    const char *p = text;
+    for (int i = 0; i < draw_count; i++) {
+      const char *line_start = p;
+      bool hard;
+      float lw = image_layout_line(self, vector, fs, scale, &p, end, bounds.w,
+                                   space_w, false, 0.0f, 0.0f, &hard);
+
+      bool last_trunc = truncate && i == draw_count - 1;
+      float eff_w = last_trunc ? lw + ew : lw;
+
+      float ox = bounds.x;
+      if (align_h == CENTER)     ox = bounds.x + (bounds.w - eff_w) / 2.0f;
+      else if (align_h == RIGHT) ox = bounds.x + bounds.w - eff_w;
+
+      if (ox < min_x) min_x = ox;
+      if (ox + eff_w > max_x) max_x = ox + eff_w;
+
+      if (draw) {
+        const char *dp = line_start;
+        image_layout_line(self, vector, fs, scale, &dp, end, bounds.w, space_w,
+                          true, ox, y, &hard);
+
+        if (last_trunc) {
+          text_cursor_t *c = self->image->text_cursor_state();
+          float px = ox + lw;
+          c->x = px; c->y = y; c->origin_x = px; c->valid = true;
+          if (vector) self->image->font()->draw(self->image, ellipsis, fs);
+          else        self->image->pixel_font()->draw(self->image, ellipsis, scale);
+        }
+      }
+      y += line_advance;
+    }
+
+    if (draw) self->image->clip(old_clip);
+
+    float w = max_x - min_x;
+    return rect_t{min_x, y0, w > 0.0f ? w : 0.0f, total_h};
+  }
+
+  mp_obj_t image_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     self(args[0], image_obj_t);
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_text);
@@ -206,17 +370,23 @@ extern "C" {
       mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("target image has no font"));
     }
 
-    // Resolve an optional position and size from a flexible arg grammar:
+    // Positional grammar (unchanged for back-compat) plus a rect that enables
+    // the bounded layout engine:
     //   text(s)                 -> continue at the caret, font default size
     //   text(s, size)           -> continue at the caret, explicit size
-    //   text(s, vec2 [, size])  -> draw at vec2
-    //   text(s, x, y [, size])  -> draw at (x, y)
-    // A lone trailing number is a size: a single number was never a position,
-    // so this stays backward compatible with text(s, x, y[, size]).
-    bool has_at = false;
+    //   text(s, vec2 [, size])  -> single run at vec2 (resets the caret)
+    //   text(s, x, y [, size])  -> single run at (x, y) (resets the caret)
+    //   text(s, rect [, size])  -> word-wrapped, aligned layout inside rect
+    // A lone trailing number is a size: a single number was never a position.
+    bool has_at = false, has_rect = false;
     vec2_t at{0, 0};
+    rect_t bounds{0, 0, 0, 0};
     float size = 0.0f;
-    if (n_args >= 3 && mp_obj_is_vec2(args[2])) {
+    if (n_args >= 3 && mp_obj_is_rect(args[2])) {
+      bounds = mp_obj_get_rect(args[2]);
+      has_rect = true;
+      if (n_args > 3) size = mp_obj_get_float(args[3]);
+    } else if (n_args >= 3 && mp_obj_is_vec2(args[2])) {
       at = mp_obj_get_vec2(args[2]);
       has_at = true;
       if (n_args > 3) size = mp_obj_get_float(args[3]);
@@ -229,25 +399,66 @@ extern "C" {
       size = mp_obj_get_float(args[2]);
     }
 
-    // size is a sentinel-0 optional: 0 (or omitted) means "font's default" —
-    // 12pt for vector fonts, 1x for pixel fonts (where it's the integer scale).
+    // Keyword settings. font_size overrides a positional size; align, overflow,
+    // line_height and word_spacing apply only to the rect layout path.
+    text_align_t align_h = LEFT, align_v = TOP;
+    text_overflow_t overflow = CLIP;
+    float line_height = 1.0f, word_spacing = 1.0f;
+    if (kw_args && kw_args->used) {
+      mp_map_elem_t *e;
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_font_size), MP_MAP_LOOKUP)))
+        size = mp_obj_get_float(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_line_height), MP_MAP_LOOKUP)))
+        line_height = mp_obj_get_float(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_word_spacing), MP_MAP_LOOKUP)))
+        word_spacing = mp_obj_get_float(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_overflow), MP_MAP_LOOKUP)))
+        overflow = (text_overflow_t)mp_obj_get_int(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_align), MP_MAP_LOOKUP))) {
+        mp_obj_t a = e->value;
+        if (mp_obj_is_type(a, &mp_type_tuple) || mp_obj_is_type(a, &mp_type_list)) {
+          size_t len; mp_obj_t *items;
+          mp_obj_get_array(a, &len, &items);
+          if (len >= 1) align_h = (text_align_t)mp_obj_get_int(items[0]);
+          if (len >= 2) align_v = (text_align_t)mp_obj_get_int(items[1]);
+        } else {
+          align_h = (text_align_t)mp_obj_get_int(a);
+        }
+      }
+    }
+
+    // Bounded layout path. Returns the drawn bounding box.
+    if (has_rect) {
+      rect_t bb = image_layout_text(self, text, bounds, size, align_h, align_v,
+                                    overflow, line_height, word_spacing, true);
+      return pv::box_rect(bb);
+    }
+
+    // Fast path: a single run from the caret / position (size is a sentinel-0
+    // optional: 12pt vector default, 1x pixel default). Clipped to the image.
     text_cursor_t *c = self->image->text_cursor_state();
     if (has_at) {
       c->x = at.x; c->y = at.y; c->origin_x = at.x; c->valid = true;
     } else if (!c->valid) {
       c->x = 0.0f; c->y = 0.0f; c->origin_x = 0.0f; c->valid = true;
     }
-
+    // Capture the start point, since draw() advances (and newlines) the caret.
+    float bx = c->x, by = c->y;
+    rect_t bb;
     if (self->font) {
-      self->image->font()->draw(self->image, text, size > 0.0f ? size : 12.0f);
+      float fs = size > 0.0f ? size : 12.0f;
+      self->image->font()->draw(self->image, text, fs);
+      bb = self->image->font()->measure(self->image, text, fs);
     } else {
       int scale = size > 0.0f ? (int)size : 1;
       self->image->pixel_font()->draw(self->image, text, scale);
+      bb = self->image->pixel_font()->measure(self->image, text, scale);
     }
-    return mp_const_none;
+    bb.x = bx; bb.y = by;
+    return pv::box_rect(bb);
   }
 
-  mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args) {
+  mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     self(args[0], image_obj_t);
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_measure_text);
@@ -256,16 +467,47 @@ extern "C" {
     if (!self->font && !self->pixel_font) {
       mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("target image has no font"));
     }
-    // size is a sentinel-0 optional: 0 (or omitted) means "font's default" —
-    // 12pt for vector fonts, 1x for pixel fonts (where it's the integer scale).
-    float size = n_args > 2 ? mp_obj_get_float(args[2]) : 0.0f;
+
+    // Grammar mirrors text(): a rect measures word-wrapped inside those bounds;
+    // a lone number is the size; otherwise measure the string unwrapped. size is
+    // a sentinel-0 optional (12pt vector / 1x pixel default).
+    bool has_rect = false;
+    rect_t bounds{0, 0, 0, 0};
+    float size = 0.0f;
+    if (n_args >= 3 && mp_obj_is_rect(args[2])) {
+      bounds = mp_obj_get_rect(args[2]);
+      has_rect = true;
+      if (n_args > 3) size = mp_obj_get_float(args[3]);
+    } else if (n_args == 3 && pv_is_num(args[2])) {
+      size = mp_obj_get_float(args[2]);
+    }
+
+    float line_height = 1.0f, word_spacing = 1.0f;
+    if (kw_args && kw_args->used) {
+      mp_map_elem_t *e;
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_font_size), MP_MAP_LOOKUP)))
+        size = mp_obj_get_float(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_line_height), MP_MAP_LOOKUP)))
+        line_height = mp_obj_get_float(e->value);
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_word_spacing), MP_MAP_LOOKUP)))
+        word_spacing = mp_obj_get_float(e->value);
+    }
+
     mp_obj_t result[2];
+    if (has_rect) {
+      // measure-only layout (no draw); align does not affect the size
+      rect_t bb = image_layout_text(self, text, bounds, size, LEFT, TOP, CLIP,
+                                    line_height, word_spacing, false);
+      result[0] = mp_obj_new_float(bb.w);
+      result[1] = mp_obj_new_float(bb.h);
+      return mp_obj_new_tuple(2, result);
+    }
+
     if (self->font) {
       rect_t r = self->image->font()->measure(self->image, text, size > 0.0f ? size : 12.0f);
       result[0] = mp_obj_new_float(r.w);
       result[1] = mp_obj_new_float(r.h);
-    }
-    if (self->pixel_font) {
+    } else {
       int scale = size > 0.0f ? (int)size : 1;
       rect_t r = self->image->pixel_font()->measure(self->image, text, scale);
       result[0] = mp_obj_new_float(r.w);
@@ -358,6 +600,9 @@ extern "C" {
       }
 
       size_t nh = nparameters + 1;
+      // batch commands are positional (method, *args); text() takes no kwargs here
+      mp_map_t no_kw;
+      mp_map_init(&no_kw, 0);
       switch (name) {
         case MP_QSTR_clear:      mpy_image_clear(nh, handler_args); break;
         case MP_QSTR_rectangle:  mpy_image_rectangle(nh, handler_args); break;
@@ -368,7 +613,7 @@ extern "C" {
         case MP_QSTR_blur:       mpy_image_blur(nh, handler_args); break;
         case MP_QSTR_dither:     mpy_image_dither(nh, handler_args); break;
         case MP_QSTR_shape:      mpy_image_shape(nh, handler_args); break;
-        case MP_QSTR_text:       image_text(nh, handler_args); break;
+        case MP_QSTR_text:       image_text(nh, handler_args, &no_kw); break;
         case MP_QSTR_blit_vspan: mpy_image_blit_vspan(nh, handler_args); break;
         case MP_QSTR_blit_hspan: mpy_image_blit_hspan(nh, handler_args); break;
         case MP_QSTR_blit:       mpy_image_blit(nh, handler_args); break;
