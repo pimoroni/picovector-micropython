@@ -41,8 +41,6 @@ enum {
   PV_M_color_rgb,  // color.rgb
   PV_M_color_hsv,  // color.hsv
   PV_M_color_oklch,  // color.oklch
-  PV_M_font_load,  // font.load
-  PV_M_pixel_font_load,  // pixel_font.load
   PV_M_brush_pattern,  // brush.pattern
   PV_M_brush_image,  // brush.image
   PV_M_brush_gradient,  // brush.gradient
@@ -53,6 +51,7 @@ enum {
   PV_M_brush_darken,  // brush.darken
   PV_M_brush_monochrome,  // brush.monochrome
   PV_M_brush_dither,  // brush.dither
+  PV_M_brush_palette_dither,  // brush.palette_dither
   PV_M_brush_invert,  // brush.invert
   PV_M_brush_threshold,  // brush.threshold
   PV_M_brush_saturation,  // brush.saturation

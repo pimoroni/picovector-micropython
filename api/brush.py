@@ -100,6 +100,12 @@ class brush:
         "Ordered-dither the shape's area to a 4-level palette (screen-aligned)."
 
     @staticmethod
+    @cpp(call="palette_dither_brush_t", emit="mnew", args="palette palette_n strength")
+    def palette_dither(palette: list, strength: int = 64) -> brush:
+        "Ordered-dither the shape's area to a restricted palette (list of colours). "
+        "strength is the dither amount (0 = solid nearest, ~64 subtle, 255 heavy)."
+
+    @staticmethod
     @cpp(call="invert_brush_t", emit="mnew")
     def invert() -> brush:
         "Photonegative the shape's area."

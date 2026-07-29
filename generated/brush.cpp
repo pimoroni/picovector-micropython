@@ -150,6 +150,25 @@ mp_obj_t mpy_brush_dither(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(dither_brush_t));
 }
 
+// brush.palette_dither: Ordered-dither the shape's area to a restricted palette (list of colours).
+mp_obj_t mpy_brush_palette_dither(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_palette_dither);
+#endif
+  size_t _i = 0;
+  size_t palette_n; mp_obj_t *palette_items;
+  mp_obj_get_array(args[_i], &palette_n, &palette_items); _i++;
+  if (palette_n < 1 || palette_n > 64) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("palette must have 1 to 64 colours"));
+  uint32_t palette[64];
+  for (size_t _s = 0; _s < palette_n; _s++) {
+    if (!mp_obj_is_type(palette_items[_s], &type_color)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("palette must be a list of colours"));
+    palette[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(palette_items[_s]))->c._p;
+  }
+  int strength = 64;
+  if (n_args > _i) { strength = (int)mp_obj_get_float(args[_i]); _i++; }
+  return pv::box_brush(m_new_class(palette_dither_brush_t, palette, palette_n, strength));
+}
+
 // brush.invert: Photonegative the shape's area.
 mp_obj_t mpy_brush_invert(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
@@ -315,6 +334,8 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_monochrome_obj, 0, mpy_brush_monoch
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_monochrome_static_obj, MP_ROM_PTR(&mpy_brush_monochrome_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_dither_obj, 0, mpy_brush_dither);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_dither_static_obj, MP_ROM_PTR(&mpy_brush_dither_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_palette_dither_obj, 1, mpy_brush_palette_dither);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_palette_dither_static_obj, MP_ROM_PTR(&mpy_brush_palette_dither_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_invert_obj, 0, mpy_brush_invert);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_invert_static_obj, MP_ROM_PTR(&mpy_brush_invert_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_threshold_obj, 3, mpy_brush_threshold);
@@ -357,6 +378,7 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_darken), MP_ROM_PTR(&mpy_brush_darken_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_monochrome), MP_ROM_PTR(&mpy_brush_monochrome_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_dither), MP_ROM_PTR(&mpy_brush_dither_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_palette_dither), MP_ROM_PTR(&mpy_brush_palette_dither_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_invert), MP_ROM_PTR(&mpy_brush_invert_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&mpy_brush_threshold_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_saturation), MP_ROM_PTR(&mpy_brush_saturation_static_obj) },
