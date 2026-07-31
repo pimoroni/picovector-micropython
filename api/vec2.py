@@ -67,10 +67,16 @@ class vec2:
     def transform(self, m: mat3) -> None:
         "Apply a mat3 transformation to this vector, in place."
 
-    # operators -------------------------------------------------------------
+    # operators (a new vec2; the original is unchanged) ----------------------
     def __add__(self, other: vec2) -> vec2: "Component-wise addition."
     def __sub__(self, other: vec2) -> vec2: "Component-wise subtraction."
     def __mul__(self, other: vec2 | float) -> vec2: "Multiply by a vec2 or scalar."
     def __truediv__(self, other: vec2 | float) -> vec2: "Divide by a vec2 or scalar."
     def __eq__(self, other: vec2) -> bool: "Equality."
     def __ne__(self, other: vec2) -> bool: "Inequality."
+
+    # augmented assignment (mutates and returns self; no allocation) ---------
+    def __iadd__(self, other: vec2) -> vec2: "Add another vec2 into this one."
+    def __isub__(self, other: vec2) -> vec2: "Subtract another vec2 from this one."
+    def __imul__(self, other: vec2 | float) -> vec2: "Multiply this one by a vec2 or scalar."
+    def __itruediv__(self, other: vec2 | float) -> vec2: "Divide this one by a vec2 or scalar."

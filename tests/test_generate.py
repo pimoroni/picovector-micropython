@@ -23,6 +23,10 @@ CHECKS = {
         "return mp_obj_new_float(self->v.dot(other));",
         # binary op switch has a default (the -Werror=switch fix)
         "default: break;",
+        # inplace op is a statement on lhs, returning the receiver unboxed
+        "case MP_BINARY_OP_INPLACE_ADD: {",
+        "lhs->v += rhs->v;",
+        "return lhs_in;",
     ],
     "shape": [
         # arc reorders Python (inner, outer, from, to) -> C++ (from, to, inner, outer)

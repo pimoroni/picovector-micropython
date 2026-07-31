@@ -248,6 +248,44 @@ static mp_obj_t vec2_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_
       }
       return mp_const_true;
     } break;
+    case MP_BINARY_OP_INPLACE_ADD: {
+      if (mp_obj_is_type(rhs_in, &type_vec2)) {
+        vec2_obj_t *rhs = (vec2_obj_t *)MP_OBJ_TO_PTR(rhs_in);
+        lhs->v += rhs->v;
+        return lhs_in;
+      }
+    } break;
+    case MP_BINARY_OP_INPLACE_SUBTRACT: {
+      if (mp_obj_is_type(rhs_in, &type_vec2)) {
+        vec2_obj_t *rhs = (vec2_obj_t *)MP_OBJ_TO_PTR(rhs_in);
+        lhs->v -= rhs->v;
+        return lhs_in;
+      }
+    } break;
+    case MP_BINARY_OP_INPLACE_MULTIPLY: {
+      if (mp_obj_is_type(rhs_in, &type_vec2)) {
+        vec2_obj_t *rhs = (vec2_obj_t *)MP_OBJ_TO_PTR(rhs_in);
+        lhs->v *= rhs->v;
+        return lhs_in;
+      }
+      if (mp_obj_is_int(rhs_in) || mp_obj_is_float(rhs_in)) {
+        float v = mp_obj_get_float(rhs_in);
+        lhs->v *= v;
+        return lhs_in;
+      }
+    } break;
+    case MP_BINARY_OP_INPLACE_TRUE_DIVIDE: {
+      if (mp_obj_is_type(rhs_in, &type_vec2)) {
+        vec2_obj_t *rhs = (vec2_obj_t *)MP_OBJ_TO_PTR(rhs_in);
+        lhs->v /= rhs->v;
+        return lhs_in;
+      }
+      if (mp_obj_is_int(rhs_in) || mp_obj_is_float(rhs_in)) {
+        float v = mp_obj_get_float(rhs_in);
+        lhs->v /= v;
+        return lhs_in;
+      }
+    } break;
     default: break;  // unhandled ops fall through to MP_OBJ_NULL
   }
   return MP_OBJ_NULL;

@@ -75,6 +75,12 @@ Things convention can't express, declared with `@cpp`/pseudo-types:
   `Range(1, None, clamp=True)` (clamp).
 * **return semantics** → `-> Self` (return self for chaining) vs `-> vec2`
   (return a new boxed object); `@cpp(emit="mutate")` for in-place writes.
+* **operators** → `__add__`/`__sub__`/`__mul__`/`__truediv__`/`__eq__`/`__ne__` box a
+  result; `__iadd__`/`__isub__`/`__imul__`/`__itruediv__` compile to a compound
+  assignment on the receiver and return it unboxed, so augmented assignment allocates
+  nothing. A union annotation (`vec2 | float`) emits one rhs test per member, and an
+  unmatched rhs returns `MP_OBJ_NULL` — which for an inplace op makes MicroPython
+  retry the plain operator (`py/runtime.c`).
 * **special callees** → `@cpp(call="rgb_color_t", emit="free")` (a plain
   temporary, e.g. boxed by value), `emit="mnew"` (GC `m_new_class`),
   `emit="new"` (raw `new` — **not** GC-tracked, avoid for owned heap),

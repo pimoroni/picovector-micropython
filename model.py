@@ -198,6 +198,7 @@ class BinOp:
     cases: tuple = ()            # ((Converter|None, mp_expr), …)
     default: str = "MP_OBJ_NULL"
     doc: str = ""
+    inplace: bool = False        # cases are statements on lhs, not boxed results
 
 
 @dataclass
@@ -256,6 +257,12 @@ _BINOPS = {
     "__add__": ("ADD", "+"), "__sub__": ("SUBTRACT", "-"),
     "__mul__": ("MULTIPLY", "*"), "__truediv__": ("TRUE_DIVIDE", "/"),
     "__eq__": ("EQUAL", "=="), "__ne__": ("NOT_EQUAL", "!="),
+    # Augmented assignment: the receiver is mutated and returned, so `a += b`
+    # costs no allocation. mp_binary_op falls back to the plain operator when a
+    # type does not implement the inplace one (py/runtime.c).
+    "__iadd__": ("INPLACE_ADD", "+="), "__isub__": ("INPLACE_SUBTRACT", "-="),
+    "__imul__": ("INPLACE_MULTIPLY", "*="),
+    "__itruediv__": ("INPLACE_TRUE_DIVIDE", "/="),
 }
 
 
@@ -507,6 +514,7 @@ def _build_make_new(func, api, ns, classes):
 
 def _build_binop(dunder, func, ns, classes, t):
     op, sym = _BINOPS[dunder]
+    inplace = op.startswith("INPLACE_")
     meta = _cppmeta(func)
     anns = getattr(func, "__annotations__", {})
     other = _eval_ann(anns["other"], ns)
@@ -521,16 +529,20 @@ def _build_binop(dunder, func, ns, classes, t):
         if m is float or m is int:
             if op in ("EQUAL", "NOT_EQUAL"):
                 res = f"mp_obj_new_bool(lhs->{fld} {sym} v)"
+            elif inplace:
+                res = meta.get("result") or f"lhs->{fld} {sym} v"
             else:
                 res = t.box.format(meta.get("result") or f"lhs->{fld} {sym} v")
             cases.append((F32, res))
         elif m in classes:
             if op in ("EQUAL", "NOT_EQUAL"):
                 res = f"mp_obj_new_bool(lhs->{fld} {sym} rhs->{fld})"
+            elif inplace:
+                res = meta.get("result") or f"lhs->{fld} {sym} rhs->{fld}"
             else:
                 res = t.box.format(meta.get("result") or f"lhs->{fld} {sym} rhs->{fld}")
             cases.append((CONVERTERS[m.__name__], res))
-    return BinOp(op, cases=tuple(cases), default=default,
+    return BinOp(op, cases=tuple(cases), default=default, inplace=inplace,
                  doc=(func.__doc__ or "").strip())
 
 

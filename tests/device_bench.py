@@ -36,6 +36,11 @@ def b_vec2_add(n):
     for _ in range(n):
         c = a + b
 
+def b_vec2_iadd(n):
+    a, b = vec2(1, 2), vec2(3, 4)
+    for _ in range(n):
+        a += b
+
 def b_vec2_dot(n):
     a, b = vec2(1, 2), vec2(3, 4)
     for _ in range(n):
@@ -64,6 +69,7 @@ def b_mat3_mul(n):
         c = a.multiply(b)
 
 bench("vec2 add", 4000, b_vec2_add)
+bench("vec2 add in place", 4000, b_vec2_iadd)
 bench("vec2 dot", 4000, b_vec2_dot)
 bench("vec2 length", 4000, b_vec2_length)
 bench("vec2 normalized (alloc)", 3000, b_vec2_normalized)

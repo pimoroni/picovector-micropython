@@ -483,6 +483,16 @@ def _emit_font(o):
 # ─────────────────────────────────────────────────────────────────────────────
 # binary_op
 # ─────────────────────────────────────────────────────────────────────────────
+def emit_binop_result(o, b, result):
+    """A plain case boxes its result; an inplace case is a statement on lhs and
+    the receiver is the result."""
+    if b.inplace:
+        o(f"{result};", 4)
+        o("return lhs_in;", 4)
+    else:
+        o(f"return {result};", 4)
+
+
 def emit_binary_op(o, t):
     o(f"static mp_obj_t {t.name}_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, "
       "mp_obj_t rhs_in) {")
@@ -494,12 +504,12 @@ def emit_binary_op(o, t):
             if conv is F32:
                 o("if (mp_obj_is_int(rhs_in) || mp_obj_is_float(rhs_in)) {", 3)
                 o("float v = mp_obj_get_float(rhs_in);", 4)
-                o(f"return {result};", 4)
+                emit_binop_result(o, b, result)
                 o("}", 3)
             else:
                 o(f"if (mp_obj_is_type(rhs_in, &{conv.name and 'type_' + conv.name})) {{", 3)
                 o(f"{t.obj_struct} *rhs = ({t.obj_struct} *)MP_OBJ_TO_PTR(rhs_in);", 4)
-                o(f"return {result};", 4)
+                emit_binop_result(o, b, result)
                 o("}", 3)
         if b.default != "MP_OBJ_NULL":
             o(f"return {b.default};", 3)

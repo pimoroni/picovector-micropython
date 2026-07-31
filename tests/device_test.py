@@ -48,6 +48,35 @@ ok("vec2 add", (v + vec2(1, 1)).x == 4)
 ok("vec2 scalar mul", (v * 2).y == 8)
 ok("vec2 eq/ne", vec2(1, 2) == vec2(1, 2) and vec2(1, 2) != vec2(1, 3))
 ok("vec2 normalized", near(v.normalized().length(), 1))
+ok("vec2 + leaves its operands alone", v.x == 3 and v.y == 4)
+
+# Augmented assignment mutates the receiver and allocates nothing, so an alias
+# sees the change. Take a copy with `b = a * 1.0` if that is not wanted.
+a = vec2(1, 2)
+alias = a
+a += vec2(4, 4)
+ok("vec2 +=", a.x == 5 and a.y == 6)
+ok("vec2 += mutates in place", alias is a and alias.x == 5)
+a -= vec2(1, 1)
+ok("vec2 -=", a.x == 4 and a.y == 5)
+a *= 2
+ok("vec2 *= scalar", a.x == 8 and a.y == 10)
+a *= vec2(0.5, 0.5)
+ok("vec2 *= vec2", a.x == 4 and a.y == 5)
+a /= 2
+ok("vec2 /= scalar", a.x == 2 and near(a.y, 2.5))
+a /= vec2(2, 2)
+ok("vec2 /= vec2", a.x == 1 and near(a.y, 1.25))
+
+
+def _add_scalar():
+    # +=/-= take a vec2 only, matching + and -; the scalar forms are *= and /=
+    z = vec2(1, 2)
+    z += 1.0
+    return z
+
+
+raises("vec2 += float", TypeError, _add_scalar)
 
 # ── mat3 ─────────────────────────────────────────────────────────────────────
 m = mat3().translate(5, 0)
