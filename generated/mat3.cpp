@@ -4,7 +4,21 @@
 
 extern "C" {
 
-// mat3.rotate: Rotate by degrees. Returns a new mat3.
+// mat3.trs: Translate, rotate and scale in one step. Same result as
+mp_obj_t mpy_mat3_trs(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_mat3_trs);
+#endif
+  size_t _i = 0;
+  vec2_t t = pv::get_xy(args, &_i, n_args);
+  pv::need(n_args, _i + 1);
+  float degrees = mp_obj_get_float(args[_i]); _i++;
+  float scale = 1.0;
+  if (n_args > _i) { scale = mp_obj_get_float(args[_i]); _i++; }
+  return pv::box_mat3(mat3_t::trs(t.x, t.y, degrees, scale, scale));
+}
+
+// mat3.rotate: Rotate by degrees. Modifies and returns this transform.
 mp_obj_t mpy_mat3_rotate(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -12,10 +26,11 @@ mp_obj_t mpy_mat3_rotate(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   float degrees = mp_obj_get_float(args[_i]); _i++;
-  return pv::box_mat3(self->m.rotate(degrees));
+  self->m.rotate(degrees);
+  return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.rotate_radians: Rotate by radians. Returns a new mat3.
+// mat3.rotate_radians: Rotate by radians. Modifies and returns this transform.
 mp_obj_t mpy_mat3_rotate_radians(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -23,10 +38,11 @@ mp_obj_t mpy_mat3_rotate_radians(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   float radians = mp_obj_get_float(args[_i]); _i++;
-  return pv::box_mat3(self->m.rotate_radians(radians));
+  self->m.rotate_radians(radians);
+  return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.translate: Translate by (x, y). Also accepts a single vec2. Returns a new mat3.
+// mat3.translate: Translate by (x, y). Also accepts a single vec2. Modifies and returns
 mp_obj_t mpy_mat3_translate(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -34,10 +50,11 @@ mp_obj_t mpy_mat3_translate(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   vec2_t p = pv::get_xy(args, &_i, n_args);
-  return pv::box_mat3(self->m.translate(p.x, p.y));
+  self->m.translate(p.x, p.y);
+  return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.scale: Scale by (x, y). Pass one value to scale uniformly. Returns a new mat3.
+// mat3.scale: Scale by (x, y). Pass one value to scale uniformly. Modifies and returns
 mp_obj_t mpy_mat3_scale(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -47,10 +64,11 @@ mp_obj_t mpy_mat3_scale(size_t n_args, const mp_obj_t *args) {
   float x = mp_obj_get_float(args[_i]); _i++;
   float y = x;
   if (n_args > _i) { y = mp_obj_get_float(args[_i]); _i++; }
-  return pv::box_mat3(self->m.scale(x, y));
+  self->m.scale(x, y);
+  return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.multiply: Multiply this matrix by another mat3. Returns a new mat3.
+// mat3.multiply: Multiply this transform by another. Modifies and returns this transform.
 mp_obj_t mpy_mat3_multiply(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -58,18 +76,21 @@ mp_obj_t mpy_mat3_multiply(size_t n_args, const mp_obj_t *args) {
 #endif
   size_t _i = 1;
   mat3_t other = ((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++;
-  return pv::box_mat3(self->m.multiply(other));
+  self->m.multiply(other);
+  return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.inverse: Return the inverse of this matrix.
+// mat3.inverse: Return the inverse as a new transform, leaving this one unchanged.
 mp_obj_t mpy_mat3_inverse(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_mat3_inverse);
 #endif
-  return pv::box_mat3(self->m.inverse());
+  return pv::box_mat3(mat3_t(self->m).inverse());
 }
 
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_mat3_trs_obj, 2, mpy_mat3_trs);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_mat3_trs_static_obj, MP_ROM_PTR(&mpy_mat3_trs_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_mat3_rotate_obj, 2, mpy_mat3_rotate);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_mat3_rotate_radians_obj, 2, mpy_mat3_rotate_radians);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_mat3_translate_obj, 2, mpy_mat3_translate);
@@ -89,7 +110,7 @@ static mp_obj_t mat3_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_
     case MP_BINARY_OP_MULTIPLY: {
       if (mp_obj_is_type(rhs_in, &type_mat3)) {
         mat3_obj_t *rhs = (mat3_obj_t *)MP_OBJ_TO_PTR(rhs_in);
-        return pv::box_mat3(lhs->m.multiply(rhs->m));
+        return pv::box_mat3(mat3_t(lhs->m).multiply(rhs->m));
       }
     } break;
     default: break;  // unhandled ops fall through to MP_OBJ_NULL
@@ -98,6 +119,7 @@ static mp_obj_t mat3_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_
 }
 
 static const mp_rom_map_elem_t mat3_locals_dict_table[] = {
+  { MP_ROM_QSTR(MP_QSTR_trs), MP_ROM_PTR(&mpy_mat3_trs_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_rotate), MP_ROM_PTR(&mpy_mat3_rotate_obj) },
   { MP_ROM_QSTR(MP_QSTR_rotate_radians), MP_ROM_PTR(&mpy_mat3_rotate_radians_obj) },
   { MP_ROM_QSTR(MP_QSTR_translate), MP_ROM_PTR(&mpy_mat3_translate_obj) },

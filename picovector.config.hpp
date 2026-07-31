@@ -46,3 +46,10 @@ extern "C" {
 // Frees/finalisers are guarded on this flag so GC builds skip them while non-GC
 // builds (bare Pico / host C++, which own their allocations) keep them.
 #define PV_GC_MANAGED 1
+
+// Nothing in the bindings can set the third row of a transform, and the renderer never
+// reads it, so store six floats instead of nine. That fits the boxed mat3 in one 32-byte
+// GC block, which is what keeps its allocation cost flat: only single-block allocations
+// advance the collector's free-block hint (py/gc.c, n_free == 1). Measured on a Tufty
+// 2350, nine floats cost 4.8x more per allocation by the time the heap fills.
+#define PV_MAT3_PROJECTIVE 0

@@ -9,6 +9,7 @@
 #endif
 
 enum {
+  PV_M_mat3_trs,  // mat3.trs
   PV_M_mat3_rotate,  // mat3.rotate
   PV_M_mat3_rotate_radians,  // mat3.rotate_radians
   PV_M_mat3_translate,  // mat3.translate

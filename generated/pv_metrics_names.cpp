@@ -6,6 +6,7 @@
 // otherwise default to internal linkage and not link against pv_metrics.cpp.
 extern const char *const pv_metric_names[PV_METRIC_COUNT];
 const char *const pv_metric_names[PV_METRIC_COUNT] = {
+  "mat3.trs",
   "mat3.rotate",
   "mat3.rotate_radians",
   "mat3.translate",
