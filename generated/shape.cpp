@@ -4,14 +4,24 @@
 
 extern "C" {
 
-// shape.custom: Custom shape from one or more lists of vec2 points (extra lists = holes).
+// shape.custom: Custom shape from one or more contours (extra contours = holes); each is a list of vec2, or an array('f') of flat x, y pairs which boxes no vec2.
 mp_obj_t mpy_shape_custom(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_shape_custom);
 #endif
   shape_t *paths_shape = new (PV_MALLOC(sizeof(shape_t))) shape_t(n_args);
   for (size_t _p = 0; _p < n_args; _p++) {
-    if (!mp_obj_is_type(args[_p], &mp_type_list)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("expected a list of vec2 points"));
+    mp_buffer_info_t _bi;
+    if (mp_get_buffer(args[_p], &_bi, MP_BUFFER_READ) && _bi.typecode == 'f') {
+      if (_bi.len % (2 * sizeof(float))) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("array('f') needs an even number of values (x, y pairs)"));
+      size_t _pc = _bi.len / (2 * sizeof(float));
+      const float *_f = (const float *)_bi.buf;
+      path_t poly(_pc);
+      for (size_t _k = 0; _k < _pc; _k++) poly.add_point(_f[_k * 2], _f[_k * 2 + 1]);
+      paths_shape->add_path(poly);
+      continue;
+    }
+    if (!mp_obj_is_type(args[_p], &mp_type_list)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("expected a list of vec2 points or an array('f')"));
     size_t _pc; mp_obj_t *_pts; mp_obj_list_get(args[_p], &_pc, &_pts);
     path_t poly(_pc);
     for (size_t _k = 0; _k < _pc; _k++) {

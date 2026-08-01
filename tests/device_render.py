@@ -14,6 +14,8 @@
 #
 # The final line is "RENDER TESTS: <p> passed, <f> failed" for a host runner.
 
+from array import array
+
 from picovector import color, rect, vec2, shape, image, font
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
@@ -335,6 +337,45 @@ def test_drawing_twice_is_stable():
 
 # ── vector text ─────────────────────────────────────────────────────────────
 
+def test_custom_accepts_an_array():
+    # array('f') of flat x, y pairs must rasterise identically to the same
+    # contour as a list of vec2 - it exists so a shape rebuilt every frame boxes
+    # no vec2 objects.
+    pts = [(10.0, 8.0), (52.0, 14.0), (44.0, 50.0), (18.0, 46.0)]
+    as_vec2 = shape.custom([vec2(x, y) for x, y in pts])
+    flat = array("f", [v for xy in pts for v in xy])
+    as_array = shape.custom(flat)
+
+    a = canvas(aa=X4)
+    a.shape(as_vec2)
+    b = canvas(aa=X4)
+    b.shape(as_array)
+    ok("shape.custom(array('f')) matches a list of vec2", same(a, b))
+
+    # Several contours, mixed forms, with the second punching a hole.
+    hole = array("f", [24.0, 22.0, 40.0, 22.0, 40.0, 38.0, 24.0, 38.0])
+    c = canvas(aa=X4)
+    c.fill_rule = EVEN_ODD
+    c.shape(shape.custom(flat, hole))
+    ok("an array contour can be a hole", pixel(c, 32, 30) == 0)
+    ok("the outer array contour still draws", pixel(c, 14, 12) > 0)
+
+    # A half-finished pair is a mistake worth hearing about rather than a
+    # silently dropped point.
+    try:
+        shape.custom(array("f", [1.0, 2.0, 3.0]))
+        ok("odd-length array raises", False, "accepted silently")
+    except ValueError:
+        ok("odd-length array raises", True)
+
+    # A buffer that isn't float data must not be read as points.
+    try:
+        shape.custom(bytearray(16))
+        ok("a bytearray is rejected", False, "accepted silently")
+    except TypeError:
+        ok("a bytearray is rejected", True)
+
+
 def test_vector_text():
     try:
         f = font.load(VECTOR_FONT)
@@ -409,6 +450,7 @@ def main():
     test_offscreen_and_clipped()
     test_tile_seams()
     test_drawing_twice_is_stable()
+    test_custom_accepts_an_array()
     test_vector_text()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))
 

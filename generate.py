@@ -253,7 +253,9 @@ def emit_member(o, t, m):
     if m.native:
         return  # body provided by native/*.cpp; only the obj is declared later
 
-    o(f"// {t.name}.{m.name}: {m.doc}")
+    # a docstring may span lines; every one of them needs the comment marker
+    _doc = " ".join(str(m.doc).split())
+    o(f"// {t.name}.{m.name}: {_doc}")
     # non-static: unique mpy_<type>_<name> symbols, callable from native/*.cpp
     # (e.g. image.batch dispatches to the generated drawing functions).
     o(f"mp_obj_t {fn_name(t, m)}(size_t n_args, const mp_obj_t *args) {{")
@@ -302,8 +304,23 @@ def _emit_pathlist_body(o, t, m):
     name = m.params[0].name + "_shape"
     o(f"shape_t *{name} = new (PV_MALLOC(sizeof(shape_t))) shape_t(n_args);", 1)
     o("for (size_t _p = 0; _p < n_args; _p++) {", 1)
+    # An array('f') of flat x, y pairs is read straight out of its buffer: no
+    # vec2 to box per point, which is what makes a per-frame contour affordable.
+    # typecode 'f' is the discriminator - a bytearray reports BYTEARRAY_TYPECODE.
+    o("mp_buffer_info_t _bi;", 2)
+    o("if (mp_get_buffer(args[_p], &_bi, MP_BUFFER_READ) && _bi.typecode == 'f') {", 2)
+    o("if (_bi.len % (2 * sizeof(float))) mp_raise_msg_varg(&mp_type_ValueError, "
+      "MP_ERROR_TEXT(\"array('f') needs an even number of values (x, y pairs)\"));", 3)
+    o("size_t _pc = _bi.len / (2 * sizeof(float));", 3)
+    o("const float *_f = (const float *)_bi.buf;", 3)
+    o("path_t poly(_pc);", 3)
+    o("for (size_t _k = 0; _k < _pc; _k++) poly.add_point(_f[_k * 2], _f[_k * 2 + 1]);", 3)
+    o(f"{name}->add_path(poly);", 3)
+    o("continue;", 3)
+    o("}", 2)
     o("if (!mp_obj_is_type(args[_p], &mp_type_list)) mp_raise_msg_varg("
-      '&mp_type_TypeError, MP_ERROR_TEXT("expected a list of vec2 points"));', 2)
+      '&mp_type_TypeError, MP_ERROR_TEXT("expected a list of vec2 points '
+      'or an array(\'f\')"));', 2)
     o("size_t _pc; mp_obj_t *_pts; mp_obj_list_get(args[_p], &_pc, &_pts);", 2)
     o("path_t poly(_pc);", 2)
     o("for (size_t _k = 0; _k < _pc; _k++) {", 2)

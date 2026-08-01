@@ -30,7 +30,7 @@ class shape:
     @staticmethod
     @cpp(emit="expr", args="paths_shape")
     def custom(paths: PathList) -> shape:
-        "Custom shape from one or more lists of vec2 points (extra lists = holes)."
+        "Custom shape from one or more contours (extra contours = holes); each is a list of vec2, or an array('f') of flat x, y pairs which boxes no vec2."
 
     @staticmethod
     @cpp(args="c.x c.y sides r")
