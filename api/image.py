@@ -66,6 +66,26 @@ class image:
     def has_palette(self) -> bool: "True if this image is palettised (read-only)."
 
     @property
+    @cpp(get="self->image->palette_size()")
+    def palette_size(self) -> int: "Entries in the colour table, 0 if not palettised (read-only)."
+
+    # Reading and writing the colour table is most of the point of an indexed
+    # image: one write recolours every pixel that indexes it, which is how a
+    # spritesheet gets team colours without a second copy of the pixels.
+    @overload
+    @cpp(args="index")
+    def palette(self, index: Annotated[int, Range(0, 255)]) -> int:
+        "The premultiplied colour at a palette index (compare color.p)."
+    @overload
+    @cpp(args="index c._p")
+    def palette(self, index: Annotated[int, Range(0, 255)], c: color) -> None:
+        "Set a palette entry, recolouring every pixel that indexes it."
+
+    @cpp(error="invalid parameter, expected palette(index) or palette(index, color)")
+    def palette(self, index, *args) -> None:
+        "Read or set an entry in an indexed image's colour table."
+
+    @property
     @cpp(get="self->image->antialias()", set="self->image->antialias((antialias_t){0})")
     def antialias(self) -> int: "Anti-aliasing mode: OFF, X2 or X4."
 

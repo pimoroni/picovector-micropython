@@ -73,9 +73,21 @@ extern "C" {
         target_width = (width * ((target_height << 16) / height)) >> 16;
       }
 
-      bool has_palette = png->getPixelType() == PNG_PIXEL_INDEXED;
+      // An indexed PNG is only worth keeping indexed if the colour table costs
+      // less than the three bytes per pixel it saves. The bit depth bounds the
+      // table exactly - 1/2/4/8 bits index 2/4/16/256 entries - so a small
+      // sprite doesn't carry 1KB of palette to save 200 bytes of pixels, and a
+      // spritesheet still gets the full saving. Anything not worth indexing is
+      // expanded to true colour by the decode callback, which already does that
+      // for a target that has no palette.
+      bool indexed = png->getPixelType() == PNG_PIXEL_INDEXED;
+      int entries = indexed ? (1 << png->getBpp()) : 0;
+      if(entries > 256) entries = 256;
+      bool has_palette = indexed &&
+                         (size_t)target_width * target_height * 3 > (size_t)entries * sizeof(uint32_t);
 
-      target.image = new(m_malloc(sizeof(image_t))) image_t(target_width, target_height, RGBA8888, has_palette);
+      target.image = new(m_malloc(sizeof(image_t))) image_t(target_width, target_height,
+                                                           RGBA8888, has_palette, entries);
     }
 
     decode_data.image = target.image;
@@ -209,7 +221,10 @@ extern "C" {
         int src_x = 0;
         if(target->has_palette()) {
           if (!decode_data->set_palette) {
-            for(int i = 0; i < 256; i++) {
+            // only as many entries as this image's table holds - a 4-bit PNG
+            // indexes 16, and reading 256 would walk past the source palette too
+            int entries = target->palette_size();
+            for(int i = 0; i < entries; i++) {
               rgb_color_t c(
                 pDraw->pPalette[i * 3 + 0],
                 pDraw->pPalette[i * 3 + 1],
