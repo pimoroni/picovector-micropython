@@ -40,8 +40,6 @@ typedef size_t action_t;
 extern action_t m_attr_action(mp_obj_t *dest);
 extern uint32_t ru32(mp_obj_t file);
 extern uint16_t ru16(mp_obj_t file);
-extern uint8_t  ru8(mp_obj_t file);
-extern int8_t   rs8(mp_obj_t file);
 
 namespace pv {
 

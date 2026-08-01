@@ -3,9 +3,10 @@
 // `font` is a namespace object, NOT a font type: `font.load(name)` sniffs a
 // file's magic marker and returns a vector_font or a pixel_font, resolving bare
 // short names against a set of search paths; `font.<name>` loads a ROM pixel
-// font by short name (cached); `dir(font)` lists the ROM fonts. Parsing the .af
-// container is procedural file/heap work done here; the .ppf parser lives in
-// native/pixel_font_native.cpp.
+// font by short name (cached); `dir(font)` lists the ROM fonts. The .af
+// container is parsed by the core library (picovector/font_parse.cpp); what's
+// here is the stream shim it reads through and the search-path resolution. The
+// .ppf parser lives in native/pixel_font_native.cpp.
 
 #include "pv_bindings.hpp"
 
@@ -25,70 +26,67 @@ extern "C" {
     return p;
   }
 
-  // `file` is an open stream positioned just after the 4-byte "af!?" marker.
-  // Builds one self-contained non-scanned block (its internal glyph->paths /
+  // Byte source the core parser reads a font through. A short read is how it
+  // detects truncation, so an error is reported as zero bytes.
+  static size_t font_stream_read(void *handle, void *dest, size_t len) {
+    int error;
+    mp_uint_t read = mp_stream_read_exactly((mp_obj_t)handle, dest, len, &error);
+    return error ? 0 : (size_t)read;
+  }
+
+  // Re-position an open stream (see the same shim in native/image_png.cpp).
+  static void font_stream_seek(mp_obj_t file, int32_t pos) {
+    struct mp_stream_seek_t seek_s;
+    seek_s.offset = pos;
+    seek_s.whence = SEEK_SET;
+
+    const mp_stream_p_t *stream_p = mp_get_stream(file);
+    int error;
+    mp_uint_t res = stream_p->ioctl(file, MP_STREAM_SEEK, (mp_uint_t)(uintptr_t)&seek_s, &error);
+    if (res == MP_STREAM_ERROR) {
+      mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("font: seek failed with %d"), error);
+    }
+  }
+
+  // mp_raise_* is noreturn, so cases need no break.
+  static void raise_font_error(font_status_t status, const char *path) {
+    switch (status) {
+      case FONT_TRUNCATED:
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("'%s' is truncated"), path);
+      case FONT_UNSUPPORTED_FLAGS:
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("'%s' needs a newer firmware to read"), path);
+      case FONT_BAD_HEADER:
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("'%s' is corrupt"), path);
+      case FONT_MEM_ERROR:
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("couldn't allocate buffer for font data"));
+      default:
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("'%s' could not be loaded (%d)"), path, (int)status);
+    }
+  }
+
+  // `file` is an open stream positioned at the start of the .af. The parser
+  // builds one self-contained non-scanned block (its internal glyph->paths /
   // path->points pointers stay within it, kept alive by the scanned obj).
-  mp_obj_t parse_vector_font(mp_obj_t file, const char *path) {
+  mp_obj_t load_vector_font(mp_obj_t file, const char *path) {
     vector_font_obj_t *result = mp_obj_malloc(vector_font_obj_t, &type_vector_font);
     result->path = dup_path(path);
+    // The object is scanned and mp_obj_malloc doesn't zero it, so the buffer
+    // pointer must be valid before anything below can raise.
+    result->buffer = NULL;
+    result->buffer_size = 0;
 
-    uint16_t flags       = ru16(file);
-    uint16_t glyph_count = ru16(file);
-    uint16_t path_count  = ru16(file);
-    uint16_t point_count = ru16(file);
-
-    size_t glyph_buffer_size = sizeof(glyph_t) * glyph_count;
-    size_t path_buffer_size  = sizeof(glyph_path_t) * path_count;
-    size_t point_buffer_size = sizeof(glyph_path_point_t) * point_count;
-
-    result->buffer_size = glyph_buffer_size + path_buffer_size + point_buffer_size;
-    result->buffer = (uint8_t *)m_malloc_no_scan(result->buffer_size);
-    if (!result->buffer) {
-      mp_raise_msg_varg(&mp_type_OSError,
-                        MP_ERROR_TEXT("couldn't allocate buffer for font data"));
-    }
-
-    glyph_t *glyphs = (glyph_t *)result->buffer;
-    glyph_path_t *paths = (glyph_path_t *)(result->buffer + glyph_buffer_size);
-    glyph_path_point_t *points =
-        (glyph_path_point_t *)(result->buffer + glyph_buffer_size + path_buffer_size);
-
-    result->font.glyph_count = glyph_count;
-    result->font.glyphs = glyphs;
-    for (int i = 0; i < glyph_count; i++) {
-      glyph_t *glyph = &result->font.glyphs[i];
-      glyph->codepoint  = ru16(file);
-      glyph->x          = rs8(file);
-      glyph->y          = rs8(file);
-      glyph->w          = ru8(file);
-      glyph->h          = ru8(file);
-      glyph->advance    = ru8(file);
-      glyph->path_count = ru8(file);
-      glyph->paths      = paths;
-      paths += glyph->path_count;
-    }
-    for (int i = 0; i < glyph_count; i++) {
-      glyph_t *glyph = &result->font.glyphs[i];
-      for (int j = 0; j < glyph->path_count; j++) {
-        glyph_path_t *path = &glyph->paths[j];
-        path->point_count = flags & 0b1 ? ru16(file) : ru8(file);
-        path->points = points;
-        points += path->point_count;
-      }
-    }
-    for (int i = 0; i < glyph_count; i++) {
-      glyph_t *glyph = &result->font.glyphs[i];
-      for (int j = 0; j < glyph->path_count; j++) {
-        glyph_path_t *path = &glyph->paths[j];
-        for (int k = 0; k < path->point_count; k++) {
-          glyph_path_point_t *point = &path->points[k];
-          point->x = ru8(file);
-          point->y = ru8(file);
-        }
-      }
-    }
-
+    font_reader_t reader = { font_stream_read, (void *)file };
+    size_t buffer_size = 0;
+    font_status_t status = parse_vector_font(reader, &result->font,
+                                             &result->buffer, &buffer_size);
     mp_stream_close(file);
+    if (status != FONT_OK) raise_font_error(status, path);
+    result->buffer_size = buffer_size;
     return MP_OBJ_FROM_PTR(result);
   }
 
@@ -114,12 +112,16 @@ extern "C" {
 
   // Read the 4-byte marker and dispatch to the matching parser, passing the
   // resolved `path` (stored on the font for its repr). Consumes/closes `file`
-  // on error.
+  // on error. The .af parser checks the marker itself, so the stream is rewound
+  // for it; the .ppf parser expects to start just past its own.
   static mp_obj_t parse_by_marker(mp_obj_t file, const char *path) {
     int error;
     char marker[4];
     mp_stream_read_exactly(file, &marker, sizeof(marker), &error);
-    if (memcmp(marker, "af!?", 4) == 0) return parse_vector_font(file, path);
+    if (memcmp(marker, "af!?", 4) == 0) {
+      font_stream_seek(file, 0);
+      return load_vector_font(file, path);
+    }
     if (memcmp(marker, "ppf!", 4) == 0) return parse_pixel_font(file, path);
     mp_stream_close(file);
     mp_raise_msg_varg(&mp_type_OSError,

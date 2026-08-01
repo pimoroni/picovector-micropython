@@ -134,7 +134,7 @@ extern "C" {
   // `load` sniffs the file and returns a vector_font or pixel_font. The two
   // parsers take an open file stream with the 4-byte marker already consumed,
   // plus the resolved path the font was loaded from (stored for its repr).
-  extern mp_obj_t parse_vector_font(mp_obj_t file, const char *path);  // -> vector_font_obj_t
+  extern mp_obj_t load_vector_font(mp_obj_t file, const char *path);   // -> vector_font_obj_t
   extern mp_obj_t parse_pixel_font(mp_obj_t file, const char *path);   // -> pixel_font_obj_t
 
   // The `font` namespace singleton object, registered in the module globals.

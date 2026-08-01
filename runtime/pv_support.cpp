@@ -28,16 +28,6 @@ uint16_t ru16(mp_obj_t file) {
   mp_stream_read_exactly(file, &result, 2, &error);
   return __builtin_bswap16(result);
 }
-uint8_t ru8(mp_obj_t file) {
-  int error; uint8_t result;
-  mp_stream_read_exactly(file, &result, 1, &error);
-  return result;
-}
-int8_t rs8(mp_obj_t file) {
-  int error; int8_t result;
-  mp_stream_read_exactly(file, &result, 1, &error);
-  return result;
-}
 
 // ── vec2 / rect argument helpers (C++ linkage; declared in picovector.hpp) ───
 bool mp_obj_is_vec2(mp_obj_t o) { return mp_obj_is_type(o, &type_vec2); }
