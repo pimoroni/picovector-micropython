@@ -22,8 +22,8 @@ class algorithm:
     @staticmethod
     @native
     def dda(origin: vec2, angle: float, depth: float) -> list:
-        "Ray-march a tile grid (DDA). Returns a list of (point, cell, edge, "
-        "offset, distance) hit tuples up to depth."
+        ("Ray-march a tile grid (DDA). Returns a list of (point, cell, edge, "
+         "offset, distance) hit tuples up to depth.")
 
     @staticmethod
     @native

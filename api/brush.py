@@ -52,8 +52,8 @@ class brush:
          args="(gradient_type_t)type x1 y1 x2 y2 stops_positions stops_colors stops_n transform")
     def gradient(type: int, x1: float, y1: float, x2: float, y2: float,
                  stops: ColorStops, transform: mat3 | None = None) -> brush:
-        "Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of "
-        "(position 0–1, color), up to 16."
+        ("Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of "
+         "(position 0–1, color), up to 16.")
 
     # erase(color=None) ------------------------------------------------------
     @overload
@@ -65,8 +65,8 @@ class brush:
     @cpp(call="transparent_brush_t", emit="mnew",
          error="invalid parameter, expected brush.erase([color])")
     def erase(c=None) -> brush:
-        "Erase/window brush. No args erases (dst-out); pass a color for a translucent "
-        "window that lerps the destination toward that colour by shape coverage."
+        ("Erase/window brush. No args erases (dst-out); pass a color for a translucent "
+         "window that lerps the destination toward that colour by shape coverage.")
 
     # single-arg effect brushes ---------------------------------------------
     @staticmethod
@@ -102,8 +102,8 @@ class brush:
     @staticmethod
     @cpp(call="palette_dither_brush_t", emit="mnew", args="palette palette_n strength")
     def palette_dither(palette: list, strength: int = 64) -> brush:
-        "Ordered-dither the shape's area to a restricted palette (list of colours). "
-        "strength is the dither amount (0 = solid nearest, ~64 subtle, 255 heavy)."
+        ("Ordered-dither the shape's area to a restricted palette (list of colours). "
+         "strength is the dither amount (0 = solid nearest, ~64 subtle, 255 heavy).")
 
     @staticmethod
     @cpp(call="invert_brush_t", emit="mnew")
@@ -150,8 +150,8 @@ class brush:
     @staticmethod
     @cpp(call="noise_brush_t", emit="mnew")
     def noise(amount: int, interval: int = 0) -> brush:
-        "Per-pixel film grain, +/- up to `amount`. interval is the refresh period "
-        "in ms (0 = static)."
+        ("Per-pixel film grain, +/- up to `amount`. interval is the refresh period "
+         "in ms (0 = static).")
 
     @staticmethod
     @cpp(call="glitch_brush_t", emit="mnew")
@@ -162,8 +162,8 @@ class brush:
     @staticmethod
     @cpp(call="oilpaint_brush_t", emit="mnew")
     def oilpaint(radius: int, strength: int = 255) -> brush:
-        "Oil paint: dominant colour in a `radius` neighbourhood, eased back toward "
-        "the original by `strength` (0-255)."
+        ("Oil paint: dominant colour in a `radius` neighbourhood, eased back toward "
+         "the original by `strength` (0-255).")
 
     # ── retro ──────────────────────────────────────────────────────────────
     @staticmethod

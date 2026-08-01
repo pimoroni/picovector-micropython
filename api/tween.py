@@ -66,29 +66,29 @@ class tween:
     # ── construction / evaluation (type-dispatched → native) ────────────────
     @cpp(emit="native")
     def __init__(self, start, end, duration: float = 1.0, easing: int = 0):
-        "tween(start, end) interpolates over a normalised 0..1 progress; pass "
-        "duration (seconds) to drive it with elapsed time instead. start/end set "
-        "the value type: float, vec2, rect or mat3 (a mat3 blends as a decomposed "
-        "translate/rotate/scale, discarding shear). easing is one of the tween.* "
-        "curves (default LINEAR)."
+        ("tween(start, end) interpolates over a normalised 0..1 progress; pass "
+         "duration (seconds) to drive it with elapsed time instead. start/end set "
+         "the value type: float, vec2, rect or mat3 (a mat3 blends as a decomposed "
+         "translate/rotate/scale, discarding shear). easing is one of the tween.* "
+         "curves (default LINEAR).")
 
     @native
     def at(self, t: float):
-        "Value at progress t: a normalised 0..1 fraction, or elapsed seconds if a "
-        "duration was set. Progress clamps to the endpoints; returns the endpoint "
-        "type (float, vec2, rect or mat3)."
+        ("Value at progress t: a normalised 0..1 fraction, or elapsed seconds if a "
+         "duration was set. Progress clamps to the endpoints; returns the endpoint "
+         "type (float, vec2, rect or mat3).")
 
     # ── self-timing playback (reads the PV_TICKS clock) ─────────────────────
     @native
     def start(self, t: float = None):
-        "Start (or restart) self-timing from the current clock and return self for "
-        "chaining. Pass t to start from an explicit clock value. elapsed, now and "
-        "done then track time since this call."
+        ("Start (or restart) self-timing from the current clock and return self for "
+         "chaining. Pass t to start from an explicit clock value. elapsed, now and "
+         "done then track time since this call.")
 
     @native
     def stop(self):
-        "Stop self-timing. elapsed holds at 0 and done reads False until the next "
-        "start()."
+        ("Stop self-timing. elapsed holds at 0 and done reads False until the next "
+         "start().")
 
     # ── properties (read-only, type-dispatched → native) ────────────────────
     @property

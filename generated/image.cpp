@@ -370,7 +370,7 @@ mp_obj_t mpy_image_cga(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
-// image.palette_dither: Map to a restricted palette (list of colours). strength is the dither
+// image.palette_dither: Map to a restricted palette (list of colours). strength is the dither amount: 0 clamps every pixel to its solid nearest colour, ~64 is subtle, 128 medium, 255 heavy.
 mp_obj_t mpy_image_palette_dither(size_t n_args, const mp_obj_t *args) {
   self(args[0], image_obj_t);
 #if PV_METRICS

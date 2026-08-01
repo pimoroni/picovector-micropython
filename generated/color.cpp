@@ -54,7 +54,7 @@ mp_obj_t mpy_color_rgb(size_t n_args, const mp_obj_t *args) {
   return pv::box_color(rgb_color_t(r, g, b, a));
 }
 
-// color.hsv: Create a colour from HSV components (0–255 each; hue wraps).
+// color.hsv: Create a colour from HSV components (0–255 each; hue wraps). Optional alpha (0–255).
 mp_obj_t mpy_color_hsv(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_color_hsv);

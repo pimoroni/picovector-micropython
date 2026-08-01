@@ -17,9 +17,9 @@ class mat3:
     @staticmethod
     @cpp(call="mat3_t::trs", emit="free", args="t.x t.y degrees scale scale")
     def trs(t: XY, degrees: float, scale: float = 1.0) -> mat3:
-        "Translate, rotate and scale in one step. Same result as "
-        "mat3().translate(t).rotate(degrees).scale(scale), in one allocation "
-        "instead of four."
+        ("Translate, rotate and scale in one step. Same result as "
+         "mat3().translate(t).rotate(degrees).scale(scale), in one allocation "
+         "instead of four.")
 
     def rotate(self, degrees: float) -> Self:
         "Rotate by degrees. Modifies and returns this transform."
@@ -29,12 +29,12 @@ class mat3:
 
     @cpp(args="p.x p.y")
     def translate(self, p: XY) -> Self:
-        "Translate by (x, y). Also accepts a single vec2. Modifies and returns "
-        "this transform."
+        ("Translate by (x, y). Also accepts a single vec2. Modifies and returns "
+         "this transform.")
 
     def scale(self, x: float, y: float = same("x")) -> Self:
-        "Scale by (x, y). Pass one value to scale uniformly. Modifies and returns "
-        "this transform."
+        ("Scale by (x, y). Pass one value to scale uniformly. Modifies and returns "
+         "this transform.")
 
     def multiply(self, other: mat3) -> Self:
         "Multiply this transform by another. Modifies and returns this transform."

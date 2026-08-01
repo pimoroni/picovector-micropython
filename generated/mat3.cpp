@@ -4,7 +4,7 @@
 
 extern "C" {
 
-// mat3.trs: Translate, rotate and scale in one step. Same result as
+// mat3.trs: Translate, rotate and scale in one step. Same result as mat3().translate(t).rotate(degrees).scale(scale), in one allocation instead of four.
 mp_obj_t mpy_mat3_trs(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_mat3_trs);
@@ -42,7 +42,7 @@ mp_obj_t mpy_mat3_rotate_radians(size_t n_args, const mp_obj_t *args) {
   return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.translate: Translate by (x, y). Also accepts a single vec2. Modifies and returns
+// mat3.translate: Translate by (x, y). Also accepts a single vec2. Modifies and returns this transform.
 mp_obj_t mpy_mat3_translate(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS
@@ -54,7 +54,7 @@ mp_obj_t mpy_mat3_translate(size_t n_args, const mp_obj_t *args) {
   return MP_OBJ_FROM_PTR(self);
 }
 
-// mat3.scale: Scale by (x, y). Pass one value to scale uniformly. Modifies and returns
+// mat3.scale: Scale by (x, y). Pass one value to scale uniformly. Modifies and returns this transform.
 mp_obj_t mpy_mat3_scale(size_t n_args, const mp_obj_t *args) {
   self(args[0], mat3_obj_t);
 #if PV_METRICS

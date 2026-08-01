@@ -86,8 +86,8 @@ class shape:
 
     # ── instance methods ───────────────────────────────────────────────────
     def stroke(self, width: float, flags: int = 0, miter_limit: float = 4.0) -> Self:
-        "Replace this shape with its stroked outline. flags: OR of "
-        "ALIGN_*/PATH_*/JOIN_*/CAP_* (each default is the 0 value). Returns self."
+        ("Replace this shape with its stroked outline. flags: OR of "
+         "ALIGN_*/PATH_*/JOIN_*/CAP_* (each default is the 0 value). Returns self.")
 
     def bounds(self) -> rect:
         "Device-space bounding box (local bbox run through the current transform)."

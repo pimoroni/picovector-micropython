@@ -170,7 +170,7 @@ mp_obj_t mpy_shape_line(size_t n_args, const mp_obj_t *args) {
   return pv::box_shape(line(p1.x, p1.y, p2.x, p2.y, w));
 }
 
-// shape.stroke: Replace this shape with its stroked outline. flags: OR of
+// shape.stroke: Replace this shape with its stroked outline. flags: OR of ALIGN_*/PATH_*/JOIN_*/CAP_* (each default is the 0 value). Returns self.
 mp_obj_t mpy_shape_stroke(size_t n_args, const mp_obj_t *args) {
   self(args[0], shape_obj_t);
 #if PV_METRICS

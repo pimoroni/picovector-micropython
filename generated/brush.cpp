@@ -50,7 +50,7 @@ mp_obj_t mpy_brush_image(size_t n_args, const mp_obj_t *args) {
   mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.image(image, [mat3])"));
 }
 
-// brush.gradient: Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of
+// brush.gradient: Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of (position 0–1, color), up to 16.
 mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_gradient);
@@ -76,7 +76,7 @@ mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(gradient_brush_t, (gradient_type_t)type, x1, y1, x2, y2, stops_positions, stops_colors, stops_n, transform));
 }
 
-// brush.erase: Erase/window brush. No args erases (dst-out); pass a color for a translucent
+// brush.erase: Erase/window brush. No args erases (dst-out); pass a color for a translucent window that lerps the destination toward that colour by shape coverage.
 mp_obj_t mpy_brush_erase(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_erase);
@@ -150,7 +150,7 @@ mp_obj_t mpy_brush_dither(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(dither_brush_t));
 }
 
-// brush.palette_dither: Ordered-dither the shape's area to a restricted palette (list of colours).
+// brush.palette_dither: Ordered-dither the shape's area to a restricted palette (list of colours). strength is the dither amount (0 = solid nearest, ~64 subtle, 255 heavy).
 mp_obj_t mpy_brush_palette_dither(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_palette_dither);
@@ -252,7 +252,7 @@ mp_obj_t mpy_brush_vignette(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(vignette_brush_t, strength));
 }
 
-// brush.noise: Per-pixel film grain, +/- up to `amount`. interval is the refresh period
+// brush.noise: Per-pixel film grain, +/- up to `amount`. interval is the refresh period in ms (0 = static).
 mp_obj_t mpy_brush_noise(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_noise);
@@ -274,7 +274,7 @@ mp_obj_t mpy_brush_glitch(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(glitch_brush_t, amount));
 }
 
-// brush.oilpaint: Oil paint: dominant colour in a `radius` neighbourhood, eased back toward
+// brush.oilpaint: Oil paint: dominant colour in a `radius` neighbourhood, eased back toward the original by `strength` (0-255).
 mp_obj_t mpy_brush_oilpaint(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_oilpaint);

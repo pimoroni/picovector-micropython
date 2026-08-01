@@ -89,9 +89,9 @@ class image:
     @property
     @cpp(get="self->image->text_cursor()", set="self->image->text_cursor({0})")
     def cursor(self) -> vec2:
-        "Text caret as a vec2. text() leaves it at the start of the next line "
-        "(each call ends with an implicit newline). Set it to position the next "
-        "text() (which may omit its x, y); newlines return to the x it was set to."
+        ("Text caret as a vec2. text() leaves it at the start of the next line "
+         "(each call ends with an implicit newline). Set it to position the next "
+         "text() (which may omit its x, y); newlines return to the x it was set to.")
 
     # ── construction / IO (procedural → native) ─────────────────────────────
     @staticmethod
@@ -109,14 +109,14 @@ class image:
 
     @native
     def spritesheet(self, cols: int, rows: int) -> image:
-        "Configure this image as a cols x rows spritesheet grid for sprite(). "
-        "Returns self, so it chains off load()/image()."
+        ("Configure this image as a cols x rows spritesheet grid for sprite(). "
+         "Returns self, so it chains off load()/image().")
 
     @native
     def sprite(self, x: int, y: int) -> image:
-        "Return the spritesheet cell at grid (x, y) as a sub-image view (shares "
-        "pixels). x is the column, y the row; cell size is the sheet divided by "
-        "its cols x rows layout."
+        ("Return the spritesheet cell at grid (x, y) as a sub-image view (shares "
+         "pixels). x is the column, y the row; cell size is the sheet divided by "
+         "its cols x rows layout.")
 
     # ── raster primitives ───────────────────────────────────────────────────
     def clear(self) -> None: "Fill the whole image with the current pen."
@@ -163,9 +163,9 @@ class image:
 
     @cpp(args="palette palette_n strength")
     def palette_dither(self, palette: list, strength: int = 64) -> None:
-        "Map to a restricted palette (list of colours). strength is the dither "
-        "amount: 0 clamps every pixel to its solid nearest colour, ~64 is subtle, "
-        "128 medium, 255 heavy."
+        ("Map to a restricted palette (list of colours). strength is the dither "
+         "amount: 0 clamps every pixel to its solid nearest colour, ~64 is subtle, "
+         "128 medium, 255 heavy.")
     def phosphor(self, tint: color) -> None: "CRT phosphor glow toward tint."
     def synthwave(self) -> None: "Synthwave: neon cyan/magenta/white palette dither with a bloom glow."
     def c64(self) -> None: "Commodore 64 16-colour palette."
@@ -189,46 +189,46 @@ class image:
     def text(self, text: str, at: XY = None, font_size: float = 0,
              align=None, overflow=None, line_height: float = 1,
              word_spacing: float = 1) -> rect:
-        "Draw text with the current font; returns the drawn bounding box as a "
-        "rect. at selects the mode: a vec2 or (x, y) "
-        "draws a single run from that point (resetting the caret); a rect lays "
-        "the text out word-wrapped inside those bounds; omit it to continue at "
-        "the caret (print-style, each call ending with an implicit newline). A "
-        "'\\n' always starts a new line. font_size (sentinel 0 = the font's "
-        "default): point size for vector fonts (default 12), or the integer "
-        "nearest-neighbour scale for pixel fonts (default 1; 2 = double, ...). "
-        "The remaining settings apply only with a rect: align is a "
-        "(horizontal, vertical) pair from LEFT/CENTER/RIGHT and "
-        "TOP/MIDDLE/BOTTOM (default (LEFT, TOP)); overflow is CLIP or ELLIPSES "
-        "(default CLIP); line_height scales the per-line advance; word_spacing "
-        "scales the space width."
+        ("Draw text with the current font; returns the drawn bounding box as a "
+         "rect. at selects the mode: a vec2 or (x, y) "
+         "draws a single run from that point (resetting the caret); a rect lays "
+         "the text out word-wrapped inside those bounds; omit it to continue at "
+         "the caret (print-style, each call ending with an implicit newline). A "
+         "'\\n' always starts a new line. font_size (sentinel 0 = the font's "
+         "default): point size for vector fonts (default 12), or the integer "
+         "nearest-neighbour scale for pixel fonts (default 1; 2 = double, ...). "
+         "The remaining settings apply only with a rect: align is a "
+         "(horizontal, vertical) pair from LEFT/CENTER/RIGHT and "
+         "TOP/MIDDLE/BOTTOM (default (LEFT, TOP)); overflow is CLIP or ELLIPSES "
+         "(default CLIP); line_height scales the per-line advance; word_spacing "
+         "scales the space width.")
 
     @staticmethod
     @native
     def _set_glyph_registry(registry) -> None:
-        "Hand the native text() layout the dict to resolve [name] markup against "
-        "(text.GLYPH_RENDERERS). Kept alive by that module global, so no GC root "
-        "pointer is needed here."
+        ("Hand the native text() layout the dict to resolve [name] markup against "
+         "(text.GLYPH_RENDERERS). Kept alive by that module global, so no GC root "
+         "pointer is needed here.")
 
     @staticmethod
     @native
     def add_glyph(name: str, fn) -> None:
-        "Register an inline glyph renderer for text() markup. In the drawn "
-        "string, [name] or [name:a,b] invokes fn(image, params, measure): return "
-        "the advance width when measure is True, else draw at image.cursor and "
-        "return None. '[[' renders a literal '['. Re-registering a name "
-        "overwrites it; pass fn=None to remove it (a no-op if unregistered)."
+        ("Register an inline glyph renderer for text() markup. In the drawn "
+         "string, [name] or [name:a,b] invokes fn(image, params, measure): return "
+         "the advance width when measure is True, else draw at image.cursor and "
+         "return None. '[[' renders a literal '['. Re-registering a name "
+         "overwrites it; pass fn=None to remove it (a no-op if unregistered).")
 
     @cpp(native=True, kw=True)
     def measure_text(self, text: str, at: XY = None, font_size: float = 0,
                      line_height: float = 1, word_spacing: float = 1) -> tuple[float, float]:
-        "Measure text in the current font. Returns (width, height). Pass a rect "
-        "as at to measure the text word-wrapped inside those bounds (font_size, "
-        "line_height and word_spacing then apply, matching text()); otherwise it "
-        "measures the string unwrapped (an embedded '\\n' still breaks lines). "
-        "font_size (sentinel 0 = the font's default): point size for vector "
-        "fonts (default 12), or the integer scale for pixel fonts (default 1) — "
-        "pass the same value you draw with so layout matches."
+        ("Measure text in the current font. Returns (width, height). Pass a rect "
+         "as at to measure the text word-wrapped inside those bounds (font_size, "
+         "line_height and word_spacing then apply, matching text()); otherwise it "
+         "measures the string unwrapped (an embedded '\\n' still breaks lines). "
+         "font_size (sentinel 0 = the font's default): point size for vector "
+         "fonts (default 12), or the integer scale for pixel fonts (default 1) — "
+         "pass the same value you draw with so layout matches.")
 
     # ── blitting ─────────────────────────────────────────────────────────────
     @overload
