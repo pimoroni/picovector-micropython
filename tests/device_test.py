@@ -104,6 +104,57 @@ ok("color.rgb float alpha", isinstance(color.rgb(0, 0, 0, 100 * 0.85).p, int))
 ok("color.hsv", isinstance(color.hsv(180, 200, 200).p, int))
 ok("color palette", isinstance(color.red.p, int) and isinstance(color.white.p, int))
 
+# channels resolve whatever the authoring space
+ok("color.rgb channels", (lambda c: (c.r, c.g, c.b, c.a) == (200, 100, 50, 255))(color.rgb(200, 100, 50)))
+ok("color.rgb alpha", color.rgb(200, 100, 50, 64).a == 64)
+ok("color oklch resolves channels", 0 <= color.oklch(70, 40, 250).r <= 255)
+
+# authored components come back exactly, and only in their own space
+ok("color.oklch keeps l/c/h", (lambda c: (c.l, c.c, c.h) == (70, 40, 250))(color.oklch(70, 40, 250)))
+ok("color.hsv keeps h/s/v", (lambda c: (c.h, c.s, c.v) == (180, 200, 200))(color.hsv(180, 200, 200)))
+ok("color.space", (color.rgb(1, 2, 3).space, color.hsv(1, 2, 3).space,
+                   color.oklch(1, 2, 3).space) == ("rgb", "hsv", "oklch"))
+raises("color.l on an rgb colour raises", AttributeError, lambda: color.rgb(1, 2, 3).l)
+raises("color.h on an rgb colour raises", AttributeError, lambda: color.rgb(1, 2, 3).h)
+raises("color.s on an oklch colour raises", AttributeError, lambda: color.oklch(1, 2, 3).s)
+
+# immutable: the palette lives in read-only storage, so no property may be set
+raises("color channels are read-only", AttributeError,
+       lambda: setattr(color.rgb(1, 2, 3), "r", 9))
+raises("palette entries are read-only", AttributeError, lambda: setattr(color.red, "r", 9))
+
+# arithmetic returns a new colour and leaves the receiver alone
+BG = color.oklch(40, 30, 250)
+ok("color.lighten moves l only", (lambda c: (c.l, c.c, c.h) == (50, 30, 250))(BG.lighten(10)))
+ok("color.lighten leaves the original", BG.l == 40)
+ok("color.darken", BG.darken(10).l == 30)
+ok("color.scale", BG.scale(50).l == 20)
+ok("color.with_alpha", BG.with_alpha(128).a == 128 and BG.with_alpha(128).l == 40)
+ok("color.with_l", BG.with_l(200).l == 200)
+ok("color.mix endpoints", BG.mix(color.oklch(80, 30, 250), 0) == BG)
+ok("color.mix midpoint", BG.mix(color.oklch(80, 30, 250), 128).l == 60)
+ok("color.over an opaque background", color.red.with_alpha(0).over(color.blue) == color.blue)
+ok("color.over composites", 0 <= color.red.with_alpha(128).over(color.blue).r <= 255)
+
+# operators
+ok("color + int lightens", (BG + 10).l == 50)
+ok("color - int darkens", (BG - 10).l == 30)
+ok("color * float scales", (BG * 0.5).l == 20)
+
+# value semantics: equal colours compare equal and are one dict key
+ok("color == by value", color.rgb(10, 20, 30) == color.rgb(10, 20, 30))
+ok("color != by value", color.rgb(10, 20, 30) != color.rgb(10, 20, 31))
+_o = color.oklch(70, 40, 250)
+ok("color == across spaces when it renders the same", _o == color.rgb(_o.r, _o.g, _o.b, _o.a))
+ok("color hash agrees with ==", hash(color.rgb(10, 20, 30)) == hash(color.rgb(10, 20, 30)))
+ok("color is one dict key", len({color.rgb(10, 20, 30): 1, color.rgb(10, 20, 30): 2}) == 1)
+ok("colour keys survive reconstruction",
+   {(1, color.rgb(10, 20, 30)): "hit"}.get((1, color.rgb(10, 20, 30))) == "hit")
+
+# repr reads back as the call that would rebuild it
+ok("color repr", str(color.oklch(70, 40, 250)) == "color.oklch(70, 40, 250, 255)")
+ok("color repr rgb", str(color.rgb(200, 100, 50)) == "color.rgb(200, 100, 50, 255)")
+
 # ── shape factories + overloads ─────────────────────────────────────────────
 ok("shape.circle(x, y, r)", shape.circle(8, 8, 4).bounds().w > 0)
 ok("shape.circle(vec2, r)  [XY overload]", shape.circle(vec2(8, 8), 4).bounds().w > 0)

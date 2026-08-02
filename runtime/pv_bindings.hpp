@@ -131,13 +131,49 @@ namespace pv {
   }
 
   // Box a colour by value. The argument is typically a freshly-constructed
-  // subclass temporary (rgb_color_t/hsv_color_t/oklch_color_t); it is sliced
-  // into the obj's embedded base color_t, which carries the premultiplied `_p`
-  // everything downstream actually reads. No separate (leaky) `new`.
+  // subclass temporary (rgb_color_t/hsv_color_t/oklch_color_t); the subclasses
+  // add no state, so slicing into the obj's embedded base carries everything,
+  // including which space the colour was authored in. No separate (leaky) `new`.
   static inline mp_obj_t box_color(const color_t &c) {
     color_obj_t *o = mp_obj_malloc(color_obj_t, &type_color);
-    new (&o->c) color_t(c);   // placement-construct the embedded value (slice)
+    new (&o->c) color_t(c);   // placement-construct the embedded value
     return MP_OBJ_FROM_PTR(o);
+  }
+
+  // ── colour components ──────────────────────────────────────────────────────
+  // A colour answers `.r/.g/.b/.a` whatever space it was authored in, because
+  // those come from the resolved sRGB. The authored components are another
+  // matter: `.l` on an RGB colour would hand back a red channel, and `.h` means
+  // nothing there at all. Raise rather than answer with a number that looks
+  // plausible. Reads and with_*() edits share these guards.
+  static inline const color_t &color_require(const color_t &c, color_space_t space) {
+    if(c.space() != space) {
+      mp_raise_msg(&mp_type_AttributeError,
+                   MP_ERROR_TEXT("component belongs to a different colour space"));
+    }
+    return c;
+  }
+
+  static inline const color_t &color_require_hue(const color_t &c) {
+    if(c.space() == COLOR_RGB) {
+      mp_raise_msg(&mp_type_AttributeError, MP_ERROR_TEXT("an rgb colour has no hue"));
+    }
+    return c;
+  }
+
+  // Hue sits in a different component slot in each space that has one.
+  static inline color_t color_with_hue(const color_t &c, uint8_t value) {
+    return color_require_hue(c).with_component(c.space() == COLOR_OKLCH ? 2 : 0, value);
+  }
+
+  // Doubles as the name of the constructor that made the colour, so a repr reads
+  // back as the call that would rebuild it.
+  static inline qstr color_space_qstr(const color_t &c) {
+    switch(c.space()) {
+      case COLOR_HSV:   return MP_QSTR_hsv;
+      case COLOR_OKLCH: return MP_QSTR_oklch;
+      default:          return MP_QSTR_rgb;
+    }
   }
 
   // box a colour read back from a framebuffer word (image.get). The word is

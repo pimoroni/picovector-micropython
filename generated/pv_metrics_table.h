@@ -42,6 +42,20 @@ enum {
   PV_M_color_rgb,  // color.rgb
   PV_M_color_hsv,  // color.hsv
   PV_M_color_oklch,  // color.oklch
+  PV_M_color_lighten,  // color.lighten
+  PV_M_color_darken,  // color.darken
+  PV_M_color_scale,  // color.scale
+  PV_M_color_with_alpha,  // color.with_alpha
+  PV_M_color_mix,  // color.mix
+  PV_M_color_over,  // color.over
+  PV_M_color_with_r,  // color.with_r
+  PV_M_color_with_g,  // color.with_g
+  PV_M_color_with_b,  // color.with_b
+  PV_M_color_with_h,  // color.with_h
+  PV_M_color_with_s,  // color.with_s
+  PV_M_color_with_v,  // color.with_v
+  PV_M_color_with_l,  // color.with_l
+  PV_M_color_with_c,  // color.with_c
   PV_M_brush_pattern,  // brush.pattern
   PV_M_brush_image,  // brush.image
   PV_M_brush_gradient,  // brush.gradient
