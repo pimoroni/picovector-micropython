@@ -55,6 +55,15 @@ class brush:
         ("Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of "
          "(position 0–1, color), up to 16.")
 
+    # geometry(x1, y1, x2, y2, transform=None) -------------------------------
+    @cpp(call="pv::brush_geometry", emit="free",
+         args="self->brush x1 y1 x2 y2 transform")
+    def geometry(self, x1: float, y1: float, x2: float, y2: float,
+                 transform: mat3 | None = None) -> None:
+        ("Move a gradient brush without rebuilding it. The stops are unchanged, "
+         "so an animated gradient can be built once and repositioned each frame. "
+         "Raises TypeError on any other kind of brush.")
+
     # erase(color=None) ------------------------------------------------------
     @overload
     def erase() -> brush: "Erase: punch fully-transparent holes (dst-out) with AA edges."

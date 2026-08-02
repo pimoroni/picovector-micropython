@@ -76,6 +76,23 @@ mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
   return pv::box_brush(m_new_class(gradient_brush_t, (gradient_type_t)type, x1, y1, x2, y2, stops_positions, stops_colors, stops_n, transform));
 }
 
+// brush.geometry: Move a gradient brush without rebuilding it. The stops are unchanged, so an animated gradient can be built once and repositioned each frame. Raises TypeError on any other kind of brush.
+mp_obj_t mpy_brush_geometry(size_t n_args, const mp_obj_t *args) {
+  self(args[0], brush_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_geometry);
+#endif
+  size_t _i = 1;
+  float x1 = mp_obj_get_float(args[_i]); _i++;
+  float y1 = mp_obj_get_float(args[_i]); _i++;
+  float x2 = mp_obj_get_float(args[_i]); _i++;
+  float y2 = mp_obj_get_float(args[_i]); _i++;
+  mat3_t * transform = nullptr;
+  if (n_args > _i && mp_obj_is_type(args[_i], &type_mat3)) { transform = &((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++; }
+  pv::brush_geometry(self->brush, x1, y1, x2, y2, transform);
+  return mp_const_none;
+}
+
 // brush.erase: Erase/window brush. No args erases (dst-out); pass a color for a translucent window that lerps the destination toward that colour by shape coverage.
 mp_obj_t mpy_brush_erase(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
@@ -320,6 +337,7 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_image_obj, 0, mpy_brush_image);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_image_static_obj, MP_ROM_PTR(&mpy_brush_image_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_gradient_obj, 6, mpy_brush_gradient);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_gradient_static_obj, MP_ROM_PTR(&mpy_brush_gradient_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_geometry_obj, 5, mpy_brush_geometry);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_erase_obj, 0, mpy_brush_erase);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_erase_static_obj, MP_ROM_PTR(&mpy_brush_erase_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_pixelate_obj, 1, mpy_brush_pixelate);
@@ -371,6 +389,7 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_pattern), MP_ROM_PTR(&mpy_brush_pattern_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_image), MP_ROM_PTR(&mpy_brush_image_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_gradient), MP_ROM_PTR(&mpy_brush_gradient_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_geometry), MP_ROM_PTR(&mpy_brush_geometry_obj) },
   { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mpy_brush_erase_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_pixelate), MP_ROM_PTR(&mpy_brush_pixelate_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_brush_blur_static_obj) },

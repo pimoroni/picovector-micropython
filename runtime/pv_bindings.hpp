@@ -184,6 +184,18 @@ namespace pv {
     return box_color(color_from_premul(c));
   }
 
+  // ── gradient geometry ──────────────────────────────────────────────────────
+  // Reached through a plain brush, since that is the only type the bindings
+  // expose. Only a gradient has geometry, so anything else is a TypeError rather
+  // than a silent no-op. Moving a gradient this way skips the lookup table
+  // rebuild, which is most of what constructing one costs.
+  static inline void brush_geometry(brush_t *b, float x1, float y1, float x2, float y2,
+                                    mat3_t *transform) {
+    gradient_brush_t *g = b ? b->as_gradient() : nullptr;
+    if(!g) mp_raise_TypeError(MP_ERROR_TEXT("only a gradient brush has geometry"));
+    g->geometry(x1, y1, x2, y2, transform);
+  }
+
   static inline mp_obj_t box_brush(brush_t *b) {
     brush_obj_t *o = mp_obj_malloc(brush_obj_t, &type_brush);
     o->brush = b;
