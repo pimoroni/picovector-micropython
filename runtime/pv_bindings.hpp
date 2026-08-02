@@ -140,9 +140,12 @@ namespace pv {
     return MP_OBJ_FROM_PTR(o);
   }
 
-  // box a colour read back from a framebuffer word (image.get)
+  // box a colour read back from a framebuffer word (image.get). The word is
+  // premultiplied, so the components have to be divided back out - passing them
+  // straight to rgb_color_t premultiplied them a second time, which read a
+  // half-transparent pixel back at a quarter of its brightness.
   static inline mp_obj_t box_color_packed(uint32_t c) {
-    return box_color(rgb_color_t(_r(c), _g(c), _b(c), _a(c)));
+    return box_color(color_from_premul(c));
   }
 
   static inline mp_obj_t box_brush(brush_t *b) {
