@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pv import api, cpp, Palette
+from pv import api, const, cpp, native, Palette
 
 
 # Dawnbringer-16 based palette (+ Badger e-ink greys). black/white differ on
@@ -50,6 +50,14 @@ class color:
     Colours compare and hash by the colour they render as, not by identity, so
     two equal colours are one dict key.
     """
+
+    # colour-wheel schemes, for harmony()
+    COMPLEMENT = const("SCHEME_COMPLEMENT", "Harmony: 2 colours, opposite each other.")
+    SPLIT = const("SCHEME_SPLIT", "Harmony: 3 colours, either side of the opposite.")
+    TRIAD = const("SCHEME_TRIAD", "Harmony: 3 colours, evenly spaced thirds.")
+    TETRAD = const("SCHEME_TETRAD", "Harmony: 4 colours, two complementary pairs.")
+    SQUARE = const("SCHEME_SQUARE", "Harmony: 4 colours, evenly spaced quarters.")
+    ANALOGOUS = const("SCHEME_ANALOGOUS", "Harmony: 3 colours, neighbours either side.")
 
     @staticmethod
     @cpp(call="rgb_color_t", emit="free")
@@ -125,6 +133,89 @@ class color:
     @cpp(get="self->c._p")
     def p(self) -> int:
         "Premultiplied packed RGBA word (read-only)."
+
+    @property
+    @cpp(get="self->c.luminance()")
+    def luminance(self) -> float:
+        ("WCAG relative luminance, 0.0-1.0 (read-only). The light the screen "
+         "puts out, which is not lightness: a yellow and a blue at the same "
+         "OKLCH l are nowhere near the same luminance. Alpha is ignored.")
+
+    @property
+    @cpp(get="self->c.in_gamut()")
+    def in_gamut(self) -> bool:
+        ("True if the screen can show this colour (read-only). Only an OKLCH "
+         "colour can name one it cannot; see fit().")
+
+    # ── reading a colour in another space ────────────────────────────────────
+    def to_oklch(self) -> color:
+        ("Return this colour authored in OKLCH, so its l, c and h can be read "
+         "and its arithmetic acts on the axis you meant. Already-OKLCH colours "
+         "are returned unchanged; anything else goes via sRGB and lands on the "
+         "nearest byte per axis. Near-greys have no meaningful hue.")
+
+    def to_rgb(self) -> color:
+        "Return this colour authored in RGB, whatever space it came from."
+
+    # ── measurement ──────────────────────────────────────────────────────────
+    def contrast(self, other: color) -> float:
+        ("WCAG 2.1 contrast ratio against another colour, 1.0 (identical) to "
+         "21.0 (black on white). The audited thresholds are 3 for large text "
+         "and interface components, 4.5 for body text at AA, 7 at AAA. Alpha is "
+         "ignored, so composite with over() first if either is translucent.")
+
+    def difference(self, other: color) -> float:
+        ("Perceptual distance to another colour, on a scale where black to "
+         "white is 100. About 2 is where a difference becomes noticeable and "
+         "about 5 where it becomes obvious, so it answers 'are these two too "
+         "close to tell apart'. Alpha is ignored.")
+
+    # ── gamut ────────────────────────────────────────────────────────────────
+    def fit(self) -> color:
+        ("Return this colour with only as much chroma as the screen can show at "
+         "its lightness and hue. Colours already in gamut are returned "
+         "unchanged, as are RGB and HSV ones, which cannot be out of it.")
+
+    @staticmethod
+    @cpp(call="color_t::max_chroma", emit="free")
+    def max_chroma(l: int, h: int) -> int:
+        ("The most chroma an OKLCH colour can carry at that lightness and hue "
+         "(0-255). The gamut is lopsided: a yellow reaches far more than a blue "
+         "at the same lightness.")
+
+    # ── generating a palette ─────────────────────────────────────────────────
+    # These read the colour in OKLCH first, so they work off a palette entry as
+    # readily as off one authored there, and everything they return is fitted -
+    # a generated colour the screen cannot show is of no use. What comes back is
+    # therefore OKLCH whatever went in.
+    def rotate(self, counts: int) -> color:
+        ("Return this colour with its hue rotated by counts, wrapping (256 is a "
+         "full turn). Where with_h sets an absolute hue, this moves relative to "
+         "the one it has.")
+
+    def saturate(self, amount: int) -> color:
+        ("Return this colour with more chroma (OKLCH) or saturation (HSV). "
+         "lighten's opposite number for the other axis; a negative amount "
+         "desaturates. Clamps, and fits.")
+
+    @native
+    def harmony(self, scheme: int) -> tuple:
+        ("Return the colour-wheel scheme around this colour as a tuple, this "
+         "colour first: color.COMPLEMENT (2), SPLIT (3), TRIAD (3), TETRAD (4), "
+         "SQUARE (4) or ANALOGOUS (3).")
+
+    @native
+    def tones(self, count: int) -> tuple:
+        ("Return a tonal ladder of count colours (1-64) at evenly spaced "
+         "lightness from black to white, holding this colour's hue and chroma. "
+         "The surfaces of an interface, from one theme colour.")
+
+    def readable_on(self, background: color, ratio: float = 4.5) -> color:
+        ("Return this colour moved along its lightness until it reaches `ratio` "
+         "contrast against background, holding hue and chroma. Returns it "
+         "unchanged if it already clears the ratio. A saturated mid-tone "
+         "background can be unreachable from either end, in which case this "
+         "returns the most readable colour there is rather than raising.")
 
     # ── arithmetic (a new colour; the original is unchanged) ─────────────────
     def lighten(self, amount: int) -> color:

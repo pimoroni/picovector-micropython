@@ -82,6 +82,101 @@ mp_obj_t mpy_color_oklch(size_t n_args, const mp_obj_t *args) {
   return pv::box_color(oklch_color_t(l, c, h, a));
 }
 
+// color.to_oklch: Return this colour authored in OKLCH, so its l, c and h can be read and its arithmetic acts on the axis you meant. Already-OKLCH colours are returned unchanged; anything else goes via sRGB and lands on the nearest byte per axis. Near-greys have no meaningful hue.
+mp_obj_t mpy_color_to_oklch(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_to_oklch);
+#endif
+  return pv::box_color(self->c.to_oklch());
+}
+
+// color.to_rgb: Return this colour authored in RGB, whatever space it came from.
+mp_obj_t mpy_color_to_rgb(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_to_rgb);
+#endif
+  return pv::box_color(self->c.to_rgb());
+}
+
+// color.contrast: WCAG 2.1 contrast ratio against another colour, 1.0 (identical) to 21.0 (black on white). The audited thresholds are 3 for large text and interface components, 4.5 for body text at AA, 7 at AAA. Alpha is ignored, so composite with over() first if either is translucent.
+mp_obj_t mpy_color_contrast(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_contrast);
+#endif
+  size_t _i = 1;
+  color_t other = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  return mp_obj_new_float(self->c.contrast(other));
+}
+
+// color.difference: Perceptual distance to another colour, on a scale where black to white is 100. About 2 is where a difference becomes noticeable and about 5 where it becomes obvious, so it answers 'are these two too close to tell apart'. Alpha is ignored.
+mp_obj_t mpy_color_difference(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_difference);
+#endif
+  size_t _i = 1;
+  color_t other = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  return mp_obj_new_float(self->c.difference(other));
+}
+
+// color.fit: Return this colour with only as much chroma as the screen can show at its lightness and hue. Colours already in gamut are returned unchanged, as are RGB and HSV ones, which cannot be out of it.
+mp_obj_t mpy_color_fit(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_fit);
+#endif
+  return pv::box_color(self->c.fit());
+}
+
+// color.max_chroma: The most chroma an OKLCH colour can carry at that lightness and hue (0-255). The gamut is lopsided: a yellow reaches far more than a blue at the same lightness.
+mp_obj_t mpy_color_max_chroma(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_max_chroma);
+#endif
+  size_t _i = 0;
+  int l = (int)mp_obj_get_float(args[_i]); _i++;
+  int h = (int)mp_obj_get_float(args[_i]); _i++;
+  return mp_obj_new_int(color_t::max_chroma(l, h));
+}
+
+// color.rotate: Return this colour with its hue rotated by counts, wrapping (256 is a full turn). Where with_h sets an absolute hue, this moves relative to the one it has.
+mp_obj_t mpy_color_rotate(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_rotate);
+#endif
+  size_t _i = 1;
+  int counts = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_color(self->c.rotate(counts));
+}
+
+// color.saturate: Return this colour with more chroma (OKLCH) or saturation (HSV). lighten's opposite number for the other axis; a negative amount desaturates. Clamps, and fits.
+mp_obj_t mpy_color_saturate(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_saturate);
+#endif
+  size_t _i = 1;
+  int amount = (int)mp_obj_get_float(args[_i]); _i++;
+  return pv::box_color(self->c.saturate(amount));
+}
+
+// color.readable_on: Return this colour moved along its lightness until it reaches `ratio` contrast against background, holding hue and chroma. Returns it unchanged if it already clears the ratio. A saturated mid-tone background can be unreachable from either end, in which case this returns the most readable colour there is rather than raising.
+mp_obj_t mpy_color_readable_on(size_t n_args, const mp_obj_t *args) {
+  self(args[0], color_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_color_readable_on);
+#endif
+  size_t _i = 1;
+  color_t background = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
+  float ratio = 4.5;
+  if (n_args > _i) { ratio = mp_obj_get_float(args[_i]); _i++; }
+  return pv::box_color(self->c.readable_on(background, ratio));
+}
+
 // color.lighten: Return this colour lightened by amount (0-255). Moves v on an HSV colour and l on an OKLCH one; on an RGB colour it moves all three channels. Clamps.
 mp_obj_t mpy_color_lighten(size_t n_args, const mp_obj_t *args) {
   self(args[0], color_obj_t);
@@ -243,6 +338,20 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_hsv_obj, 3, mpy_color_hsv);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_hsv_static_obj, MP_ROM_PTR(&mpy_color_hsv_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_oklch_obj, 3, mpy_color_oklch);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_oklch_static_obj, MP_ROM_PTR(&mpy_color_oklch_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_to_oklch_obj, 1, mpy_color_to_oklch);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_to_rgb_obj, 1, mpy_color_to_rgb);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_contrast_obj, 2, mpy_color_contrast);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_difference_obj, 2, mpy_color_difference);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_fit_obj, 1, mpy_color_fit);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_max_chroma_obj, 2, mpy_color_max_chroma);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_max_chroma_static_obj, MP_ROM_PTR(&mpy_color_max_chroma_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_rotate_obj, 2, mpy_color_rotate);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_saturate_obj, 2, mpy_color_saturate);
+extern "C" mp_obj_t color_harmony(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_harmony_obj, 2, color_harmony);
+extern "C" mp_obj_t color_tones(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_tones_obj, 2, color_tones);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_readable_on_obj, 2, mpy_color_readable_on);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_lighten_obj, 2, mpy_color_lighten);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_darken_obj, 2, mpy_color_darken);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_scale_obj, 2, mpy_color_scale);
@@ -360,11 +469,25 @@ void color_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c._p); return; }
     }
+    case MP_QSTR_luminance:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_float(self->c.luminance()); return; }
+    }
+    case MP_QSTR_in_gamut:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_bool(self->c.in_gamut()); return; }
+    }
   }
   dest[1] = MP_OBJ_SENTINEL;
 }
 
 static const mp_rom_map_elem_t color_locals_dict_table[] = {
+  { MP_ROM_QSTR(MP_QSTR_COMPLEMENT), MP_ROM_INT(SCHEME_COMPLEMENT) },
+  { MP_ROM_QSTR(MP_QSTR_SPLIT), MP_ROM_INT(SCHEME_SPLIT) },
+  { MP_ROM_QSTR(MP_QSTR_TRIAD), MP_ROM_INT(SCHEME_TRIAD) },
+  { MP_ROM_QSTR(MP_QSTR_TETRAD), MP_ROM_INT(SCHEME_TETRAD) },
+  { MP_ROM_QSTR(MP_QSTR_SQUARE), MP_ROM_INT(SCHEME_SQUARE) },
+  { MP_ROM_QSTR(MP_QSTR_ANALOGOUS), MP_ROM_INT(SCHEME_ANALOGOUS) },
   { MP_ROM_QSTR(MP_QSTR_black), MP_ROM_PTR(&color_black_obj) },
   { MP_ROM_QSTR(MP_QSTR_grape), MP_ROM_PTR(&color_grape_obj) },
   { MP_ROM_QSTR(MP_QSTR_navy), MP_ROM_PTR(&color_navy_obj) },
@@ -387,6 +510,17 @@ static const mp_rom_map_elem_t color_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_rgb), MP_ROM_PTR(&mpy_color_rgb_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_hsv), MP_ROM_PTR(&mpy_color_hsv_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_oklch), MP_ROM_PTR(&mpy_color_oklch_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_to_oklch), MP_ROM_PTR(&mpy_color_to_oklch_obj) },
+  { MP_ROM_QSTR(MP_QSTR_to_rgb), MP_ROM_PTR(&mpy_color_to_rgb_obj) },
+  { MP_ROM_QSTR(MP_QSTR_contrast), MP_ROM_PTR(&mpy_color_contrast_obj) },
+  { MP_ROM_QSTR(MP_QSTR_difference), MP_ROM_PTR(&mpy_color_difference_obj) },
+  { MP_ROM_QSTR(MP_QSTR_fit), MP_ROM_PTR(&mpy_color_fit_obj) },
+  { MP_ROM_QSTR(MP_QSTR_max_chroma), MP_ROM_PTR(&mpy_color_max_chroma_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_rotate), MP_ROM_PTR(&mpy_color_rotate_obj) },
+  { MP_ROM_QSTR(MP_QSTR_saturate), MP_ROM_PTR(&mpy_color_saturate_obj) },
+  { MP_ROM_QSTR(MP_QSTR_harmony), MP_ROM_PTR(&mpy_color_harmony_obj) },
+  { MP_ROM_QSTR(MP_QSTR_tones), MP_ROM_PTR(&mpy_color_tones_obj) },
+  { MP_ROM_QSTR(MP_QSTR_readable_on), MP_ROM_PTR(&mpy_color_readable_on_obj) },
   { MP_ROM_QSTR(MP_QSTR_lighten), MP_ROM_PTR(&mpy_color_lighten_obj) },
   { MP_ROM_QSTR(MP_QSTR_darken), MP_ROM_PTR(&mpy_color_darken_obj) },
   { MP_ROM_QSTR(MP_QSTR_scale), MP_ROM_PTR(&mpy_color_scale_obj) },

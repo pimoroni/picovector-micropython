@@ -37,6 +37,7 @@ set(PV_MP_SOURCES
   # shared glue + hand-written (native) bodies + companion image decoders
   ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_support.cpp
   ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_metrics.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/color_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/pixel_font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_native.cpp
