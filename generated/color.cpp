@@ -431,54 +431,67 @@ void color_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     case MP_QSTR_r:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c.r()); return; }
+      break;
     }
     case MP_QSTR_g:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c.g()); return; }
+      break;
     }
     case MP_QSTR_b:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c.b()); return; }
+      break;
     }
     case MP_QSTR_a:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c.a()); return; }
+      break;
     }
     case MP_QSTR_h:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::color_require_hue(self->c).h()); return; }
+      break;
     }
     case MP_QSTR_s:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::color_require(self->c, COLOR_HSV).s()); return; }
+      break;
     }
     case MP_QSTR_v:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::color_require(self->c, COLOR_HSV).v()); return; }
+      break;
     }
     case MP_QSTR_l:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::color_require(self->c, COLOR_OKLCH).l()); return; }
+      break;
     }
     case MP_QSTR_c:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::color_require(self->c, COLOR_OKLCH).c()); return; }
+      break;
     }
     case MP_QSTR_space:
     {
       if (action == GET) { dest[0] = MP_OBJ_NEW_QSTR(pv::color_space_qstr(self->c)); return; }
+      break;
     }
     case MP_QSTR_p:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->c._p); return; }
+      break;
     }
     case MP_QSTR_luminance:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->c.luminance()); return; }
+      break;
     }
     case MP_QSTR_in_gamut:
     {
       if (action == GET) { dest[0] = mp_obj_new_bool(self->c.in_gamut()); return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

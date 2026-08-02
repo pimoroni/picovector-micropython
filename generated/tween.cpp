@@ -24,30 +24,37 @@ void tween_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     case MP_QSTR_from_:
     {
       if (action == GET) { dest[0] = tween_box_from(self); return; }
+      break;
     }
     case MP_QSTR_to:
     {
       if (action == GET) { dest[0] = tween_box_to(self); return; }
+      break;
     }
     case MP_QSTR_duration:
     {
       if (action == GET) { dest[0] = tween_box_duration(self); return; }
+      break;
     }
     case MP_QSTR_elapsed:
     {
       if (action == GET) { dest[0] = tween_box_elapsed(self); return; }
+      break;
     }
     case MP_QSTR_now:
     {
       if (action == GET) { dest[0] = tween_box_now(self); return; }
+      break;
     }
     case MP_QSTR_done:
     {
       if (action == GET) { dest[0] = tween_box_done(self); return; }
+      break;
     }
     case MP_QSTR_running:
     {
       if (action == GET) { dest[0] = tween_box_running(self); return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

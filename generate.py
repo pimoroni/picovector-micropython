@@ -460,6 +460,12 @@ def emit_attr(o, t):
                 else:
                     stmt = f"{p.set} = {p.conv.from_mp('dest[1]')}"
                 o(f"if (action == SET) {{ {stmt}; dest[0] = MP_OBJ_NULL; return; }}", 3)
+        # Every case breaks. A case body only returns for the actions it handles,
+        # so without this a SET on a read-only property runs on down the switch
+        # and lands in the *next* writable property's setter: `img.width = r`
+        # assigned img.clip. Falling out to the sentinel is what makes MicroPython
+        # report it as the AttributeError it is.
+        o("break;", 3)
         o("}", 2)
     o("}", 1)
     o("dest[1] = MP_OBJ_SENTINEL;", 1)

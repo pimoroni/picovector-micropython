@@ -133,32 +133,38 @@ void rect_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.x); return; }
       if (action == SET) { self->r.x = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_y:
     case MP_QSTR_t:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.y); return; }
       if (action == SET) { self->r.y = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_w:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.w); return; }
       if (action == SET) { self->r.w = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_h:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.h); return; }
       if (action == SET) { self->r.h = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_r:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.w + self->r.x); return; }
       if (action == SET) { self->r.w = mp_obj_get_float(dest[1]) - self->r.x; dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_b:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->r.h + self->r.y); return; }
       if (action == SET) { self->r.h = mp_obj_get_float(dest[1]) - self->r.y; dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

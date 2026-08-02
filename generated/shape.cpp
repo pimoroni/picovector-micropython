@@ -228,6 +228,7 @@ void shape_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     {
       if (action == GET) { dest[0] = pv::box_mat3(self->shape->transform); return; }
       if (action == SET) { self->shape->transform = ((mat3_obj_t *)MP_OBJ_TO_PTR(dest[1]))->m; dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

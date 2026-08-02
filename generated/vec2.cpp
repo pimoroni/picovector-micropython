@@ -304,11 +304,13 @@ void vec2_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->v.x); return; }
       if (action == SET) { self->v.x = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_y:
     {
       if (action == GET) { dest[0] = mp_obj_new_float(self->v.y); return; }
       if (action == SET) { self->v.y = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;

@@ -17,10 +17,12 @@ void pixel_font_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     case MP_QSTR_height:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->font->height); return; }
+      break;
     }
     case MP_QSTR_name:
     {
       if (action == GET) { dest[0] = mp_obj_new_str(self->font->name, strlen(self->font->name)); return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;
