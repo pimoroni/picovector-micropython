@@ -173,13 +173,15 @@ def _emit_stops(o, p, indent):
     o(f"mp_obj_get_array(args[_i], &{n}_n, &{n}_items); _i++;", indent)
     o(f"if ({n}_n < 1 || {n}_n > 16) mp_raise_msg_varg(&mp_type_ValueError, "
       f'MP_ERROR_TEXT("gradient expects 1 to 16 colour stops"));', indent)
-    o(f"float {n}_positions[16]; uint32_t {n}_colors[16];", indent)
+    # the whole colour, not just its premultiplied word: build_lut interpolates
+    # in whatever space each pair of stops was authored in.
+    o(f"float {n}_positions[16]; color_t {n}_colors[16];", indent)
     o(f"for (size_t _s = 0; _s < {n}_n; _s++) {{", indent)
     o(f"size_t _sl; mp_obj_t *_stop; mp_obj_get_array({n}_items[_s], &_sl, &_stop);", indent + 1)
     o("if (_sl != 2 || !mp_obj_is_type(_stop[1], &type_color)) mp_raise_msg_varg("
       '&mp_type_TypeError, MP_ERROR_TEXT("each stop must be (position, color)"));', indent + 1)
     o(f"{n}_positions[_s] = mp_obj_get_float(_stop[0]);", indent + 1)
-    o(f"{n}_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c._p;", indent + 1)
+    o(f"{n}_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c;", indent + 1)
     o("}", indent)
 
 

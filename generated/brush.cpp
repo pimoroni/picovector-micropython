@@ -64,12 +64,12 @@ mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
   size_t stops_n; mp_obj_t *stops_items;
   mp_obj_get_array(args[_i], &stops_n, &stops_items); _i++;
   if (stops_n < 1 || stops_n > 16) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("gradient expects 1 to 16 colour stops"));
-  float stops_positions[16]; uint32_t stops_colors[16];
+  float stops_positions[16]; color_t stops_colors[16];
   for (size_t _s = 0; _s < stops_n; _s++) {
     size_t _sl; mp_obj_t *_stop; mp_obj_get_array(stops_items[_s], &_sl, &_stop);
     if (_sl != 2 || !mp_obj_is_type(_stop[1], &type_color)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("each stop must be (position, color)"));
     stops_positions[_s] = mp_obj_get_float(_stop[0]);
-    stops_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c._p;
+    stops_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c;
   }
   mat3_t * transform = nullptr;
   if (n_args > _i && mp_obj_is_type(args[_i], &type_mat3)) { transform = &((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++; }

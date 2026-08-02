@@ -215,6 +215,28 @@ _g = brush.gradient(brush.LINEAR, 0, 0, 32, 0, [(0.0, color.black), (1.0, color.
 _g.geometry(32, 0, 0, 0)
 ok("brush.geometry on a gradient", True)
 raises("brush.geometry on a non-gradient", TypeError, lambda: brush.blur(2).geometry(0, 0, 1, 1))
+# OKLCH stops interpolate through OKLCH, so a ramp between two hues of equal
+# chroma stays chromatic in the middle instead of slumping toward grey
+_oa, _ob = color.oklch(150, 110, 170), color.oklch(150, 110, 60)
+
+
+def _mid_chroma(stops):
+    _i = image(8, 8)
+    _i.pen = brush.gradient(brush.LINEAR, 0, 0, 8, 0, stops)
+    _i.rectangle(rect(0, 0, 8, 8))
+    _c = _i.get(4, 4)
+    return max(_c.r, _c.g, _c.b) - min(_c.r, _c.g, _c.b)
+
+
+ok("oklch stops beat sRGB for chroma",
+   _mid_chroma([(0.0, _oa), (1.0, _ob)]) >
+   _mid_chroma([(0.0, color.rgb(_oa.r, _oa.g, _oa.b)), (1.0, color.rgb(_ob.r, _ob.g, _ob.b))]))
+# and a ramp toward a transparent colour stays that colour rather than going black
+_i = image(8, 8)
+_i.pen = brush.gradient(brush.LINEAR, 0, 0, 8, 0,
+                        [(0.0, color.rgb(255, 255, 255, 64)), (1.0, color.rgb(255, 255, 255, 0))])
+_i.rectangle(rect(0, 0, 8, 8))
+ok("transparent ramp keeps its colour", _i.get(4, 4).r == 255)
 img.pen = brush.pixelate(2)
 img.pen = brush.lighten(40)
 ok("brush effects assignable to pen", True)
