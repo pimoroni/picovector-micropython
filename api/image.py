@@ -86,6 +86,12 @@ class image:
         "Read or set an entry in an indexed image's colour table."
 
     @property
+    @cpp(get_raw="self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays")
+    def delays(self) -> None:
+        ("Per-frame durations in ms for a sheet loaded from a GIF, else None "
+         "(read-only). One entry per spritesheet column.")
+
+    @property
     @cpp(get="self->image->antialias()", set="self->image->antialias((antialias_t){0})")
     def antialias(self) -> int: "Anti-aliasing mode: OFF, X2 or X4."
 
@@ -117,7 +123,10 @@ class image:
     @staticmethod
     @native
     def load(path_or_bytes, width: int = 0, height: int = 0) -> image:
-        "Load a PNG/JPEG from a path or buffer. Returns an image."
+        ("Load a PNG/JPEG/GIF from a path or buffer. Returns an image. An "
+         "animated GIF arrives as an indexed spritesheet of composited frames, "
+         "one column per frame, with the timings in delays; width and height "
+         "aren't available for one, since it has to composite at its own size.")
 
     @native
     def load_into(self, path_or_bytes) -> None:

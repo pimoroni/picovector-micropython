@@ -79,15 +79,42 @@ extern "C" {
     }
   }
 
+  static void raise_gif_error(int status) {
+    switch (status) {
+      case GIF_UNSUPPORTED:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load GIF: frames with their own colour tables are not supported"));
+      case GIF_TOO_BIG:
+        mp_raise_msg(&mp_type_MemoryError,
+          MP_ERROR_TEXT("cannot load GIF: too large to composite as a spritesheet"));
+      case GIF_TOO_MANY_FRAMES:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load GIF: too many frames"));
+      case GIF_NO_BUFFER:
+        mp_raise_msg(&mp_type_MemoryError,
+          MP_ERROR_TEXT("cannot load GIF: out of memory"));
+      case GIF_TRUNCATED:
+      case GIF_BAD_DATA:
+        mp_raise_msg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load GIF: corrupt or truncated data"));
+      default:
+        mp_raise_msg_varg(&mp_type_ValueError,
+          MP_ERROR_TEXT("cannot load GIF (error %d)"), status);
+    }
+  }
+
   // Try PNG first; only if the data isn't a PNG at all (PNG_INVALID_FILE) fall
-  // back to JPEG. Track which decoder produced the final status so the raised
-  // message names the real problem rather than a bare, enum-ambiguous number
-  // (PNG and JPEG have separate error enums that collide numerically).
+  // back to JPEG, and then to GIF. Track which decoder produced the final status
+  // so the raised message names the real problem rather than a bare,
+  // enum-ambiguous number (each decoder has its own error enum, and they collide
+  // numerically).
   static void image_open_helper(image_obj_t &target, mp_obj_t path_or_bytes_in,
                                 int target_width, int target_height) {
     int png_status;
     int jpeg_status = JPEG_SUCCESS;
+    int gif_status = GIF_OK;
     bool tried_jpeg = false;
+    bool tried_gif = false;
 
     if (mp_obj_is_str(path_or_bytes_in)) {
       const char *path = mp_obj_str_get_str(path_or_bytes_in);
@@ -95,6 +122,10 @@ extern "C" {
       if (png_status == PNG_INVALID_FILE) {
         tried_jpeg = true;
         jpeg_status = jpegdec_open_file(target, path, target_width, target_height);
+        if (jpeg_status == JPEG_INVALID_FILE) {
+          tried_gif = true;
+          gif_status = gifdec_open_file(target, path);
+        }
       }
     } else {
       mp_buffer_info_t buf;
@@ -103,22 +134,39 @@ extern "C" {
       if (png_status == PNG_INVALID_FILE) {
         tried_jpeg = true;
         jpeg_status = jpegdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
+        if (jpeg_status == JPEG_INVALID_FILE) {
+          tried_gif = true;
+          gif_status = gifdec_open_ram(target, buf.buf, buf.len);
+        }
       }
     }
 
-    if (png_status != PNG_SUCCESS && !(tried_jpeg && jpeg_status == JPEG_SUCCESS)) {
+    bool loaded = png_status == PNG_SUCCESS
+               || (tried_jpeg && jpeg_status == JPEG_SUCCESS)
+               || (tried_gif && gif_status == GIF_OK);
+
+    if (!loaded) {
       if (!tried_jpeg) {
         // PNG signature matched but the decode failed: a genuine PNG problem.
         raise_png_error(png_status);
-      } else if (jpeg_status != JPEG_INVALID_FILE) {
+      } else if (!tried_gif) {
         // JPEG signature matched but the decode failed: a genuine JPEG problem.
         raise_jpeg_error(jpeg_status);
+      } else if (gif_status != GIF_BAD_MAGIC) {
+        raise_gif_error(gif_status);
       } else {
-        // Neither decoder recognised the data (e.g. an AppleDouble ._ file, a
+        // No decoder recognised the data (e.g. an AppleDouble ._ file, a
         // renamed non-image, or a truncated download).
         mp_raise_msg(&mp_type_ValueError,
-                     MP_ERROR_TEXT("unrecognised image format (not a PNG or JPEG)"));
+                     MP_ERROR_TEXT("unrecognised image format (not a PNG, JPEG or GIF)"));
       }
+    }
+
+    // A GIF has to composite at its own resolution, so a requested size can only
+    // be refused - and only once the format is known, which is here.
+    if (tried_gif && (target_width != 0 || target_height != 0)) {
+      mp_raise_msg(&mp_type_ValueError,
+                   MP_ERROR_TEXT("cannot load a GIF at a different size"));
     }
 
     // A file with a valid PNG signature but no IHDR chunk parses as 0x0 and

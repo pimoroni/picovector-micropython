@@ -440,6 +440,73 @@ def test_vector_text():
         prev = n
 
 
+
+# A ten-by-eight, four-frame animation, encoded by PIL: each frame is the one
+# before it shifted two pixels left. Carried inline so the test needs nothing on
+# the filesystem.
+GIF = (
+    b'GIF89a\n\x00\x08\x00\x82\x00\x00\x00\x00'
+    b'\x00\xdc(((\xc8Z\x1e<\xdc\xf0\xd2<\x96\x96'
+    b'\x96\x00\x00\x00\x00\x00\x00!\xf9\x04\x08\x06\x00\x00\x00'
+    b',\x00\x00\x00\x00\n\x00\x08\x00\x00\x080\x00\x01\x00'
+    b'\x08\x10@\x80\x80\x01\x03\x08\x10\x10H\xd0 B\x85'
+    b'\r\x0f&$P\xa0@\xc4\x87\x14\x0b8\x9cXQ'
+    b'\xe0F\x85\x1d\x01`\x0cIpd\x01\x86\x01\x02\x02'
+    b'\x00!\xf9\x04\x08\t\x00\x00\x00,\x00\x00\x00\x00\n'
+    b'\x00\x08\x00\x82\x00\x00\x00\xdc(((\xc8Z\x1e<'
+    b'\xdc\xf0\xd2<\x96\x96\x96\x00\x00\x00\x00\x00\x00\x080'
+    b'\x00\x03\x04\x10 `\xc0\x00\x02\x04\n\x14\x10H\xd0'
+    b' B\x85\r\x0f&,\x00\x00@\xc4\x87\x14\x018'
+    b'\x9cXQ\xe0F\x85\x1d\x03`\x0cIp$\x00\x86'
+    b'\x02\x02\x02\x00!\xf9\x04\x08\x0c\x00\x00\x00,\x00\x00'
+    b'\x00\x00\n\x00\x08\x00\x82\x00\x00\x00\xdc(((\xc8'
+    b'Z\x1e<\xdc\xf0\xd2<\x96\x96\x96\x00\x00\x00\x00\x00'
+    b'\x00\x080\x00\x05\x08\x180\x80\x00\x81\x02\x05\x00\x00'
+    b'\x10H\xd0 B\x85\r\x0f&\x04\x10 @\xc4\x87'
+    b'\x14\x038\x9cXQ\xe0F\x85\x1d\x05`\x0cIp'
+    b'd\x00\x86\x03\x02\x02\x00!\xf9\x04\x08\x0f\x00\x00\x00'
+    b',\x00\x00\x00\x00\n\x00\x08\x00\x82\x00\x00\x00\xdc('
+    b'((\xc8Z\x1e<\xdc\xf0\xd2<\x96\x96\x96\x00\x00'
+    b'\x00\x00\x00\x00\x080\x00\x07\x0c @\xa0@\x01\x00'
+    b'\x00\x02\x04\x10H\xd0 B\x85\r\x0f&\x0c @'
+    b'@\xc4\x87\x14\x058\x9cXQ\xe0F\x85\x1d\x07`'
+    b'\x0cIp\xa4\x00\x86\x04\x02\x02\x00;'
+)
+
+
+def test_animated_gif():
+    sheet = image.load(GIF)
+    ok("a gif loads as one wide sheet", sheet.width == 40 and sheet.height == 8,
+       "%dx%d" % (sheet.width, sheet.height))
+    ok("a gif sheet is indexed", sheet.has_palette)
+    ok("a gif sheet is a byte a pixel", len(sheet.raw) == 40 * 8, str(len(sheet.raw)))
+    ok("a gif reports its frame timings", sheet.delays == (60, 90, 120, 150),
+       str(sheet.delays))
+
+    frame = sheet.sprite(2, 0)
+    ok("a gif frame is a sub-view of the sheet", frame.width == 10 and frame.height == 8,
+       "%dx%d" % (frame.width, frame.height))
+
+    # Every frame is the previous one shifted, which only holds if the deltas
+    # were composited in order.
+    raw = sheet.raw
+    shifted = True
+    for f in range(1, 4):
+        for y in range(8):
+            for x in range(8):
+                if raw[y * 40 + f * 10 + x] != raw[y * 40 + (f - 1) * 10 + x + 2]:
+                    shifted = False
+    ok("each gif frame is the one before it, composited", shifted)
+
+    # A GIF has to composite at its own size, so asking for another is refused
+    # rather than quietly ignored.
+    try:
+        image.load(GIF, 20, 16)
+        ok("loading a gif at a size is refused", False)
+    except ValueError:
+        ok("loading a gif at a size is refused", True)
+
+
 def main():
     test_primitives_across_sizes()
     test_area_is_close_to_analytic()
@@ -452,6 +519,7 @@ def main():
     test_drawing_twice_is_stable()
     test_custom_accepts_an_array()
     test_vector_text()
+    test_animated_gif()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))
 
 

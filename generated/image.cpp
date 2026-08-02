@@ -708,6 +708,10 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->palette_size()); return; }
     }
+    case MP_QSTR_delays:
+    {
+      if (action == GET) { dest[0] = self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays; return; }
+    }
     case MP_QSTR_antialias:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->antialias()); return; }

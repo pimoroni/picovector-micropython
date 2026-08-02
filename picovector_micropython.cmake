@@ -44,6 +44,8 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_jpeg.cpp
+  # GIF needs no vendored decoder: the parser is core, so the host tests cover it
+  ${CMAKE_CURRENT_LIST_DIR}/native/image_gif.cpp
 )
 
 target_sources(usermod_picovector INTERFACE

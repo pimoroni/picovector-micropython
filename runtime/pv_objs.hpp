@@ -10,6 +10,7 @@
 #include "font.hpp"
 #include "color.hpp"
 #include "pixel_font.hpp"
+#include "gif.hpp"
 #include "blend.hpp"
 #include "rasteriser.hpp"
 #include "tween/tween.hpp"
@@ -44,6 +45,10 @@ extern "C" {
   typedef struct _jpeg_handle_t {
     mp_obj_t fhandle;
   } jpeg_handle_t;
+
+  typedef struct _gif_handle_t {
+    mp_obj_t fhandle;
+  } gif_handle_t;
 
   typedef struct _vector_font_obj_t {
     mp_obj_base_t base;
@@ -80,6 +85,10 @@ extern "C" {
     vector_font_obj_t *font;
     pixel_font_obj_t *pixel_font;
     void *parent;
+    // Per-frame durations in milliseconds, for a sheet composited from a GIF;
+    // MP_OBJ_NULL for every other image. Frame timing belongs to the container,
+    // not to a pixel buffer, so it stops here and doesn't reach image_t.
+    mp_obj_t frame_delays;
   } image_obj_t;
 
   typedef struct _rect_obj_t {
@@ -129,6 +138,11 @@ extern "C" {
   // ... and jpegdec_open_file and jpegdec_open_ram from image_jpeg
   extern int jpegdec_open_file(image_obj_t &target, const char* path, int target_width, int target_height);
   extern int jpegdec_open_ram(image_obj_t &target, const void* buffer, const size_t size, int target_width, int target_height);
+
+  // ... and gifdec_open_file and gifdec_open_ram from image_gif, which build a
+  // spritesheet rather than a single frame.
+  extern int gifdec_open_file(image_obj_t &target, const char* path);
+  extern int gifdec_open_ram(image_obj_t &target, const void* buffer, const size_t size);
 
   // Font loaders. `font` is a namespace singleton (native/font_native.cpp) whose
   // `load` sniffs the file and returns a vector_font or pixel_font. The two
