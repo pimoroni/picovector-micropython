@@ -151,6 +151,92 @@ ok("color is one dict key", len({color.rgb(10, 20, 30): 1, color.rgb(10, 20, 30)
 ok("colour keys survive reconstruction",
    {(1, color.rgb(10, 20, 30)): "hit"}.get((1, color.rgb(10, 20, 30))) == "hit")
 
+# ── reading a colour in another space ───────────────────────────────────────
+# sRGB red is l 160, c 188, h 21 in these units.
+_red = color.rgb(255, 0, 0).to_oklch()
+ok("color.to_oklch reports a space", _red.space == "oklch")
+ok("color.to_oklch reads components", abs(_red.l - 160) <= 1 and abs(_red.c - 188) <= 1)
+ok("color.to_oklch is a no-op in its own space", color.oklch(70, 40, 250).to_oklch().l == 70)
+ok("color.to_rgb", color.oklch(70, 40, 250).to_rgb().space == "rgb")
+ok("color.to_rgb keeps the pixel", color.oklch(70, 40, 250).to_rgb() == color.oklch(70, 40, 250))
+
+# ── measurement ─────────────────────────────────────────────────────────────
+ok("color.luminance ends", color.rgb(0, 0, 0).luminance == 0.0 and
+   abs(color.rgb(255, 255, 255).luminance - 1.0) < 0.001)
+ok("color.contrast black on white", abs(color.rgb(0, 0, 0).contrast(color.rgb(255, 255, 255)) - 21.0) < 0.01)
+ok("color.contrast with itself", abs(color.red.contrast(color.red) - 1.0) < 0.001)
+# the canonical WCAG worked example
+ok("color.contrast #767676 on white",
+   abs(color.rgb(118, 118, 118).contrast(color.rgb(255, 255, 255)) - 4.54) < 0.01)
+ok("color.difference with itself", color.red.difference(color.red) == 0.0)
+ok("color.difference black to white",
+   abs(color.rgb(0, 0, 0).difference(color.rgb(255, 255, 255)) - 100.0) < 0.01)
+
+# ── gamut ───────────────────────────────────────────────────────────────────
+ok("color.in_gamut on rgb", color.rgb(255, 0, 0).in_gamut)
+ok("color.in_gamut refuses the impossible", not color.oklch(160, 255, 21).in_gamut)
+_fitted = color.oklch(160, 255, 21).fit()
+ok("color.fit brings it in", _fitted.in_gamut and _fitted.c < 255)
+ok("color.fit holds lightness and hue", _fitted.l == 160 and _fitted.h == 21)
+ok("color.max_chroma is lopsided", color.max_chroma(220, 75) > color.max_chroma(220, 190) * 2)
+
+# ── generating a palette ────────────────────────────────────────────────────
+ok("color.rotate wraps", color.oklch(160, 60, 250).rotate(20).h == 14)
+ok("color.rotate holds the rest", (lambda c: c.l == 160 and c.c == 60)(color.oklch(160, 60, 21).rotate(85)))
+ok("color.saturate", color.oklch(160, 60, 21).saturate(40).c == 100)
+ok("color.saturate desaturates", color.oklch(160, 60, 21).saturate(-40).c == 20)
+
+_triad = color.oklch(160, 60, 0).harmony(color.TRIAD)
+ok("color.harmony count", len(_triad) == 3)
+ok("color.harmony starts where asked", _triad[0].h == 0)
+ok("color.harmony spaces the wheel", abs(_triad[1].h - 85) <= 1 and abs(_triad[2].h - 171) <= 1)
+ok("color.harmony fits", all(c.in_gamut for c in _triad))
+ok("color.harmony square", len(color.red.harmony(color.SQUARE)) == 4)
+ok("color.harmony complement", len(color.red.harmony(color.COMPLEMENT)) == 2)
+
+_ladder = color.oklch(160, 90, 21).tones(13)
+ok("color.tones count", len(_ladder) == 13)
+ok("color.tones runs black to white", _ladder[0].l == 0 and _ladder[12].l == 255)
+ok("color.tones climbs", all(_ladder[i].l > _ladder[i - 1].l for i in range(1, 13)))
+ok("color.tones holds the hue", all(c.h == 21 for c in _ladder))
+raises("color.tones bounds the count", ValueError, lambda: color.oklch(160, 90, 21).tones(0))
+raises("color.tones caps the count", ValueError, lambda: color.oklch(160, 90, 21).tones(500))
+
+_bg = color.rgb(255, 255, 255)
+_text = color.oklch(180, 60, 21).readable_on(_bg)
+ok("color.readable_on reaches the ratio", _text.contrast(_bg) >= 4.5)
+ok("color.readable_on holds the hue", _text.h == 21)
+ok("color.readable_on takes a ratio", color.oklch(180, 60, 21).readable_on(_bg, 7.0).contrast(_bg) >= 7.0)
+ok("color.readable_on leaves a passing colour alone",
+   color.rgb(0, 0, 0).readable_on(_bg) == color.rgb(0, 0, 0))
+
+# a whole interface from one colour, which is the point of the lot
+_theme = color.rgb(90, 125, 206)
+ok("a theme colour yields readable surfaces",
+   all(_theme.readable_on(s, 4.5).contrast(s) >= 4.5 for s in _theme.tones(9)))
+
+# ── ramps ───────────────────────────────────────────────────────────────────
+_ramp = color.ramp(((0.0, color.red), (0.45, color.green), (0.72, color.blue), (1.0, color.yellow)), 65)
+ok("color.ramp count", len(_ramp) == 65 and isinstance(_ramp, list))
+ok("color.ramp endpoints", _ramp[0] == color.red and _ramp[64] == color.yellow)
+ok("color.ramp lands stops on entries", _ramp[29] == color.green and _ramp[46] == color.blue)
+ok("color.ramp is colours", all(isinstance(c.p, int) for c in _ramp))
+# two OKLCH stops ramp through OKLCH, holding lightness the whole way
+_ok_ramp = color.ramp(((0.0, color.oklch(160, 90, 21)), (1.0, color.oklch(160, 90, 149))), 9)
+ok("color.ramp keeps the authored space", all(c.space == "oklch" for c in _ok_ramp))
+ok("color.ramp holds lightness through OKLCH", all(c.l == 160 for c in _ok_ramp))
+raises("color.ramp bounds the count", ValueError,
+       lambda: color.ramp(((0.0, color.red), (1.0, color.blue)), 0))
+raises("color.ramp checks the stops", TypeError,
+       lambda: color.ramp(((0.0, "red"),), 4))
+
+# ── a component that overshoots clamps; a hue wraps ─────────────────────────
+ok("color.oklch clamps lightness", color.oklch(300, 40, 21).l == 255)
+ok("color.oklch clamps chroma", color.oklch(160, 400, 21).c == 255)
+ok("color.rgb clamps", color.rgb(300, -20, 128).r == 255 and color.rgb(300, -20, 128).g == 0)
+ok("color.oklch wraps hue", color.oklch(160, 40, 300).h == 44)
+ok("color.hsv wraps hue", color.hsv(300, 200, 200).h == 44)
+
 # repr reads back as the call that would rebuild it
 ok("color repr", str(color.oklch(70, 40, 250)) == "color.oklch(70, 40, 250, 255)")
 ok("color repr rgb", str(color.rgb(200, 100, 50)) == "color.rgb(200, 100, 50, 255)")
