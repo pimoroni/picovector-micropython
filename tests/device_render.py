@@ -487,6 +487,32 @@ def test_animated_gif():
     ok("a gif frame is a sub-view of the sheet", frame.width == 10 and frame.height == 8,
        "%dx%d" % (frame.width, frame.height))
 
+    # The sheet bounds its own animation, so nothing has to carry a frame count
+    # alongside it.
+    ok("a gif sheet reports its frame count", sheet.cols == 4 and sheet.rows == 1,
+       "%dx%d" % (sheet.cols, sheet.rows))
+    ok("a frame is not itself a sheet", frame.cols == 1 and frame.rows == 1)
+
+    # ...and its own timings, so a free-running clock picks the right frame.
+    ok("a gif sheet reports its loop length", sheet.duration == 60 + 90 + 120 + 150,
+       str(sheet.duration))
+    ok("frame_at walks the delays", (sheet.frame_at(0), sheet.frame_at(59),
+                                     sheet.frame_at(60), sheet.frame_at(149),
+                                     sheet.frame_at(150), sheet.frame_at(419)) == (0, 0, 1, 1, 2, 3),
+       str([sheet.frame_at(t) for t in (0, 59, 60, 149, 150, 419)]))
+    ok("frame_at wraps", sheet.frame_at(420) == 0 and sheet.frame_at(480) == 1)
+    ok("frame_at handles a clock that ran backwards", 0 <= sheet.frame_at(-30) < 4)
+
+    # A plain image carries no timings, and says so rather than freezing at 0.
+    plain = image(8, 8)
+    ok("a plain image has no duration", plain.duration == 0)
+    ok("a plain image is a 1x1 grid", plain.cols == 1 and plain.rows == 1)
+    try:
+        plain.frame_at(0)
+        ok("frame_at without timings raises", False)
+    except ValueError:
+        ok("frame_at without timings raises", True)
+
     # Every frame is the previous one shifted, which only holds if the deltas
     # were composited in order.
     raw = sheet.raw

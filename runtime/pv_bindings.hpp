@@ -184,6 +184,49 @@ namespace pv {
     return box_color(color_from_premul(c));
   }
 
+  // ── spritesheet timing ─────────────────────────────────────────────────────
+  // A sheet composited from a GIF carries the file's per-frame delays. These
+  // turn that into the two answers a caller actually wants - how long a loop
+  // lasts, and which cell covers a given point in it - without image growing a
+  // clock or any playback state of its own.
+
+  static inline mp_int_t image_total_delay(image_obj_t *self) {
+    if(self->frame_delays == MP_OBJ_NULL) return 0;
+    size_t n;
+    mp_obj_t *items;
+    mp_obj_get_array(self->frame_delays, &n, &items);
+
+    mp_int_t total = 0;
+    for(size_t i = 0; i < n; i++) total += mp_obj_get_int(items[i]);
+    return total;
+  }
+
+  static inline mp_int_t image_frame_at(image_obj_t *self, mp_int_t ms) {
+    if(self->frame_delays == MP_OBJ_NULL) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image has no frame timings"));
+    }
+    size_t n;
+    mp_obj_t *items;
+    mp_obj_get_array(self->frame_delays, &n, &items);
+    if(n == 0) return 0;
+
+    mp_int_t total = 0;
+    for(size_t i = 0; i < n; i++) total += mp_obj_get_int(items[i]);
+    // Every frame timed at zero is a GIF asking to run as fast as it can, which
+    // is a question about the caller's frame rate rather than about the file.
+    if(total <= 0) return 0;
+
+    mp_int_t at = ms % total;
+    if(at < 0) at += total;   // a clock that has run backwards still lands in the loop
+
+    mp_int_t elapsed = 0;
+    for(size_t i = 0; i < n; i++) {
+      elapsed += mp_obj_get_int(items[i]);
+      if(at < elapsed) return (mp_int_t)i;
+    }
+    return (mp_int_t)(n - 1);
+  }
+
   // ── gradient geometry ──────────────────────────────────────────────────────
   // Reached through a plain brush, since that is the only type the bindings
   // expose. Only a gradient has geometry, so anything else is a TypeError rather

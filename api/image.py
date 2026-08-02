@@ -85,11 +85,39 @@ class image:
     def palette(self, index, *args) -> None:
         "Read or set an entry in an indexed image's colour table."
 
+    # ── spritesheet grid and timing ──────────────────────────────────────────
+    # A sheet describes itself, so an animation can be bounded and timed without
+    # the caller keeping a parallel table of frame counts and intervals. All of
+    # it is derived from the image's own data - the clock stays with the caller.
+    @property
+    @cpp(get="self->image->cols()")
+    def cols(self) -> int:
+        ("Spritesheet columns (read-only), 1 unless spritesheet() set a grid or "
+         "a GIF was loaded. The frame count of an animation.")
+
+    @property
+    @cpp(get="self->image->rows()")
+    def rows(self) -> int:
+        "Spritesheet rows (read-only), 1 unless a grid was set."
+
     @property
     @cpp(get_raw="self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays")
     def delays(self) -> None:
         ("Per-frame durations in ms for a sheet loaded from a GIF, else None "
          "(read-only). One entry per spritesheet column.")
+
+    @property
+    @cpp(get_raw="mp_obj_new_int(pv::image_total_delay(self))")
+    def duration(self) -> int:
+        ("How long one loop of the animation lasts in ms (read-only), or 0 if "
+         "this image carries no frame timings.")
+
+    @cpp(call="pv::image_frame_at", emit="free", args="self ms")
+    def frame_at(self, ms: int) -> int:
+        ("The frame covering ms into the animation, honouring the file's own "
+         "per-frame delays. Wraps, so a free-running clock can be handed "
+         "straight over: sheet.sprite(sheet.frame_at(badge.ticks), 0). Raises "
+         "if the image has no timings; check duration first.")
 
     @property
     @cpp(get="self->image->antialias()", set="self->image->antialias((antialias_t){0})")

@@ -105,6 +105,7 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "shape.stroke",
   "shape.bounds",
   "image.palette",
+  "image.frame_at",
   "image.load",
   "image.load_into",
   "image.window",

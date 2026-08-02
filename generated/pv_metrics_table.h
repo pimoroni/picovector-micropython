@@ -108,6 +108,7 @@ enum {
   PV_M_shape_stroke,  // shape.stroke
   PV_M_shape_bounds,  // shape.bounds
   PV_M_image_palette,  // image.palette
+  PV_M_image_frame_at,  // image.frame_at
   PV_M_image_load,  // image.load
   PV_M_image_load_into,  // image.load_into
   PV_M_image_window,  // image.window
