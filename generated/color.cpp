@@ -54,7 +54,7 @@ mp_obj_t mpy_color_rgb(size_t n_args, const mp_obj_t *args) {
   return pv::box_color(rgb_color_t(r, g, b, a));
 }
 
-// color.hsv: Create a colour from HSV components (0-255 each; hue wraps). Optional alpha (0-255).
+// color.hsv: Create a colour from HSV components (0-255 each; hue wraps, the rest clamp). Optional alpha (0-255).
 mp_obj_t mpy_color_hsv(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_color_hsv);
@@ -65,7 +65,7 @@ mp_obj_t mpy_color_hsv(size_t n_args, const mp_obj_t *args) {
   int v = (int)mp_obj_get_float(args[_i]); _i++;
   int a = 255;
   if (n_args > _i) { a = (int)mp_obj_get_float(args[_i]); _i++; }
-  return pv::box_color(hsv_color_t((h&0xff), s, v, a));
+  return pv::box_color(hsv_color_t(h, s, v, a));
 }
 
 // color.oklch: Create a colour from OKLCH components (0-255 each, not CSS units: l spans 0-1 lightness, c spans 0-0.35 chroma, and h is 256 counts to a full turn, so 250 is 352 degrees). Optional alpha (0-255).

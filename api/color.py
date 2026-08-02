@@ -65,10 +65,10 @@ class color:
         "Create a colour from RGB values (0-255 each). Optional alpha (0-255)."
 
     @staticmethod
-    @cpp(call="hsv_color_t", emit="free", args="(h&0xff) s v a")
+    @cpp(call="hsv_color_t", emit="free")
     def hsv(h: int, s: int, v: int, a: int = 255) -> color:
-        ("Create a colour from HSV components (0-255 each; hue wraps). "
-         "Optional alpha (0-255).")
+        ("Create a colour from HSV components (0-255 each; hue wraps, the rest "
+         "clamp). Optional alpha (0-255).")
 
     @staticmethod
     @cpp(call="oklch_color_t", emit="free")
