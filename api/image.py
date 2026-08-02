@@ -10,7 +10,7 @@ their signatures, docstrings and registration.
 from __future__ import annotations
 
 from pv import (api, cpp, native, overload, const,
-                XY, XYWH, Filter, Buffer, ShapeOrList, NEAREST)
+                XY, XYWH, Filter, Buffer, ShapeOrList, AnyImage, NEAREST)
 
 
 @api("image_t", field="image", ptr=True, buffer=True,
@@ -290,17 +290,17 @@ class image:
     # ── blitting ─────────────────────────────────────────────────────────────
     @overload
     @cpp(args="self->image at")
-    def blit(self, src: image, at: vec2) -> None: "Blit src at a point."
+    def blit(self, src: AnyImage, at: vec2) -> None: "Blit src at a point."
     @overload
     @cpp(args="self->image vec2_t(x,y)")
-    def blit(self, src: image, x: float, y: float) -> None: "Blit src at (x, y)."
+    def blit(self, src: AnyImage, x: float, y: float) -> None: "Blit src at (x, y)."
     @overload
     @cpp(args="self->image source dst filter")
-    def blit(self, src: image, source: rect, dst: rect, filter: Filter = NEAREST) -> None:
+    def blit(self, src: AnyImage, source: rect, dst: rect, filter: Filter = NEAREST) -> None:
         "Blit a source rect of src into a destination rect."
     @overload
     @cpp(args="self->image dst filter")
-    def blit(self, src: image, dst: rect, filter: Filter = NEAREST) -> None:
+    def blit(self, src: AnyImage, dst: rect, filter: Filter = NEAREST) -> None:
         "Blit all of src into a destination rect."
 
     @cpp(recv="src", error="invalid parameter, expected blit(image, point), "
@@ -309,12 +309,12 @@ class image:
         "Blit another image onto this one (point, rect, or src-rect → dst-rect)."
 
     @cpp(recv="src", args="self->image p len uv0 uv1 filter")
-    def blit_vspan(self, src: image, p: XY, len: float, uv0: XY, uv1: XY,
+    def blit_vspan(self, src: AnyImage, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a vertical texture span (advanced; used by raycasters)."
 
     @cpp(recv="src", args="self->image p len uv0 uv1 filter")
-    def blit_hspan(self, src: image, p: XY, len: float, uv0: XY, uv1: XY,
+    def blit_hspan(self, src: AnyImage, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a horizontal texture span (advanced)."
 

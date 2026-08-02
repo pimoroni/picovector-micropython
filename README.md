@@ -2,7 +2,7 @@
 
 The MicroPython binding layer for the [PicoVector](../picovector) core library:
 the `picovector` C extension module (`vec2`, `rect`, `mat3`, `color`, `brush`,
-`shape`, `image`, `font`, `pixel_font`, `algorithm`) plus the glue that wires the
+`shape`, `image`, `indexed_image`, `font`, `pixel_font`, `algorithm`) plus the glue that wires the
 rasteriser onto MicroPython's GC heap.
 
 The bindings are described in Python and generated. The stubs under [`api/`](api/)
@@ -25,7 +25,8 @@ prone to.
 ```
 pv.py            authoring surface the stubs import (decorators, pseudo-types, Range)
 api/*.py         one stub class per type (vec2, rect, mat3, color, brush, shape,
-                 image, font, pixel_font, algorithm) — the human-edited source
+                 image, indexed_image, font, pixel_font, algorithm) — the
+                 human-edited source
 model.py         internal IR + the loader that introspects the stubs
 generate.py      IR -> C++ (run this to (re)generate)
 picovector.config.hpp   MicroPython config: routes the core onto the GC heap and
@@ -132,7 +133,8 @@ These are declared in the DSL (so it stays the single source of truth for the
 * `font.load` / `pixel_font.load` (+ their `__del__`) — binary font parsing.
 * `image.load` / `load_into` / `window` / `text` / `measure_text` / `shapes` /
   `batch` — file decode, font branching, parent tracking, batched render, qstr
-  dispatch.
+  dispatch. `load` is the factory for both image types: a palettised buffer
+  gets `indexed_image`, and so do `window` and `sprite` of one.
 * `algorithm.clip_line` / `dda` / `raycast` — in-place mutation and
   lambda-driven nested results.
 

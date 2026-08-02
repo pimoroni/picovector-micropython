@@ -73,18 +73,13 @@ extern "C" {
         target_width = (width * ((target_height << 16) / height)) >> 16;
       }
 
-      // An indexed PNG is only worth keeping indexed if the colour table costs
-      // less than the three bytes per pixel it saves. The bit depth bounds the
-      // table exactly - 1/2/4/8 bits index 2/4/16/256 entries - so a small
-      // sprite doesn't carry 1KB of palette to save 200 bytes of pixels, and a
-      // spritesheet still gets the full saving. Anything not worth indexing is
-      // expanded to true colour by the decode callback, which already does that
-      // for a target that has no palette.
-      bool indexed = png->getPixelType() == PNG_PIXEL_INDEXED;
-      int entries = indexed ? (1 << png->getBpp()) : 0;
+      // An indexed PNG stays indexed, whatever its size. Which of the two image
+      // types load() hands back follows from this, so deciding it on dimensions
+      // would make a sprite's *type* depend on how big it is. The bit depth
+      // bounds the colour table exactly: 1/2/4/8 bits index 2/4/16/256 entries.
+      bool has_palette = png->getPixelType() == PNG_PIXEL_INDEXED;
+      int entries = has_palette ? (1 << png->getBpp()) : 0;
       if(entries > 256) entries = 256;
-      bool has_palette = indexed &&
-                         (size_t)target_width * target_height * 3 > (size_t)entries * sizeof(uint32_t);
 
       target.image = new(m_malloc(sizeof(image_t))) image_t(target_width, target_height,
                                                            RGBA8888, has_palette, entries);

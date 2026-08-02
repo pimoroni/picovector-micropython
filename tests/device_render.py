@@ -16,7 +16,7 @@
 
 from array import array
 
-from picovector import color, rect, vec2, shape, image, font
+from picovector import color, rect, vec2, shape, image, indexed_image, font
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
 EVEN_ODD, NON_ZERO = image.EVEN_ODD, image.NON_ZERO
@@ -533,6 +533,105 @@ def test_animated_gif():
         ok("loading a gif at a size is refused", True)
 
 
+# ── the indexed image type ──────────────────────────────────────────────────
+# A palettised buffer is a source, never a render target: nothing in the library
+# can rasterise into one byte a pixel. So it gets a type that offers only what it
+# can answer, and the absence is the error message.
+
+def gone(obj, name):
+    """True when `name` is not a member of obj at all."""
+    try:
+        getattr(obj, name)
+        return False
+    except AttributeError:
+        return True
+
+
+def unsettable(obj, name, value):
+    try:
+        setattr(obj, name, value)
+        return False
+    except AttributeError:
+        return True
+
+
+def test_indexed_image_type():
+    sheet = image.load(GIF)
+    plain = image(16, 16)
+
+    ok("a gif loads as an indexed_image", type(sheet) is indexed_image, str(type(sheet)))
+    ok("a plain buffer is an image", type(plain) is image, str(type(plain)))
+    ok("an indexed_image says it is palettised", sheet.has_palette)
+    ok("an indexed_image reports its table size", sheet.palette_size > 0,
+       str(sheet.palette_size))
+
+    # The whole drawing surface is absent, so the error names what is wrong.
+    for name in ("oilpaint", "blur", "dither", "text", "clear", "put", "shape",
+                 "rectangle", "circle", "blit", "load_into", "batch",
+                 "measure_text", "shapes"):
+        ok("indexed_image has no %s" % name, gone(sheet, name))
+
+    for name in ("pen", "font", "clip", "cursor", "fill_rule", "antialias"):
+        ok("indexed_image has no %s property" % name, gone(sheet, name))
+
+    ok("indexed_image refuses a pen", unsettable(sheet, "pen", color.rgb(255, 0, 0)))
+    ok("indexed_image refuses a clip", unsettable(sheet, "clip", rect(0, 0, 4, 4)))
+
+    # A read-only property has to refuse rather than run on into the next
+    # setter's branch: `img.width = n` once assigned img.clip.
+    before = sheet.alpha
+    ok("width is read-only", unsettable(sheet, "width", 4))
+    ok("...and refusing it left alpha alone", sheet.alpha == before, str(sheet.alpha))
+
+    # What it does keep: the table, the grid, the timings. alpha stays writable
+    # because a blit reads it from the source side.
+    sheet.alpha = 128
+    ok("indexed_image alpha is settable", sheet.alpha == 128)
+    sheet.alpha = 255
+
+    ok("indexed_image keeps its grid", sheet.cols == 4 and sheet.rows == 1)
+    ok("indexed_image keeps its timings", sheet.duration == 420)
+
+    frame = sheet.sprite(1, 0)
+    ok("a view of an indexed_image is indexed", type(frame) is indexed_image,
+       str(type(frame)))
+    ok("a window of an indexed_image is indexed",
+       type(sheet.window(rect(0, 0, 10, 8))) is indexed_image)
+
+    # Recolouring the table is the reason it stays writable, and a sprite view
+    # shares the table rather than copying it.
+    sheet.palette(1, color.rgb(255, 0, 255))
+    ok("a palette entry can be rewritten",
+       sheet.palette(1) == color.rgb(255, 0, 255).p, hex(sheet.palette(1)))
+    ok("a sprite view shares the table", frame.palette(1) == sheet.palette(1))
+
+    # It is still a perfectly good blit source, which is the point.
+    dst = canvas(32, 32)
+    dst.pen = BG
+    dst.clear()
+    dst.blit(frame, vec2(0, 0))
+    ok("an indexed frame blits onto an image", scan(dst)[0] > 0)
+
+    dst.pen = BG
+    dst.clear()
+    dst.blit(frame, rect(0, 0, 10, 8), rect(0, 0, 20, 16))
+    ok("an indexed frame blits scaled", scan(dst)[0] > 0)
+
+    dst.pen = BG
+    dst.clear()
+    dst.blit_vspan(frame, vec2(4, 0), 16, vec2(0, 0), vec2(9, 7))
+    ok("an indexed frame blits as a vspan", scan(dst)[0] > 0)
+
+    # ...and the span blits now check what they were handed. They used to cast
+    # any object straight to an image struct and read through it.
+    for bad in (None, 42, vec2(0, 0), "not an image"):
+        try:
+            dst.blit_vspan(bad, vec2(0, 0), 4, vec2(0, 0), vec2(1, 1))
+            ok("blit_vspan rejects %r" % (bad,), False)
+        except TypeError:
+            ok("blit_vspan rejects %r" % (bad,), True)
+
+
 def main():
     test_primitives_across_sizes()
     test_area_is_close_to_analytic()
@@ -546,6 +645,7 @@ def main():
     test_custom_accepts_an_array()
     test_vector_text()
     test_animated_gif()
+    test_indexed_image_type()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))
 
 

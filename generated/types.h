@@ -11,5 +11,6 @@ extern const mp_obj_type_t type_pixel_font;
 extern const mp_obj_type_t type_brush;
 extern const mp_obj_type_t type_shape;
 extern const mp_obj_type_t type_image;
+extern const mp_obj_type_t type_indexed_image;
 extern const mp_obj_type_t type_algorithm;
 extern const mp_obj_type_t type_tween;

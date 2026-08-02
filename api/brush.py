@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pv import api, cpp, const, overload, Range, ColorStops, Pattern8
+from pv import api, cpp, const, overload, Range, ColorStops, Pattern8, AnyImage
 
 
 @api("brush_t", field="brush", ptr=True,
@@ -37,10 +37,10 @@ class brush:
 
     # image(img, transform=None) --------------------------------------------
     @overload
-    def image(img: image) -> brush: "Image brush at the origin."
+    def image(img: AnyImage) -> brush: "Image brush at the origin."
     @overload
     @cpp(args="img &transform")
-    def image(img: image, transform: mat3) -> brush: "Image brush positioned by a mat3."
+    def image(img: AnyImage, transform: mat3) -> brush: "Image brush positioned by a mat3."
 
     @staticmethod
     @cpp(call="image_brush_t", emit="mnew",

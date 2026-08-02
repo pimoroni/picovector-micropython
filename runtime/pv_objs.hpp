@@ -91,6 +91,13 @@ extern "C" {
     mp_obj_t frame_delays;
   } image_obj_t;
 
+  // `indexed_image` is a second MicroPython type over the same image_t: a
+  // palettised buffer is a blit source, never a render target, so it exposes
+  // only the members that can answer for one. Sharing the layout is what lets
+  // both types read through the same cast, and lets the generated bindings for
+  // either reach pv::image_total_delay and friends unchanged.
+  typedef image_obj_t indexed_image_obj_t;
+
   typedef struct _rect_obj_t {
     mp_obj_base_t base;
     rect_t r;

@@ -83,7 +83,7 @@ extern "C" {
     switch (status) {
       case GIF_UNSUPPORTED:
         mp_raise_msg(&mp_type_ValueError,
-          MP_ERROR_TEXT("cannot load GIF: frames with their own colour tables are not supported"));
+          MP_ERROR_TEXT("cannot load GIF: more than 256 colours across its frames"));
       case GIF_TOO_BIG:
         mp_raise_msg(&mp_type_MemoryError,
           MP_ERROR_TEXT("cannot load GIF: too large to composite as a spritesheet"));
@@ -177,6 +177,12 @@ extern "C" {
     }
   }
 
+  // Which of the two image types a buffer should be handed back as. A palettised
+  // buffer cannot be drawn into, so it gets the type that doesn't offer to.
+  static inline const mp_obj_type_t *image_type_for(image_t *image) {
+    return image->has_palette() ? &type_indexed_image : &type_image;
+  }
+
   mp_obj_t image_load(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_load);
@@ -186,6 +192,10 @@ extern "C" {
     int target_width  = n_args >= 2 ? (int)mp_obj_get_float(args[1]) : 0;
     int target_height = n_args >= 3 ? (int)mp_obj_get_float(args[2]) : 0;
     image_open_helper(*result, args[0], target_width, target_height);
+    // The decoder decides: a GIF or an indexed PNG lands palettised, so load()
+    // is the factory for both types. Retagging after the fact keeps the helper
+    // (and load_into, which cannot change its receiver's type) unaware of it.
+    result->base.type = image_type_for(result->image);
     return MP_OBJ_FROM_PTR(result);
   }
 
@@ -211,7 +221,7 @@ extern "C" {
       x = mp_obj_get_float(args[1]); y = mp_obj_get_float(args[2]);
       w = mp_obj_get_float(args[3]); h = mp_obj_get_float(args[4]);
     }
-    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
+    image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(self->image));
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image, rect_t(x, y, w, h));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);
@@ -234,10 +244,24 @@ extern "C" {
 #endif
     int x = mp_obj_get_int(args[1]);
     int y = mp_obj_get_int(args[2]);
-    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
+    image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(self->image));
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image->sprite(x, y));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);
+  }
+
+  // indexed_image's window/spritesheet/sprite are the same code: the generator
+  // asks for one symbol per type, and the obj structs are the same struct.
+  mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args) {
+    return image_window(n_args, args);
+  }
+
+  mp_obj_t indexed_image_spritesheet(size_t n_args, const mp_obj_t *args) {
+    return image_spritesheet(n_args, args);
+  }
+
+  mp_obj_t indexed_image_sprite(size_t n_args, const mp_obj_t *args) {
+    return image_sprite(n_args, args);
   }
 
   static inline bool pv_is_num(mp_obj_t o) {

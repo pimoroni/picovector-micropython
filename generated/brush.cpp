@@ -36,14 +36,14 @@ mp_obj_t mpy_brush_image(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_image);
 #endif
-  if (n_args == 1 && mp_obj_is_type(args[0], &type_image)) {
+  if (n_args == 1 && pv::is_image(args[0])) {
     size_t _i = 0;
-    image_t * img = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * img = pv::get_image(args[_i]); _i++;
     return pv::box_brush(m_new_class(image_brush_t, img));
   }
-  if (n_args == 2 && mp_obj_is_type(args[0], &type_image) && mp_obj_is_type(args[1], &type_mat3)) {
+  if (n_args == 2 && pv::is_image(args[0]) && mp_obj_is_type(args[1], &type_mat3)) {
     size_t _i = 0;
-    image_t * img = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * img = pv::get_image(args[_i]); _i++;
     mat3_t transform = ((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++;
     return pv::box_brush(m_new_class(image_brush_t, img, &transform));
   }

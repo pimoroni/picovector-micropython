@@ -160,6 +160,12 @@ enum {
   PV_M_image_blit_vspan,  // image.blit_vspan
   PV_M_image_blit_hspan,  // image.blit_hspan
   PV_M_image_batch,  // image.batch
+  PV_M_indexed_image_palette,  // indexed_image.palette
+  PV_M_indexed_image_frame_at,  // indexed_image.frame_at
+  PV_M_indexed_image_window,  // indexed_image.window
+  PV_M_indexed_image_spritesheet,  // indexed_image.spritesheet
+  PV_M_indexed_image_sprite,  // indexed_image.sprite
+  PV_M_indexed_image_get,  // indexed_image.get
   PV_M_algorithm_clip_line,  // algorithm.clip_line
   PV_M_algorithm_dda,  // algorithm.dda
   PV_M_algorithm_raycast,  // algorithm.raycast

@@ -15,6 +15,7 @@ from . import pixel_font    # noqa: F401
 from . import brush         # noqa: F401
 from . import shape         # noqa: F401
 from . import image         # noqa: F401
+from . import indexed_image  # noqa: F401  (image references it as a return type)
 from . import algorithm     # noqa: F401
 from . import tween         # noqa: F401
 

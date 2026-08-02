@@ -184,6 +184,19 @@ namespace pv {
     return box_color(color_from_premul(c));
   }
 
+  // ── a source image, of either type ─────────────────────────────────────────
+  // `image` and `indexed_image` are two MicroPython types over one image_t, and
+  // an indexed buffer is a perfectly good thing to blit *from*. Both obj structs
+  // have the same layout, so one cast serves either.
+  static inline bool is_image(mp_obj_t o) {
+    return mp_obj_is_type(o, &type_image) || mp_obj_is_type(o, &type_indexed_image);
+  }
+
+  static inline image_t *get_image(mp_obj_t o) {
+    if(!is_image(o)) mp_raise_TypeError(MP_ERROR_TEXT("expected an image"));
+    return ((image_obj_t *)MP_OBJ_TO_PTR(o))->image;
+  }
+
   // ── spritesheet timing ─────────────────────────────────────────────────────
   // A sheet composited from a GIF carries the file's per-frame delays. These
   // turn that into the two answers a caller actually wants - how long a loop

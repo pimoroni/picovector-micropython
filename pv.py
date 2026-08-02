@@ -107,6 +107,9 @@ PathList = _Pseudo("PathList", "One or more shape contours, each a list of vec2 
 ShapeOrList = _Pseudo("ShapeOrList", "A shape, or a list of shapes.")
 Filter = _Pseudo("Filter", "A texture filter constant: NEAREST, BILINEAR or BICUBIC.")
 Buffer = _Pseudo("Buffer", "A writable buffer-protocol object (bytes/bytearray/array).")
+# A blit source is any pixel buffer, so both image types answer for one. A plain
+# `image` annotation checks a single mp_obj_type_t and would reject the other.
+AnyImage = _Pseudo("AnyImage", "An image or an indexed_image, as a source.")
 
 
 # ── decorators ───────────────────────────────────────────────────────────────

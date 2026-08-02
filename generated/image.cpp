@@ -529,24 +529,24 @@ mp_obj_t mpy_image_blit(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_image_blit);
 #endif
-  if (n_args == 3 && mp_obj_is_type(args[1], &type_image) && mp_obj_is_type(args[2], &type_vec2)) {
+  if (n_args == 3 && pv::is_image(args[1]) && mp_obj_is_type(args[2], &type_vec2)) {
     size_t _i = 1;
-    image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * src = pv::get_image(args[_i]); _i++;
     vec2_t at = mp_obj_get_vec2(args[_i]); _i++;
     src->blit(self->image, at);
     return mp_const_none;
   }
-  if (n_args == 4 && mp_obj_is_type(args[1], &type_image) && (mp_obj_is_float(args[2]) || mp_obj_is_int(args[2])) && (mp_obj_is_float(args[3]) || mp_obj_is_int(args[3]))) {
+  if (n_args == 4 && pv::is_image(args[1]) && (mp_obj_is_float(args[2]) || mp_obj_is_int(args[2])) && (mp_obj_is_float(args[3]) || mp_obj_is_int(args[3]))) {
     size_t _i = 1;
-    image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * src = pv::get_image(args[_i]); _i++;
     float x = mp_obj_get_float(args[_i]); _i++;
     float y = mp_obj_get_float(args[_i]); _i++;
     src->blit(self->image, vec2_t(x,y));
     return mp_const_none;
   }
-  if (n_args >= 4 && mp_obj_is_type(args[1], &type_image) && mp_obj_is_type(args[2], &type_rect) && mp_obj_is_type(args[3], &type_rect)) {
+  if (n_args >= 4 && pv::is_image(args[1]) && mp_obj_is_type(args[2], &type_rect) && mp_obj_is_type(args[3], &type_rect)) {
     size_t _i = 1;
-    image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * src = pv::get_image(args[_i]); _i++;
     rect_t source = mp_obj_get_rect(args[_i]); _i++;
     rect_t dst = mp_obj_get_rect(args[_i]); _i++;
     filter_t filter = NEAREST;
@@ -554,9 +554,9 @@ mp_obj_t mpy_image_blit(size_t n_args, const mp_obj_t *args) {
     src->blit(self->image, source, dst, filter);
     return mp_const_none;
   }
-  if (n_args >= 3 && mp_obj_is_type(args[1], &type_image) && mp_obj_is_type(args[2], &type_rect)) {
+  if (n_args >= 3 && pv::is_image(args[1]) && mp_obj_is_type(args[2], &type_rect)) {
     size_t _i = 1;
-    image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+    image_t * src = pv::get_image(args[_i]); _i++;
     rect_t dst = mp_obj_get_rect(args[_i]); _i++;
     filter_t filter = NEAREST;
     if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
@@ -573,7 +573,7 @@ mp_obj_t mpy_image_blit_vspan(size_t n_args, const mp_obj_t *args) {
   pv::metric_scope _pvm(PV_M_image_blit_vspan);
 #endif
   size_t _i = 1;
-  image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+  image_t * src = pv::get_image(args[_i]); _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
   float len = mp_obj_get_float(args[_i]); _i++;
@@ -592,7 +592,7 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
   pv::metric_scope _pvm(PV_M_image_blit_hspan);
 #endif
   size_t _i = 1;
-  image_t * src = ((image_obj_t *)MP_OBJ_TO_PTR(args[_i]))->image; _i++;
+  image_t * src = pv::get_image(args[_i]); _i++;
   vec2_t p = pv::get_xy(args, &_i, n_args);
   pv::need(n_args, _i + 3);
   float len = mp_obj_get_float(args[_i]); _i++;
@@ -698,58 +698,71 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     case MP_QSTR_width:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->bounds().w); return; }
+      break;
     }
     case MP_QSTR_height:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->bounds().h); return; }
+      break;
     }
     case MP_QSTR_raw:
     {
       if (action == GET) { dest[0] = mp_obj_new_bytearray_by_ref(self->image->buffer_size(), self->image->ptr(0, 0)); return; }
+      break;
     }
     case MP_QSTR_clip:
     {
       if (action == GET) { dest[0] = pv::box_rect(self->image->clip()); return; }
       if (action == SET) { self->image->clip(mp_obj_get_rect(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_has_palette:
     {
       if (action == GET) { dest[0] = mp_obj_new_bool(self->image->has_palette()); return; }
+      break;
     }
     case MP_QSTR_palette_size:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->palette_size()); return; }
+      break;
     }
     case MP_QSTR_cols:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->cols()); return; }
+      break;
     }
     case MP_QSTR_rows:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->rows()); return; }
+      break;
     }
     case MP_QSTR_delays:
     {
       if (action == GET) { dest[0] = self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays; return; }
+      break;
     }
     case MP_QSTR_duration:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(pv::image_total_delay(self)); return; }
+      break;
     }
     case MP_QSTR_antialias:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->antialias()); return; }
       if (action == SET) { self->image->antialias((antialias_t)(int)mp_obj_get_float(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_fill_rule:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->fill_rule()); return; }
       if (action == SET) { self->image->fill_rule((fill_rule_t)(int)mp_obj_get_float(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_alpha:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->alpha()); return; }
       if (action == SET) { self->image->alpha((int)mp_obj_get_float(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
     case MP_QSTR_pen:
     {
@@ -760,6 +773,7 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         self->brush = brush; self->image->brush(brush->brush);
         dest[0] = MP_OBJ_NULL; return;
       }
+      break;
     }
     case MP_QSTR_font:
     {
@@ -781,11 +795,13 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         }
         dest[0] = MP_OBJ_NULL; return;
       }
+      break;
     }
     case MP_QSTR_cursor:
     {
       if (action == GET) { dest[0] = pv::box_vec2(self->image->text_cursor()); return; }
       if (action == SET) { self->image->text_cursor(mp_obj_get_vec2(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
     }
   }
   dest[1] = MP_OBJ_SENTINEL;
