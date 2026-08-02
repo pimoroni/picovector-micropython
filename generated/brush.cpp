@@ -50,7 +50,7 @@ mp_obj_t mpy_brush_image(size_t n_args, const mp_obj_t *args) {
   mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.image(image, [mat3])"));
 }
 
-// brush.gradient: Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of (position 0–1, color), up to 16.
+// brush.gradient: Gradient brush. stops: list of (position 0–1, color), up to 16. type: brush.LINEAR, where p1 and p2 are the ends of the axis; brush.RADIAL, where p1 is the centre and |p2-p1| the radius; or brush.CONICAL, where p1 is the centre and the p1→p2 direction is where the ramp starts. A conical's stop positions are fractions of a full turn, clockwise, so a 270° gauge puts its stops in 0–0.75.
 mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_gradient);
@@ -386,6 +386,7 @@ static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_chromatic_static_obj, MP_ROM_P
 static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_LINEAR), MP_ROM_INT(GRADIENT_LINEAR) },
   { MP_ROM_QSTR(MP_QSTR_RADIAL), MP_ROM_INT(GRADIENT_RADIAL) },
+  { MP_ROM_QSTR(MP_QSTR_CONICAL), MP_ROM_INT(GRADIENT_CONICAL) },
   { MP_ROM_QSTR(MP_QSTR_pattern), MP_ROM_PTR(&mpy_brush_pattern_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_image), MP_ROM_PTR(&mpy_brush_image_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_gradient), MP_ROM_PTR(&mpy_brush_gradient_static_obj) },

@@ -208,6 +208,13 @@ raises("image.text(...) needs a font", OSError, lambda: image(8, 8).text("hi", v
 # ── brush ────────────────────────────────────────────────────────────────────
 img.pen = brush.gradient(brush.LINEAR, 0, 0, 1, 0, [(0.0, color.black), (1.0, color.white)])
 ok("brush.gradient + image.pen=brush", True)
+img.pen = brush.gradient(brush.CONICAL, 16, 16, 16, 0, [(0.0, color.black), (0.75, color.white)])
+ok("brush.gradient CONICAL", True)
+# geometry() moves a gradient without rebuilding its table
+_g = brush.gradient(brush.LINEAR, 0, 0, 32, 0, [(0.0, color.black), (1.0, color.white)])
+_g.geometry(32, 0, 0, 0)
+ok("brush.geometry on a gradient", True)
+raises("brush.geometry on a non-gradient", TypeError, lambda: brush.blur(2).geometry(0, 0, 1, 1))
 img.pen = brush.pixelate(2)
 img.pen = brush.lighten(40)
 ok("brush effects assignable to pen", True)

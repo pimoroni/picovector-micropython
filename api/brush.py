@@ -18,6 +18,8 @@ class brush:
 
     LINEAR = const("GRADIENT_LINEAR", "Linear gradient (along the p1→p2 axis).")
     RADIAL = const("GRADIENT_RADIAL", "Radial gradient (outward from p1).")
+    CONICAL = const("GRADIENT_CONICAL",
+                    "Conical gradient (sweeping around p1, from the p1→p2 direction).")
 
     # pattern(c1, c2, index | tuple[8]) -------------------------------------
     @overload
@@ -52,8 +54,12 @@ class brush:
          args="(gradient_type_t)type x1 y1 x2 y2 stops_positions stops_colors stops_n transform")
     def gradient(type: int, x1: float, y1: float, x2: float, y2: float,
                  stops: ColorStops, transform: mat3 | None = None) -> brush:
-        ("Gradient brush. type: brush.LINEAR or brush.RADIAL; stops: list of "
-         "(position 0–1, color), up to 16.")
+        ("Gradient brush. stops: list of (position 0–1, color), up to 16. "
+         "type: brush.LINEAR, where p1 and p2 are the ends of the axis; "
+         "brush.RADIAL, where p1 is the centre and |p2-p1| the radius; or "
+         "brush.CONICAL, where p1 is the centre and the p1→p2 direction is where "
+         "the ramp starts. A conical's stop positions are fractions of a full "
+         "turn, clockwise, so a 270° gauge puts its stops in 0–0.75.")
 
     # geometry(x1, y1, x2, y2, transform=None) -------------------------------
     @cpp(call="pv::brush_geometry", emit="free",
