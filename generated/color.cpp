@@ -343,6 +343,9 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_to_rgb_obj, 1, mpy_color_to_rgb);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_contrast_obj, 2, mpy_color_contrast);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_difference_obj, 2, mpy_color_difference);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_fit_obj, 1, mpy_color_fit);
+extern "C" mp_obj_t color_ramp(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_ramp_obj, 2, color_ramp);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_ramp_static_obj, MP_ROM_PTR(&mpy_color_ramp_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_max_chroma_obj, 2, mpy_color_max_chroma);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_max_chroma_static_obj, MP_ROM_PTR(&mpy_color_max_chroma_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_rotate_obj, 2, mpy_color_rotate);
@@ -515,6 +518,7 @@ static const mp_rom_map_elem_t color_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_contrast), MP_ROM_PTR(&mpy_color_contrast_obj) },
   { MP_ROM_QSTR(MP_QSTR_difference), MP_ROM_PTR(&mpy_color_difference_obj) },
   { MP_ROM_QSTR(MP_QSTR_fit), MP_ROM_PTR(&mpy_color_fit_obj) },
+  { MP_ROM_QSTR(MP_QSTR_ramp), MP_ROM_PTR(&mpy_color_ramp_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_max_chroma), MP_ROM_PTR(&mpy_color_max_chroma_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_rotate), MP_ROM_PTR(&mpy_color_rotate_obj) },
   { MP_ROM_QSTR(MP_QSTR_saturate), MP_ROM_PTR(&mpy_color_saturate_obj) },

@@ -44,6 +44,7 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "color.contrast",
   "color.difference",
   "color.fit",
+  "color.ramp",
   "color.max_chroma",
   "color.rotate",
   "color.saturate",

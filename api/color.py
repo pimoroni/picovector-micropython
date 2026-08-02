@@ -177,6 +177,14 @@ class color:
          "unchanged, as are RGB and HSV ones, which cannot be out of it.")
 
     @staticmethod
+    @native
+    def ramp(stops, count: int) -> list:
+        ("Sample a gradient into a list of count colours (1-1024). stops is a "
+         "sequence of (position 0-1, color), up to 16, exactly as brush.gradient "
+         "takes - and sampled the same way, so two OKLCH stops ramp through "
+         "OKLCH and every stop lands exactly on an entry.")
+
+    @staticmethod
     @cpp(call="color_t::max_chroma", emit="free")
     def max_chroma(l: int, h: int) -> int:
         ("The most chroma an OKLCH colour can carry at that lightness and hue "

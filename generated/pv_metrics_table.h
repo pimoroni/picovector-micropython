@@ -47,6 +47,7 @@ enum {
   PV_M_color_contrast,  // color.contrast
   PV_M_color_difference,  // color.difference
   PV_M_color_fit,  // color.fit
+  PV_M_color_ramp,  // color.ramp
   PV_M_color_max_chroma,  // color.max_chroma
   PV_M_color_rotate,  // color.rotate
   PV_M_color_saturate,  // color.saturate
