@@ -202,6 +202,13 @@ class BinOp:
 
 
 @dataclass
+class UnaryOp:
+    op: str
+    expr: str = ""               # C++ expression over `self`, yielding the result
+    doc: str = ""
+
+
+@dataclass
 class PaletteColor:
     name: str
     rgba: tuple
@@ -226,6 +233,7 @@ class Type:
     has_buffer: bool = False
     has_del: bool = False
     has_binary_op: bool = False
+    has_unary_op: bool = False
     del_stmt: str = ""
     del_native: bool = False
     includes: tuple = ()
@@ -235,6 +243,7 @@ class Type:
     props: list = dc_field(default_factory=list)
     consts: list = dc_field(default_factory=list)
     binops: list = dc_field(default_factory=list)
+    unops: list = dc_field(default_factory=list)
     palette: list = dc_field(default_factory=list)
     make_new: Optional[New] = None
 
@@ -263,6 +272,13 @@ _BINOPS = {
     "__iadd__": ("INPLACE_ADD", "+="), "__isub__": ("INPLACE_SUBTRACT", "-="),
     "__imul__": ("INPLACE_MULTIPLY", "*="),
     "__itruediv__": ("INPLACE_TRUE_DIVIDE", "/="),
+}
+
+# Unary slots. `__hash__` is the one that matters: without it a type falls back
+# to hashing the object pointer (py/runtime.c), so two equal values are two
+# different dict keys. It must agree with `__eq__` and return a small int.
+_UNOPS = {
+    "__hash__": "HASH",
 }
 
 
@@ -546,6 +562,13 @@ def _build_binop(dunder, func, ns, classes, t):
                  doc=(func.__doc__ or "").strip())
 
 
+def _build_unop(dunder, func, t):
+    """A unary slot. `result` is the C++ expression; it sees `self`."""
+    meta = _cppmeta(func)
+    expr = meta.get("result") or f"self->{t.field}"
+    return UnaryOp(_UNOPS[dunder], expr=expr, doc=(func.__doc__ or "").strip())
+
+
 def load() -> list[Type]:
     """Import the api package (if needed) and build the Type IR."""
     import importlib
@@ -616,6 +639,15 @@ def load() -> list[Type]:
             if key in _BINOPS:
                 t.has_binary_op = True
                 t.binops.append(_build_binop(key, val, ns, classes, t))
+                continue
+            if key in _UNOPS:
+                # Python plants `__hash__ = None` in any class that defines
+                # __eq__ without one. That is not a request for a hash slot, so
+                # leave those types on MicroPython's default pointer hash.
+                if val is None:
+                    continue
+                t.has_unary_op = True
+                t.unops.append(_build_unop(key, val, t))
                 continue
             if key == "__del__":
                 t.has_del = True

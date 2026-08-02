@@ -539,6 +539,24 @@ def emit_binary_op(o, t):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# unary_op
+# ─────────────────────────────────────────────────────────────────────────────
+def emit_unary_op(o, t):
+    # Ops this type doesn't claim return MP_OBJ_NULL, which mp_unary_op treats as
+    # "not handled" and falls through to its own default (py/runtime.c).
+    o(f"static mp_obj_t {t.name}_unary_op(mp_unary_op_t op, mp_obj_t self_in) {{")
+    o(f"self(self_in, {t.obj_struct});", 1)
+    o("switch (op) {", 1)
+    for u in t.unops:
+        o(f"case MP_UNARY_OP_{u.op}: return MP_OBJ_NEW_SMALL_INT({u.expr});", 2)
+    o("default: break;", 2)
+    o("}", 1)
+    o("return MP_OBJ_NULL;", 1)
+    o("}")
+    o("")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # print + buffer
 # ─────────────────────────────────────────────────────────────────────────────
 def emit_print(o, t):
@@ -625,6 +643,10 @@ def emit_type(o, t):
         slots.append(f"make_new, (const void *){t.name}_make_new")
     if t.has_print:
         slots.append(f"print, (const void *){t.name}_print")
+    # MP_DEFINE_CONST_OBJ_TYPE takes its slots as designated initialisers, so they
+    # have to be listed in mp_obj_type_t's declaration order: unary before binary.
+    if t.has_unary_op:
+        slots.append(f"unary_op, (const void *){t.name}_unary_op")
     if t.has_binary_op:
         slots.append(f"binary_op, (const void *){t.name}_binary_op")
     if t.has_attr:
@@ -670,6 +692,8 @@ def emit_type_file(t):
         emit_del(o, t)
     if t.has_binary_op:
         emit_binary_op(o, t)
+    if t.has_unary_op:
+        emit_unary_op(o, t)
     if t.has_print:
         emit_print(o, t)
     if t.has_attr:
