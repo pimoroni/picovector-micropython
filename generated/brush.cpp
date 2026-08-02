@@ -73,7 +73,7 @@ mp_obj_t mpy_brush_gradient(size_t n_args, const mp_obj_t *args) {
   }
   mat3_t * transform = nullptr;
   if (n_args > _i && mp_obj_is_type(args[_i], &type_mat3)) { transform = &((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++; }
-  return pv::box_brush(m_new_class(gradient_brush_t, (gradient_type_t)type, x1, y1, x2, y2, stops_positions, stops_colors, stops_n, transform));
+  return pv::box_brush(m_new_class(gradient_brush_t, type, x1, y1, x2, y2, stops_positions, stops_colors, stops_n, transform));
 }
 
 // brush.geometry: Move a gradient brush without rebuilding it. The stops are unchanged, so an animated gradient can be built once and repositioned each frame. Raises TypeError on any other kind of brush.

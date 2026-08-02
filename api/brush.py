@@ -51,7 +51,7 @@ class brush:
     # gradient(type, x1, y1, x2, y2, stops, transform=None) -----------------
     @staticmethod
     @cpp(call="gradient_brush_t", emit="mnew",
-         args="(gradient_type_t)type x1 y1 x2 y2 stops_positions stops_colors stops_n transform")
+         args="type x1 y1 x2 y2 stops_positions stops_colors stops_n transform")
     def gradient(type: int, x1: float, y1: float, x2: float, y2: float,
                  stops: ColorStops, transform: mat3 | None = None) -> brush:
         ("Gradient brush. stops: list of (position 0–1, color), up to 16. "
