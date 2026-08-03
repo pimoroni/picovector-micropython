@@ -7,8 +7,8 @@ the end of each row; the core refuses, but a type that advertises ``shape()``,
 
 So this is ``image``'s read-only half. It wraps the same ``image_t`` and shares
 its obj struct (see ``indexed_image_obj_t`` in ``runtime/pv_objs.hpp``), and
-exposes only what an indexed buffer can answer: its size, its colour table, its
-spritesheet grid and timings. Everything else is simply absent, so
+exposes only what an indexed buffer can answer: its size, its colour table and
+the views cut out of it. Everything else is simply absent, so
 ``gif.oilpaint()`` is an ``AttributeError`` naming the thing that is wrong.
 
 Read-only here means *not a render target*. The colour table stays writable —
@@ -78,37 +78,6 @@ class indexed_image:
     def palette(self, index, *args) -> None:
         "Read or set an entry in the colour table."
 
-    # ── spritesheet grid and timing ─────────────────────────────────────────
-    @property
-    @cpp(get="self->image->cols()")
-    def cols(self) -> int:
-        ("Spritesheet columns (read-only), 1 unless spritesheet() set a grid or "
-         "a GIF was loaded. The frame count of an animation.")
-
-    @property
-    @cpp(get="self->image->rows()")
-    def rows(self) -> int:
-        "Spritesheet rows (read-only), 1 unless a grid was set."
-
-    @property
-    @cpp(get_raw="self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays")
-    def delays(self) -> None:
-        ("Per-frame durations in ms for a sheet loaded from a GIF, else None "
-         "(read-only). One entry per spritesheet column.")
-
-    @property
-    @cpp(get_raw="mp_obj_new_int(pv::image_total_delay(self))")
-    def duration(self) -> int:
-        ("How long one loop of the animation lasts in ms (read-only), or 0 if "
-         "this image carries no frame timings.")
-
-    @cpp(call="pv::image_frame_at", emit="free", args="self ms")
-    def frame_at(self, ms: int) -> int:
-        ("The frame covering ms into the animation, honouring the file's own "
-         "per-frame delays. Wraps, so a free-running clock can be handed "
-         "straight over: sheet.sprite(sheet.frame_at(badge.ticks), 0). Raises "
-         "if the image has no timings; check duration first.")
-
     # ── views (procedural → native) ─────────────────────────────────────────
     # A view of an indexed image is indexed too: it shares both the pixels and
     # the colour table.
@@ -117,9 +86,11 @@ class indexed_image:
         "Return a sub-image view of this buffer (shares pixels and palette)."
 
     @native
-    def spritesheet(self, cols: int, rows: int) -> indexed_image:
-        ("Configure this image as a cols x rows spritesheet grid for sprite(). "
-         "Returns self, so it chains off load().")
+    def spritesheet(self, cols: int = 0, rows: int = 0, timings=None) -> spritesheet:
+        ("A cols x rows grid over this image, as a spritesheet. Omit the grid to "
+         "use the one the image already carries, which for a loaded GIF is its "
+         "frames and their delays. timings is a single ms value for a uniform "
+         "rate, or one value per frame.")
 
     @native
     def sprite(self, x: int, y: int) -> indexed_image:

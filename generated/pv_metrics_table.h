@@ -108,7 +108,6 @@ enum {
   PV_M_shape_stroke,  // shape.stroke
   PV_M_shape_bounds,  // shape.bounds
   PV_M_image_palette,  // image.palette
-  PV_M_image_frame_at,  // image.frame_at
   PV_M_image_load,  // image.load
   PV_M_image_load_into,  // image.load_into
   PV_M_image_window,  // image.window
@@ -161,11 +160,18 @@ enum {
   PV_M_image_blit_hspan,  // image.blit_hspan
   PV_M_image_batch,  // image.batch
   PV_M_indexed_image_palette,  // indexed_image.palette
-  PV_M_indexed_image_frame_at,  // indexed_image.frame_at
   PV_M_indexed_image_window,  // indexed_image.window
   PV_M_indexed_image_spritesheet,  // indexed_image.spritesheet
   PV_M_indexed_image_sprite,  // indexed_image.sprite
   PV_M_indexed_image_get,  // indexed_image.get
+  PV_M_spritesheet_sprite,  // spritesheet.sprite
+  PV_M_spritesheet_frame,  // spritesheet.frame
+  PV_M_spritesheet_range,  // spritesheet.range
+  PV_M_spritesheet_interval,  // spritesheet.interval
+  PV_M_spritesheet_index,  // spritesheet.index
+  PV_M_spritesheet_at,  // spritesheet.at
+  PV_M_spritesheet_start,  // spritesheet.start
+  PV_M_spritesheet_stop,  // spritesheet.stop
   PV_M_algorithm_clip_line,  // algorithm.clip_line
   PV_M_algorithm_dda,  // algorithm.dda
   PV_M_algorithm_raycast,  // algorithm.raycast

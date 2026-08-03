@@ -179,7 +179,7 @@ extern "C" {
 
   // Which of the two image types a buffer should be handed back as. A palettised
   // buffer cannot be drawn into, so it gets the type that doesn't offer to.
-  static inline const mp_obj_type_t *image_type_for(image_t *image) {
+  const mp_obj_type_t *image_type_for(image_t *image) {
     return image->has_palette() ? &type_indexed_image : &type_image;
   }
 
@@ -227,16 +227,6 @@ extern "C" {
     return MP_OBJ_FROM_PTR(result);
   }
 
-  mp_obj_t image_spritesheet(size_t n_args, const mp_obj_t *args) {
-    self(args[0], image_obj_t);
-#if PV_METRICS
-    pv::metric_scope _pvm(PV_M_image_spritesheet);
-#endif
-    self->image->cols(mp_obj_get_int(args[1]));
-    self->image->rows(mp_obj_get_int(args[2]));
-    return args[0];
-  }
-
   mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args) {
     self(args[0], image_obj_t);
 #if PV_METRICS
@@ -254,10 +244,6 @@ extern "C" {
   // asks for one symbol per type, and the obj structs are the same struct.
   mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args) {
     return image_window(n_args, args);
-  }
-
-  mp_obj_t indexed_image_spritesheet(size_t n_args, const mp_obj_t *args) {
-    return image_spritesheet(n_args, args);
   }
 
   mp_obj_t indexed_image_sprite(size_t n_args, const mp_obj_t *args) {

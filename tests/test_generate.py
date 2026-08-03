@@ -55,6 +55,15 @@ CHECKS = {
         "#if PV_METRICS",
         "pv::metric_scope _pvm(PV_M_image_circle);",
     ],
+    "spritesheet": [
+        # the arithmetic is the core value's; the binding only forwards
+        "return mp_obj_new_int(self->sheet.index_at(ms));",
+        "self->sheet.stop();",
+        # range() takes keyword arguments, so its body parses its own kw map
+        "static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_spritesheet_range_obj, 1, spritesheet_range);",
+        # now boxes a view, so the attr getter calls out to the native side
+        "dest[0] = spritesheet_box_now(self); return;",
+    ],
     "indexed_image": [
         # the read-only half: no setter for anything but alpha, and none of the
         # drawing surface. The fall-through is what reports the absence.

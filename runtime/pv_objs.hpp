@@ -11,6 +11,7 @@
 #include "color.hpp"
 #include "pixel_font.hpp"
 #include "gif.hpp"
+#include "spritesheet.hpp"
 #include "blend.hpp"
 #include "rasteriser.hpp"
 #include "tween/tween.hpp"
@@ -98,6 +99,20 @@ extern "C" {
   // either reach pv::image_total_delay and friends unchanged.
   typedef image_obj_t indexed_image_obj_t;
 
+  // A sheet is a grid over someone else's pixels: how to carve an image into
+  // cells, and optionally how long each is shown for. It owns no buffer, so it
+  // holds the source obj to keep it alive - the GC scans this block, so the
+  // pointer is a root, the same way image_obj_t::parent keeps a parent view up.
+  //
+  // `delays` is a plain array the sheet owns, built once at construction from
+  // whatever timings it was handed. The core value points into it.
+  typedef struct _spritesheet_obj_t {
+    mp_obj_base_t base;
+    image_obj_t *source;
+    spritesheet_t sheet;
+    uint16_t *delays;
+  } spritesheet_obj_t;
+
   typedef struct _rect_obj_t {
     mp_obj_base_t base;
     rect_t r;
@@ -134,6 +149,14 @@ extern "C" {
   extern mp_obj_t tween_box_elapsed(tween_obj_t *self);
   extern mp_obj_t tween_box_done(tween_obj_t *self);
   extern mp_obj_t tween_box_running(tween_obj_t *self);
+
+  // spritesheet.now boxes a sub-image view, so the generated attr getter calls
+  // out to native/spritesheet_native.cpp for it.
+  extern mp_obj_t spritesheet_box_now(spritesheet_obj_t *self);
+
+  // Which image type a buffer is presented as (native/image_native.cpp): a
+  // palettised one cannot be drawn into, so it gets the type that doesn't offer to.
+  extern const mp_obj_type_t *image_type_for(image_t *image);
 
   // used by image.pen = N and picovector.pen() (global pen)
   extern brush_obj_t *mp_obj_to_brush(size_t n_args, const mp_obj_t *args);

@@ -16,7 +16,8 @@
 
 from array import array
 
-from picovector import color, rect, vec2, shape, image, indexed_image, font
+from picovector import (color, rect, vec2, shape, image, indexed_image,
+                        spritesheet, font)
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
 EVEN_ODD, NON_ZERO = image.EVEN_ODD, image.NON_ZERO
@@ -475,47 +476,49 @@ GIF = (
 
 
 def test_animated_gif():
-    sheet = image.load(GIF)
-    ok("a gif loads as one wide sheet", sheet.width == 40 and sheet.height == 8,
-       "%dx%d" % (sheet.width, sheet.height))
-    ok("a gif sheet is indexed", sheet.has_palette)
-    ok("a gif sheet is a byte a pixel", len(sheet.raw) == 40 * 8, str(len(sheet.raw)))
-    ok("a gif reports its frame timings", sheet.delays == (60, 90, 120, 150),
-       str(sheet.delays))
+    img = image.load(GIF)
+    ok("a gif loads as one wide sheet", img.width == 40 and img.height == 8,
+       "%dx%d" % (img.width, img.height))
+    ok("a gif sheet is indexed", img.has_palette)
+    ok("a gif sheet is a byte a pixel", len(img.raw) == 40 * 8, str(len(img.raw)))
+
+    # No arguments: the grid and the timings the file arrived with, which is the
+    # whole reason that form exists.
+    sheet = img.spritesheet()
+    ok("a gif knows its own grid", sheet.cols == 4 and sheet.rows == 1,
+       "%dx%d" % (sheet.cols, sheet.rows))
+    ok("a gif sheet reports its frame count", sheet.frames == 4, str(sheet.frames))
+    ok("a gif brings its own timings", sheet.interval() == (60, 90, 120, 150),
+       str(sheet.interval()))
+    ok("a gif sheet reports its loop length", sheet.duration == 420, str(sheet.duration))
 
     frame = sheet.sprite(2, 0)
     ok("a gif frame is a sub-view of the sheet", frame.width == 10 and frame.height == 8,
        "%dx%d" % (frame.width, frame.height))
+    ok("a frame is not itself a sheet", frame.spritesheet().frames == 1)
 
-    # The sheet bounds its own animation, so nothing has to carry a frame count
-    # alongside it.
-    ok("a gif sheet reports its frame count", sheet.cols == 4 and sheet.rows == 1,
-       "%dx%d" % (sheet.cols, sheet.rows))
-    ok("a frame is not itself a sheet", frame.cols == 1 and frame.rows == 1)
+    # index() walks the per-frame delays, so a free-running clock picks the right one.
+    ok("index walks the delays", (sheet.index(0), sheet.index(59), sheet.index(60),
+                                  sheet.index(149), sheet.index(150),
+                                  sheet.index(419)) == (0, 0, 1, 1, 2, 3),
+       str([sheet.index(t) for t in (0, 59, 60, 149, 150, 419)]))
+    ok("index wraps", sheet.index(420) == 0 and sheet.index(480) == 1)
+    ok("index handles a clock that ran backwards", 0 <= sheet.index(-30) < 4)
 
-    # ...and its own timings, so a free-running clock picks the right frame.
-    ok("a gif sheet reports its loop length", sheet.duration == 60 + 90 + 120 + 150,
-       str(sheet.duration))
-    ok("frame_at walks the delays", (sheet.frame_at(0), sheet.frame_at(59),
-                                     sheet.frame_at(60), sheet.frame_at(149),
-                                     sheet.frame_at(150), sheet.frame_at(419)) == (0, 0, 1, 1, 2, 3),
-       str([sheet.frame_at(t) for t in (0, 59, 60, 149, 150, 419)]))
-    ok("frame_at wraps", sheet.frame_at(420) == 0 and sheet.frame_at(480) == 1)
-    ok("frame_at handles a clock that ran backwards", 0 <= sheet.frame_at(-30) < 4)
+    # at() is index() and frame() in one, which is what a draw loop wants.
+    ok("at returns the frame's view", same(sheet.at(150), sheet.sprite(2, 0)))
 
-    # A plain image carries no timings, and says so rather than freezing at 0.
-    plain = image(8, 8)
-    ok("a plain image has no duration", plain.duration == 0)
-    ok("a plain image is a 1x1 grid", plain.cols == 1 and plain.rows == 1)
-    try:
-        plain.frame_at(0)
-        ok("frame_at without timings raises", False)
-    except ValueError:
-        ok("frame_at without timings raises", True)
+    # A plain image is a 1x1 grid with nothing timed, and says so rather than
+    # dividing by zero or racing the draw loop.
+    plain = image(8, 8).spritesheet()
+    ok("a plain sheet is one untimed cell",
+       plain.frames == 1 and plain.duration == 0)
+    ok("an untimed sheet holds on its first cell",
+       plain.index(0) == 0 and plain.index(100000) == 0)
 
     # Every frame is the previous one shifted, which only holds if the deltas
     # were composited in order.
-    raw = sheet.raw
+    raw = img.raw
     shifted = True
     for f in range(1, 4):
         for y in range(8):
@@ -589,8 +592,12 @@ def test_indexed_image_type():
     ok("indexed_image alpha is settable", sheet.alpha == 128)
     sheet.alpha = 255
 
-    ok("indexed_image keeps its grid", sheet.cols == 4 and sheet.rows == 1)
-    ok("indexed_image keeps its timings", sheet.duration == 420)
+    # The grid and the timings live on the sheet now, not on the image.
+    for name in ("cols", "rows", "delays", "duration", "frame_at"):
+        ok("indexed_image has no %s" % name, gone(sheet, name))
+    grid = sheet.spritesheet()
+    ok("an indexed sheet keeps the grid", grid.cols == 4 and grid.rows == 1)
+    ok("an indexed sheet keeps the timings", grid.duration == 420)
 
     frame = sheet.sprite(1, 0)
     ok("a view of an indexed_image is indexed", type(frame) is indexed_image,
@@ -632,6 +639,103 @@ def test_indexed_image_type():
             ok("blit_vspan rejects %r" % (bad,), True)
 
 
+# ── the spritesheet type ────────────────────────────────────────────────────
+# A grid over someone else's pixels, plus optionally how long each cell shows
+# for. The case that motivated it: one image holding two animations of different
+# lengths, which per-image playback state could never describe.
+
+def test_spritesheet():
+    # image() is not zeroed, and these assertions compare cells by content, so
+    # every cell gets a colour of its own first.
+    src = image(70, 16)
+    for row in range(2):
+        for col in range(7):
+            src.pen = color.rgb(20 + col * 30, 20 + row * 100, 40)
+            src.rectangle(rect(col * 10, row * 8, 10, 8))
+    sheet = src.spritesheet(7, 2)
+
+    ok("spritesheet returns a sheet", type(sheet) is spritesheet, str(type(sheet)))
+    ok("a sheet reports its grid", sheet.cols == 7 and sheet.rows == 2)
+    ok("a sheet covers the whole grid by default", sheet.frames == 14)
+    ok("an untimed sheet has no duration", sheet.duration == 0)
+
+    cell = sheet.sprite(3, 1)
+    ok("a cell is the grid divided by the layout",
+       cell.width == 10 and cell.height == 8, "%dx%d" % (cell.width, cell.height))
+    ok("a cell of an rgba source is an image", type(cell) is image, str(type(cell)))
+
+    # An out-of-grid index clamps rather than windowing outside the buffer.
+    ok("sprite clamps to the grid", sheet.sprite(99, 99).width == 10)
+    ok("...on both axes", sheet.sprite(-5, -5).width == 10)
+
+    # The chicken: two ranges over one image, of different lengths.
+    alive = sheet.range(vec2(0, 0), vec2(6, 0), interval=100)
+    dying = sheet.range(vec2(0, 1), vec2(4, 1), interval=100, loop=False)
+    ok("a range along row 0 has 7 frames", alive.frames == 7, str(alive.frames))
+    ok("a range along row 1 has 5 frames", dying.frames == 5, str(dying.frames))
+    ok("the two ranges are independent",
+       alive.duration == 700 and dying.duration == 500,
+       "%d %d" % (alive.duration, dying.duration))
+    ok("a range does not disturb the sheet it came from", sheet.frames == 14)
+
+    # frame() indexes the range; sprite() stays grid-absolute.
+    ok("frame(0) is the range's origin", same(dying.frame(0), sheet.sprite(0, 1)))
+    ok("sprite is grid-absolute on a range", same(dying.sprite(6, 0), sheet.sprite(6, 0)))
+
+    # A one-shot holds its last frame and reports done; a loop never does.
+    ok("a one-shot holds its last frame",
+       dying.index(499) == 4 and dying.index(5000) == 4)
+    ok("a loop wraps instead", alive.index(700) == 0)
+
+    # Self-timing, as tween does it.
+    ok("a sheet is not running before start", not dying.running and not dying.done)
+    dying.start()
+    ok("start makes it run", dying.running)
+    ok("elapsed is small right after start", 0 <= dying.elapsed < 100, str(dying.elapsed))
+    ok("now returns a view", dying.now.width == 10)
+    dying.stop()
+    ok("stop stops it", not dying.running and dying.elapsed == 0)
+    # Starting in the past is how to reach the end without waiting for it.
+    dying.start(badge.ticks - 600)
+    ok("a one-shot past its end is done", dying.done)
+    ok("...and holds its last frame", same(dying.now, sheet.sprite(4, 1)))
+
+    # A rectangular range is the only case needing a direction.
+    grid = src.spritesheet(7, 2).range(vec2(0, 0), vec2(1, 1), interval=10)
+    ok("a rectangular range covers its cells", grid.frames == 4)
+    grid.direction = spritesheet.ROWS
+    ok("ROWS walks along the row first", same(grid.frame(1), sheet.sprite(1, 0)))
+    grid.direction = spritesheet.COLUMNS
+    ok("COLUMNS walks down the column first", same(grid.frame(1), sheet.sprite(0, 1)))
+
+    # interval() reads and writes, taking a scalar or a sequence.
+    s = src.spritesheet(4, 1, 50)
+    ok("a uniform interval reads back per frame", s.interval() == (50, 50, 50, 50),
+       str(s.interval()))
+    s.interval((60, 90, 120, 150))
+    ok("a sequence sets one value per frame", s.interval() == (60, 90, 120, 150),
+       str(s.interval()))
+    ok("...and the duration follows", s.duration == 420, str(s.duration))
+    s.interval(10)
+    ok("a scalar replaces the sequence", s.interval() == (10, 10, 10, 10), str(s.interval()))
+
+    # A sheet keeps its source alive and can hand it back.
+    ok("a sheet reports its source", s.source is src)
+
+    # An indexed source gives indexed cells, so the sheet is storage-agnostic.
+    gif = image.load(GIF).spritesheet()
+    ok("a cell of an indexed source is an indexed_image",
+       type(gif.sprite(0, 0)) is indexed_image, str(type(gif.sprite(0, 0))))
+    ok("...and so is at()", type(gif.at(0)) is indexed_image)
+
+    # Narrowing a sheet that carries per-frame timings has to take the timings of
+    # the cells it covers, not of its own sequence positions.
+    tail = gif.range(vec2(2, 0), vec2(3, 0))
+    ok("a narrowed range inherits the right timings", tail.interval() == (120, 150),
+       str(tail.interval()))
+    ok("...and its own duration", tail.duration == 270, str(tail.duration))
+
+
 def main():
     test_primitives_across_sizes()
     test_area_is_close_to_analytic()
@@ -646,6 +750,7 @@ def main():
     test_vector_text()
     test_animated_gif()
     test_indexed_image_type()
+    test_spritesheet()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))
 
 

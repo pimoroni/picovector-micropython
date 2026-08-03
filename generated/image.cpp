@@ -27,17 +27,6 @@ mp_obj_t mpy_image_palette(size_t n_args, const mp_obj_t *args) {
   mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected palette(index) or palette(index, color)"));
 }
 
-// image.frame_at: The frame covering ms into the animation, honouring the file's own per-frame delays. Wraps, so a free-running clock can be handed straight over: sheet.sprite(sheet.frame_at(badge.ticks), 0). Raises if the image has no timings; check duration first.
-mp_obj_t mpy_image_frame_at(size_t n_args, const mp_obj_t *args) {
-  self(args[0], image_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_image_frame_at);
-#endif
-  size_t _i = 1;
-  int ms = (int)mp_obj_get_float(args[_i]); _i++;
-  return mp_obj_new_int(pv::image_frame_at(self, ms));
-}
-
 // image.clear: Fill the whole image with the current pen.
 mp_obj_t mpy_image_clear(size_t n_args, const mp_obj_t *args) {
   self(args[0], image_obj_t);
@@ -605,7 +594,6 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
 }
 
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_palette_obj, 1, mpy_image_palette);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_frame_at_obj, 2, mpy_image_frame_at);
 extern "C" mp_obj_t image_load(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_obj, 1, image_load);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_load_static_obj, MP_ROM_PTR(&mpy_image_load_obj));
@@ -614,7 +602,7 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_into_obj, 2, image_load_into);
 extern "C" mp_obj_t image_window(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_window_obj, 2, image_window);
 extern "C" mp_obj_t image_spritesheet(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_spritesheet_obj, 3, image_spritesheet);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_spritesheet_obj, 1, image_spritesheet);
 extern "C" mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_sprite_obj, 3, image_sprite);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_clear_obj, 1, mpy_image_clear);
@@ -726,26 +714,6 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->palette_size()); return; }
       break;
     }
-    case MP_QSTR_cols:
-    {
-      if (action == GET) { dest[0] = mp_obj_new_int(self->image->cols()); return; }
-      break;
-    }
-    case MP_QSTR_rows:
-    {
-      if (action == GET) { dest[0] = mp_obj_new_int(self->image->rows()); return; }
-      break;
-    }
-    case MP_QSTR_delays:
-    {
-      if (action == GET) { dest[0] = self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays; return; }
-      break;
-    }
-    case MP_QSTR_duration:
-    {
-      if (action == GET) { dest[0] = mp_obj_new_int(pv::image_total_delay(self)); return; }
-      break;
-    }
     case MP_QSTR_antialias:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->antialias()); return; }
@@ -833,7 +801,6 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_CLIP), MP_ROM_INT(text_overflow_t::CLIP) },
   { MP_ROM_QSTR(MP_QSTR_ELLIPSES), MP_ROM_INT(text_overflow_t::ELLIPSES) },
   { MP_ROM_QSTR(MP_QSTR_palette), MP_ROM_PTR(&mpy_image_palette_obj) },
-  { MP_ROM_QSTR(MP_QSTR_frame_at), MP_ROM_PTR(&mpy_image_frame_at_obj) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },

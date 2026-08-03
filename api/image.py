@@ -85,40 +85,6 @@ class image:
     def palette(self, index, *args) -> None:
         "Read or set an entry in an indexed image's colour table."
 
-    # ── spritesheet grid and timing ──────────────────────────────────────────
-    # A sheet describes itself, so an animation can be bounded and timed without
-    # the caller keeping a parallel table of frame counts and intervals. All of
-    # it is derived from the image's own data - the clock stays with the caller.
-    @property
-    @cpp(get="self->image->cols()")
-    def cols(self) -> int:
-        ("Spritesheet columns (read-only), 1 unless spritesheet() set a grid or "
-         "a GIF was loaded. The frame count of an animation.")
-
-    @property
-    @cpp(get="self->image->rows()")
-    def rows(self) -> int:
-        "Spritesheet rows (read-only), 1 unless a grid was set."
-
-    @property
-    @cpp(get_raw="self->frame_delays == MP_OBJ_NULL ? mp_const_none : self->frame_delays")
-    def delays(self) -> None:
-        ("Per-frame durations in ms for a sheet loaded from a GIF, else None "
-         "(read-only). One entry per spritesheet column.")
-
-    @property
-    @cpp(get_raw="mp_obj_new_int(pv::image_total_delay(self))")
-    def duration(self) -> int:
-        ("How long one loop of the animation lasts in ms (read-only), or 0 if "
-         "this image carries no frame timings.")
-
-    @cpp(call="pv::image_frame_at", emit="free", args="self ms")
-    def frame_at(self, ms: int) -> int:
-        ("The frame covering ms into the animation, honouring the file's own "
-         "per-frame delays. Wraps, so a free-running clock can be handed "
-         "straight over: sheet.sprite(sheet.frame_at(badge.ticks), 0). Raises "
-         "if the image has no timings; check duration first.")
-
     @property
     @cpp(get="self->image->antialias()", set="self->image->antialias((antialias_t){0})")
     def antialias(self) -> int: "Anti-aliasing mode: OFF, X2 or X4."
@@ -151,10 +117,12 @@ class image:
     @staticmethod
     @native
     def load(path_or_bytes, width: int = 0, height: int = 0) -> image:
-        ("Load a PNG/JPEG/GIF from a path or buffer. Returns an image. An "
-         "animated GIF arrives as an indexed spritesheet of composited frames, "
-         "one column per frame, with the timings in delays; width and height "
-         "aren't available for one, since it has to composite at its own size.")
+        ("Load a PNG/JPEG/GIF from a path or buffer. Returns an image, or an "
+         "indexed_image when the file is palettised. An animated GIF arrives as "
+         "an indexed sheet of composited frames, one column per frame; call "
+         "spritesheet() with no arguments to get that grid and the file's own "
+         "frame timings. width and height aren't available for a GIF, since it "
+         "has to composite at its own size.")
 
     @native
     def load_into(self, path_or_bytes) -> None:
@@ -165,9 +133,11 @@ class image:
         "Return a sub-image view of this canvas (shares pixels)."
 
     @native
-    def spritesheet(self, cols: int, rows: int) -> image:
-        ("Configure this image as a cols x rows spritesheet grid for sprite(). "
-         "Returns self, so it chains off load()/image().")
+    def spritesheet(self, cols: int = 0, rows: int = 0, timings=None) -> spritesheet:
+        ("A cols x rows grid over this image, as a spritesheet. Omit the grid to "
+         "use the one the image already carries, which for a loaded GIF is its "
+         "frames and their delays and for anything else is 1x1. timings is a "
+         "single ms value for a uniform rate, or one value per frame.")
 
     @native
     def sprite(self, x: int, y: int) -> image:

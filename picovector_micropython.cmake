@@ -30,6 +30,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/shape.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/image.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/indexed_image.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/spritesheet.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/vector_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
@@ -42,6 +43,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/native/font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/pixel_font_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/spritesheet_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/tween_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
