@@ -14,6 +14,7 @@ from . import vector_font    # noqa: F401
 from . import pixel_font    # noqa: F401
 from . import brush         # noqa: F401
 from . import shape         # noqa: F401
+from . import palette       # noqa: F401  (both image types hand one back)
 from . import image         # noqa: F401
 from . import indexed_image  # noqa: F401  (image references it as a return type)
 from . import spritesheet   # noqa: F401  (both image types return one)

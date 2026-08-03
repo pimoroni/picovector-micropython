@@ -117,7 +117,7 @@ AnyImage = _Pseudo("AnyImage", "An image or an indexed_image, as a source.")
 REGISTRY: list = []
 
 
-def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False,
+def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False, subscr=False,
         del_native=False, del_stmt="", includes=(), print=None,
         aliases=None, palette=(), arg_read=None, arg_type=None, box=None):
     """Class decorator declaring the C++ wiring for a whole picovector type.
@@ -133,6 +133,7 @@ def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False,
         cls.__pv_api__ = dict(
             cpp=cpp, field=field, ptr=ptr, finaliser=finaliser, buffer=buffer,
             del_native=del_native, del_stmt=del_stmt, includes=tuple(includes),
+            subscr=subscr,
             print=print, aliases=dict(aliases or {}), palette=tuple(palette),
             arg_read=arg_read, arg_type=arg_type, box=box,
         )

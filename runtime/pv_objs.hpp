@@ -99,6 +99,23 @@ extern "C" {
   // either reach pv::image_total_delay and friends unchanged.
   typedef image_obj_t indexed_image_obj_t;
 
+  // A colour table, as a Python sequence.
+  //
+  // Attached to an image (`source` set), it is a handle onto that image's own
+  // table, read and written in place - and sub-views share the table by pointer,
+  // so one write recolours every sprite cut from the same sheet. Free-standing
+  // (`source` null), it owns `entries` and is something to assign *from*.
+  //
+  // Which is why assigning a palette copies the entries in rather than swapping
+  // the pointer: a view holds its own copy of image_t::_palette, so a swap would
+  // leave every existing sprite showing the old colours.
+  typedef struct _palette_obj_t {
+    mp_obj_base_t base;
+    image_obj_t *source;
+    uint32_t *entries;
+    uint16_t count;
+  } palette_obj_t;
+
   // A sheet is a grid over someone else's pixels: how to carve an image into
   // cells, and optionally how long each is shown for. It owns no buffer, so it
   // holds the source obj to keep it alive - the GC scans this block, so the
@@ -153,6 +170,12 @@ extern "C" {
   // spritesheet.now boxes a sub-image view, so the generated attr getter calls
   // out to native/spritesheet_native.cpp for it.
   extern mp_obj_t spritesheet_box_now(spritesheet_obj_t *self);
+
+  // palette (native/palette_native.cpp): where a palette's entries live, and the
+  // getter/setter behind image.palette on both image types.
+  extern uint32_t *palette_entries(palette_obj_t *self);
+  extern mp_obj_t palette_box(image_obj_t *image);
+  extern void palette_assign(image_obj_t *image, mp_obj_t value);
 
   // Which image type a buffer is presented as (native/image_native.cpp): a
   // palettised one cannot be drawn into, so it gets the type that doesn't offer to.

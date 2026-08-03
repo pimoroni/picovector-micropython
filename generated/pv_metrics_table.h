@@ -107,7 +107,7 @@ enum {
   PV_M_shape_line,  // shape.line
   PV_M_shape_stroke,  // shape.stroke
   PV_M_shape_bounds,  // shape.bounds
-  PV_M_image_palette,  // image.palette
+  PV_M_palette___getitem__,  // palette.__getitem__
   PV_M_image_load,  // image.load
   PV_M_image_load_into,  // image.load_into
   PV_M_image_window,  // image.window
@@ -159,7 +159,6 @@ enum {
   PV_M_image_blit_vspan,  // image.blit_vspan
   PV_M_image_blit_hspan,  // image.blit_hspan
   PV_M_image_batch,  // image.batch
-  PV_M_indexed_image_palette,  // indexed_image.palette
   PV_M_indexed_image_window,  // indexed_image.window
   PV_M_indexed_image_spritesheet,  // indexed_image.spritesheet
   PV_M_indexed_image_sprite,  // indexed_image.sprite

@@ -17,7 +17,7 @@
 from array import array
 
 from picovector import (color, rect, vec2, shape, image, indexed_image,
-                        spritesheet, font)
+                        palette, spritesheet, font)
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
 EVEN_ODD, NON_ZERO = image.EVEN_ODD, image.NON_ZERO
@@ -558,6 +558,98 @@ def unsettable(obj, name, value):
         return True
 
 
+# ── the palette type ────────────────────────────────────────────────────────
+# An indexed image's colour table, as a sequence. Attached to an image it *is*
+# that table, and views share it by pointer - so one write recolours every sprite
+# cut from the same sheet, which is why assignment copies in rather than swapping.
+
+def test_palette():
+    gif = image.load(GIF)
+    p = gif.palette
+    ok("an indexed image has a palette", p is not None)
+    ok("...and that reads as has_palette", (p is not None) == gif.has_palette)
+    ok("a plain image has none", image(8, 8).palette is None)
+    ok("a palette knows its image", p.image is gif)
+
+    ok("len is the table size", len(p) == gif.palette_size, "%d" % len(p))
+    ok("an entry reads back as a colour", isinstance(p[0], type(color.red)))
+
+    # Indexing, negative indexing, and the bounds.
+    p[1] = color.rgb(1, 2, 3)
+    ok("an entry can be written", p[1] == color.rgb(1, 2, 3), str(p[1]))
+    p[-1] = color.rgb(4, 5, 6)
+    ok("a negative index is the end", p[len(p) - 1] == color.rgb(4, 5, 6))
+    for bad in (len(p), -len(p) - 1, 999):
+        try:
+            p[bad]
+            ok("index %d is refused" % bad, False)
+        except IndexError:
+            ok("index %d is refused" % bad, True)
+    try:
+        p[0] = 12345
+        ok("a non-colour is refused", False)
+    except TypeError:
+        ok("a non-colour is refused", True)
+
+    # Slices, both ways.
+    p[0:3] = [color.rgb(10, 0, 0), color.rgb(0, 10, 0), color.rgb(0, 0, 10)]
+    ok("a slice can be written", p[1] == color.rgb(0, 10, 0), str(p[1]))
+    got = p[0:3]
+    ok("a slice reads back as a list", isinstance(got, list) and len(got) == 3, str(got))
+    ok("...with the right colours", got[2] == color.rgb(0, 0, 10))
+    try:
+        p[0:3] = [color.red, color.blue]
+        ok("a mismatched slice is refused", False)
+    except ValueError:
+        ok("a mismatched slice is refused", True)
+
+    # Iteration, which is what list() uses.
+    whole = list(p)
+    ok("list copies the whole table", len(whole) == len(p), "%d" % len(whole))
+    ok("...as colours", whole[1] == color.rgb(0, 10, 0))
+    ok("iteration agrees with indexing",
+       all(a == p[i] for i, a in enumerate(whole)))
+
+    # The raw bytes, both ways of reaching them, not copied.
+    ok("raw is four bytes an entry", len(p.raw) == len(p) * 4, str(len(p.raw)))
+    ok("raw and memoryview agree", len(p.raw) == len(memoryview(p)))
+    ok("raw is not a copy", bytes(p.raw[4:8]) == bytes(memoryview(p)[4:8]))
+    before = bytes(p.raw[0:4])
+    p[0] = color.rgb(200, 100, 50)
+    ok("writing an entry shows up in raw", bytes(p.raw[0:4]) != before)
+
+    # A free-standing palette, and assignment.
+    made = palette([color.rgb(9, 9, 9)] * 4)
+    ok("a palette can be built", len(made) == 4 and made.image is None)
+    gif.palette = made
+    ok("assigning copies the entries in", gif.palette[0] == color.rgb(9, 9, 9))
+    ok("...and the palette assigned from is untouched", made.image is None)
+    # A view shares the table, so it followed - which is the point of copying in.
+    ok("every view follows an assignment",
+       gif.spritesheet().sprite(0, 0).palette[0] == color.rgb(9, 9, 9))
+
+    gif.palette = [color.rgb(7, 7, 7), color.rgb(8, 8, 8)]
+    ok("a plain sequence works too", gif.palette[0] == color.rgb(7, 7, 7))
+    ok("...leaving the rest alone", gif.palette[2] == color.rgb(9, 9, 9))
+
+    try:
+        gif.palette = palette([color.red] * 256)
+        ok("too many colours is refused", False, "%d slots" % len(gif.palette))
+    except ValueError:
+        ok("too many colours is refused", True)
+    try:
+        image(8, 8).palette = made
+        ok("assigning to a plain image is refused", False)
+    except TypeError:
+        ok("assigning to a plain image is refused", True)
+    for bad in ([], [color.red] * 257):
+        try:
+            palette(bad)
+            ok("palette(%d colours) is refused" % len(bad), False)
+        except ValueError:
+            ok("palette(%d colours) is refused" % len(bad), True)
+
+
 def test_image_construction():
     # A wrapped buffer was taken entirely on trust, so image(64, 64, <16 bytes>)
     # built a 16KB image over 16 bytes and every draw ran past the end of it.
@@ -636,10 +728,10 @@ def test_indexed_image_type():
 
     # Recolouring the table is the reason it stays writable, and a sprite view
     # shares the table rather than copying it.
-    sheet.palette(1, color.rgb(255, 0, 255))
+    sheet.palette[1] = color.rgb(255, 0, 255)
     ok("a palette entry can be rewritten",
-       sheet.palette(1) == color.rgb(255, 0, 255).p, hex(sheet.palette(1)))
-    ok("a sprite view shares the table", frame.palette(1) == sheet.palette(1))
+       sheet.palette[1] == color.rgb(255, 0, 255), str(sheet.palette[1]))
+    ok("a sprite view shares the table", frame.palette[1] == sheet.palette[1])
 
     # It is still a perfectly good blit source, which is the point.
     dst = canvas(32, 32)
@@ -806,6 +898,7 @@ def main():
     test_custom_accepts_an_array()
     test_vector_text()
     test_animated_gif()
+    test_palette()
     test_image_construction()
     test_indexed_image_type()
     test_spritesheet()

@@ -77,21 +77,18 @@ class image:
     @cpp(get="self->image->palette_size()")
     def palette_size(self) -> int: "Entries in the colour table, 0 if not palettised (read-only)."
 
-    # Reading and writing the colour table is most of the point of an indexed
-    # image: one write recolours every pixel that indexes it, which is how a
-    # spritesheet gets team colours without a second copy of the pixels.
-    @overload
-    @cpp(args="index")
-    def palette(self, index: Annotated[int, Range(0, 255)]) -> int:
-        "The premultiplied colour at a palette index (compare color.p)."
-    @overload
-    @cpp(args="index c._p")
-    def palette(self, index: Annotated[int, Range(0, 255)], c: color) -> None:
-        "Set a palette entry, recolouring every pixel that indexes it."
-
-    @cpp(error="invalid parameter, expected palette(index) or palette(index, color)")
-    def palette(self, index, *args) -> None:
-        "Read or set an entry in an indexed image's colour table."
+    # ── the colour table ────────────────────────────────────────────────────
+    # A sequence of colours, and the one thing on an indexed image that *is*
+    # writable: one entry recolours every pixel indexing it. A view shares the
+    # table by pointer, so it reaches every sprite cut from the same sheet.
+    @property
+    @cpp(get_raw="palette_box(self)", set="palette_assign(self, {0})")
+    def palette(self) -> None:
+        ("The colour table as a mutable sequence, or None when this image is not "
+         "palettised - so `if img.palette:` reads as well as has_palette. Index "
+         "it, slice it, len() it, list() it or take a memoryview of its bytes. "
+         "Assign a palette or a sequence of colours to overwrite the table; that "
+         "copies the entries in, so every existing view follows.")
 
     @property
     @cpp(get="self->image->antialias()", set="self->image->antialias((antialias_t){0})")

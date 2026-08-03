@@ -4,29 +4,6 @@
 
 extern "C" {
 
-// image.palette: Read or set an entry in an indexed image's colour table.
-mp_obj_t mpy_image_palette(size_t n_args, const mp_obj_t *args) {
-  self(args[0], image_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_image_palette);
-#endif
-  if (n_args == 2 && mp_obj_is_int(args[1])) {
-    size_t _i = 1;
-    int index = (int)mp_obj_get_float(args[_i]); _i++;
-    if (index < 0 || index > 255) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("index out of range"));
-    return mp_obj_new_int(self->image->palette(index));
-  }
-  if (n_args == 3 && mp_obj_is_int(args[1]) && mp_obj_is_type(args[2], &type_color)) {
-    size_t _i = 1;
-    int index = (int)mp_obj_get_float(args[_i]); _i++;
-    if (index < 0 || index > 255) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("index out of range"));
-    color_t c = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
-    self->image->palette(index, c._p);
-    return mp_const_none;
-  }
-  mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected palette(index) or palette(index, color)"));
-}
-
 // image.clear: Fill the whole image with the current pen.
 mp_obj_t mpy_image_clear(size_t n_args, const mp_obj_t *args) {
   self(args[0], image_obj_t);
@@ -593,7 +570,6 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_palette_obj, 1, mpy_image_palette);
 extern "C" mp_obj_t image_load(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_obj, 1, image_load);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_load_static_obj, MP_ROM_PTR(&mpy_image_load_obj));
@@ -721,6 +697,12 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->palette_size()); return; }
       break;
     }
+    case MP_QSTR_palette:
+    {
+      if (action == GET) { dest[0] = palette_box(self); return; }
+      if (action == SET) { palette_assign(self, dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
     case MP_QSTR_antialias:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->antialias()); return; }
@@ -807,7 +789,6 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_BOTTOM), MP_ROM_INT(text_align_t::BOTTOM) },
   { MP_ROM_QSTR(MP_QSTR_CLIP), MP_ROM_INT(text_overflow_t::CLIP) },
   { MP_ROM_QSTR(MP_QSTR_ELLIPSES), MP_ROM_INT(text_overflow_t::ELLIPSES) },
-  { MP_ROM_QSTR(MP_QSTR_palette), MP_ROM_PTR(&mpy_image_palette_obj) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },

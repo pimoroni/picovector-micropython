@@ -457,10 +457,13 @@ def emit_attr(o, t):
             get = p.get_raw if p.get_raw else p.conv.to_mp(p.get)
             o(f"if (action == GET) {{ dest[0] = {get}; return; }}", 3)
             if p.writable:
+                # A property whose getter is get_raw has no converter: it works in
+                # mp_obj_t terms, so its setter is handed the value untouched.
+                value = p.conv.from_mp("dest[1]") if p.conv else "dest[1]"
                 if "{0}" in p.set:
-                    stmt = p.set.format(p.conv.from_mp("dest[1]"))
+                    stmt = p.set.format(value)
                 else:
-                    stmt = f"{p.set} = {p.conv.from_mp('dest[1]')}"
+                    stmt = f"{p.set} = {value}"
                 o(f"if (action == SET) {{ {stmt}; dest[0] = MP_OBJ_NULL; return; }}", 3)
         # Every case breaks. A case body only returns for the actions it handles,
         # so without this a SET on a read-only property runs on down the switch
@@ -581,13 +584,18 @@ def emit_print(o, t):
 
 
 def emit_buffer(o, t):
+    # An image exposes its pixels; anything else says what it exposes by passing
+    # buffer=(buf_expr, len_expr) instead of buffer=True.
+    buf, length = t.buffer_exprs or (
+        "self->image->ptr(0, 0)",
+        # The extent, not buffer_size(): a view's rows are a parent stride apart,
+        # so its last row sits past the bytes its own pixels would occupy.
+        "self->image->buffer_extent()")
     o(f"static mp_int_t {t.name}_get_buffer(mp_obj_t self_in, "
       "mp_buffer_info_t *bufinfo, mp_uint_t flags) {")
     o(f"self(self_in, {t.obj_struct});", 1)
-    o("bufinfo->buf = self->image->ptr(0, 0);", 1)
-    # The extent, not buffer_size(): a view's rows are a parent stride apart, so
-    # its last row sits past the bytes its own pixels would occupy.
-    o("bufinfo->len = self->image->buffer_extent();", 1)
+    o(f"bufinfo->buf = {buf};", 1)
+    o(f"bufinfo->len = {length};", 1)
     o("bufinfo->typecode = 'B';", 1)
     o("return 0;", 1)
     o("}")
@@ -663,6 +671,11 @@ def emit_type(o, t):
         slots.append(f"binary_op, (const void *){t.name}_binary_op")
     if t.has_attr:
         slots.append(f"attr, (const void *){t.name}_attr")
+    if t.has_subscr:
+        # Hand-written: a subscript has to tell an index from a slice and a read
+        # from a write, and build a list for the slice case. See native/*.cpp.
+        o(f'extern "C" mp_obj_t {t.name}_subscr(mp_obj_t, mp_obj_t, mp_obj_t);')
+        slots.append(f"subscr, (const void *){t.name}_subscr")
     if t.has_buffer:
         slots.append(f"buffer, (const void *){t.name}_get_buffer")
     if _has_locals(t):

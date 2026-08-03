@@ -238,6 +238,8 @@ class Type:
     has_print: bool = False
     has_make_new: bool = False
     has_buffer: bool = False
+    has_subscr: bool = False
+    buffer_exprs: Optional[tuple] = None
     has_del: bool = False
     has_binary_op: bool = False
     has_unary_op: bool = False
@@ -286,6 +288,9 @@ _BINOPS = {
 # different dict keys. It must agree with `__eq__` and return a small int.
 _UNOPS = {
     "__hash__": "HASH",
+    # len() arrives as a unary op rather than a method, so a sequence type
+    # declares it the same way __hash__ is declared.
+    "__len__": "LEN",
 }
 
 
@@ -603,7 +608,9 @@ def load() -> list[Type]:
         t = Type(
             name=name, mp_type=f"type_{name}", obj_struct=obj, cpp_class=api["cpp"],
             field=api["field"], field_is_ptr=ptr, arg_read=arg_read,
-            arg_type=arg_type, box=box, has_buffer=api["buffer"],
+            arg_type=arg_type, box=box, has_buffer=bool(api["buffer"]),
+            has_subscr=api["subscr"],
+            buffer_exprs=api["buffer"] if isinstance(api["buffer"], tuple) else None,
             del_stmt=api["del_stmt"], del_native=api["del_native"],
             includes=api["includes"],
         )

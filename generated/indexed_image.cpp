@@ -4,29 +4,6 @@
 
 extern "C" {
 
-// indexed_image.palette: Read or set an entry in the colour table.
-mp_obj_t mpy_indexed_image_palette(size_t n_args, const mp_obj_t *args) {
-  self(args[0], indexed_image_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_indexed_image_palette);
-#endif
-  if (n_args == 2 && mp_obj_is_int(args[1])) {
-    size_t _i = 1;
-    int index = (int)mp_obj_get_float(args[_i]); _i++;
-    if (index < 0 || index > 255) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("index out of range"));
-    return mp_obj_new_int(self->image->palette(index));
-  }
-  if (n_args == 3 && mp_obj_is_int(args[1]) && mp_obj_is_type(args[2], &type_color)) {
-    size_t _i = 1;
-    int index = (int)mp_obj_get_float(args[_i]); _i++;
-    if (index < 0 || index > 255) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("index out of range"));
-    color_t c = (((color_obj_t *)MP_OBJ_TO_PTR(args[_i]))->c); _i++;
-    self->image->palette(index, c._p);
-    return mp_const_none;
-  }
-  mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected palette(index) or palette(index, color)"));
-}
-
 // indexed_image.get: Read the pixel colour at p, resolved through the palette.
 mp_obj_t mpy_indexed_image_get(size_t n_args, const mp_obj_t *args) {
   self(args[0], indexed_image_obj_t);
@@ -38,7 +15,6 @@ mp_obj_t mpy_indexed_image_get(size_t n_args, const mp_obj_t *args) {
   return pv::box_color_packed(self->image->get(p.x, p.y));
 }
 
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_palette_obj, 1, mpy_indexed_image_palette);
 extern "C" mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_window_obj, 2, indexed_image_window);
 extern "C" mp_obj_t indexed_image_spritesheet(size_t n_args, const mp_obj_t *args);
@@ -92,6 +68,12 @@ void indexed_image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
       if (action == GET) { dest[0] = mp_obj_new_int(self->image->palette_size()); return; }
       break;
     }
+    case MP_QSTR_palette:
+    {
+      if (action == GET) { dest[0] = palette_box(self); return; }
+      if (action == SET) { palette_assign(self, dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
   }
   dest[1] = MP_OBJ_SENTINEL;
 }
@@ -105,7 +87,6 @@ static mp_int_t indexed_image_get_buffer(mp_obj_t self_in, mp_buffer_info_t *buf
 }
 
 static const mp_rom_map_elem_t indexed_image_locals_dict_table[] = {
-  { MP_ROM_QSTR(MP_QSTR_palette), MP_ROM_PTR(&mpy_indexed_image_palette_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_indexed_image_window_obj) },
   { MP_ROM_QSTR(MP_QSTR_spritesheet), MP_ROM_PTR(&mpy_indexed_image_spritesheet_obj) },
   { MP_ROM_QSTR(MP_QSTR_sprite), MP_ROM_PTR(&mpy_indexed_image_sprite_obj) },
