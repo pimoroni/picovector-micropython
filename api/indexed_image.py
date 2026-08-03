@@ -41,11 +41,18 @@ class indexed_image:
     def height(self) -> int: "Height in pixels (read-only)."
 
     @property
-    @cpp(get_raw="mp_obj_new_bytearray_by_ref(self->image->buffer_size(), self->image->ptr(0, 0))")
+    @cpp(get_raw="mp_obj_new_bytearray_by_ref(self->image->buffer_extent(), self->image->ptr(0, 0))")
     def raw(self) -> None:
         ("The pixels as a bytearray view (read-only, by reference). One byte per "
          "pixel here, each a palette index, so this is a quarter the size of the "
          "same picture as an image.")
+
+    @property
+    @cpp(get="self->image->row_stride()")
+    def stride(self) -> int:
+        ("Bytes from the start of one row of raw to the next (read-only). One byte "
+         "a pixel here, and a view inherits its parent's stride, so index raw as "
+         "y * stride + x, never y * width.")
 
     @property
     @cpp(get="self->image->alpha()", set="self->image->alpha({0})")

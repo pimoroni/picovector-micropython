@@ -722,6 +722,34 @@ def test_spritesheet():
     # A sheet keeps its source alive and can hand it back.
     ok("a sheet reports its source", s.source is src)
 
+    # A cell is a view, so its rows are a *sheet* pitch apart. Without stride
+    # there is no way to walk them, and raw has to be long enough to hold the
+    # last one - w * h * 4 bytes stops six rows short of it on this sheet.
+    cell = sheet.sprite(3, 1)
+    ok("a full image strides by its own width", src.stride == 70 * 4, str(src.stride))
+    ok("a cell inherits the sheet's stride", cell.stride == 70 * 4, str(cell.stride))
+    ok("a cell's raw reaches its last row",
+       len(cell.raw) >= 7 * cell.stride + 10 * 4, str(len(cell.raw)))
+
+    # ...and indexing by stride gives back the colour that cell was filled with.
+    want = color.rgb(20 + 3 * 30, 20 + 1 * 100, 40)
+    raw = cell.raw
+    got = True
+    for y in range(8):
+        for x in range(10):
+            if raw[y * cell.stride + x * 4] != want.r:
+                got = False
+    ok("every row of a cell reads back through stride", got)
+    # The naive contiguous index does not, which is why stride exists.
+    ok("a contiguous index would read the wrong pixel",
+       raw[1 * 10 * 4] != want.r or cell.stride == 10 * 4)
+
+    # An indexed cell strides by a byte a pixel, not four.
+    gcell = image.load(GIF).spritesheet().sprite(1, 0)
+    ok("an indexed cell strides in bytes", gcell.stride == 40, str(gcell.stride))
+    ok("an indexed cell's raw reaches its last row",
+       len(gcell.raw) >= 7 * gcell.stride + 10, str(len(gcell.raw)))
+
     # An indexed source gives indexed cells, so the sheet is storage-agnostic.
     gif = image.load(GIF).spritesheet()
     ok("a cell of an indexed source is an indexed_image",

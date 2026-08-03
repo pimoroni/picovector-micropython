@@ -583,7 +583,9 @@ def emit_buffer(o, t):
       "mp_buffer_info_t *bufinfo, mp_uint_t flags) {")
     o(f"self(self_in, {t.obj_struct});", 1)
     o("bufinfo->buf = self->image->ptr(0, 0);", 1)
-    o("bufinfo->len = self->image->buffer_size();", 1)
+    # The extent, not buffer_size(): a view's rows are a parent stride apart, so
+    # its last row sits past the bytes its own pixels would occupy.
+    o("bufinfo->len = self->image->buffer_extent();", 1)
     o("bufinfo->typecode = 'B';", 1)
     o("return 0;", 1)
     o("}")

@@ -68,7 +68,12 @@ void indexed_image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     }
     case MP_QSTR_raw:
     {
-      if (action == GET) { dest[0] = mp_obj_new_bytearray_by_ref(self->image->buffer_size(), self->image->ptr(0, 0)); return; }
+      if (action == GET) { dest[0] = mp_obj_new_bytearray_by_ref(self->image->buffer_extent(), self->image->ptr(0, 0)); return; }
+      break;
+    }
+    case MP_QSTR_stride:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_int(self->image->row_stride()); return; }
       break;
     }
     case MP_QSTR_alpha:
@@ -94,7 +99,7 @@ void indexed_image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
 static mp_int_t indexed_image_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp_uint_t flags) {
   self(self_in, indexed_image_obj_t);
   bufinfo->buf = self->image->ptr(0, 0);
-  bufinfo->len = self->image->buffer_size();
+  bufinfo->len = self->image->buffer_extent();
   bufinfo->typecode = 'B';
   return 0;
 }

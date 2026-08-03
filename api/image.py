@@ -54,8 +54,16 @@ class image:
     def height(self) -> int: "Height in pixels (read-only)."
 
     @property
-    @cpp(get_raw="mp_obj_new_bytearray_by_ref(self->image->buffer_size(), self->image->ptr(0, 0))")
+    @cpp(get_raw="mp_obj_new_bytearray_by_ref(self->image->buffer_extent(), self->image->ptr(0, 0))")
     def raw(self) -> None: "The framebuffer as a bytearray view (read-only, by reference)."
+
+    @property
+    @cpp(get="self->image->row_stride()")
+    def stride(self) -> int:
+        ("Bytes from the start of one row of raw to the next (read-only). A view "
+         "inherits its parent's, so a spritesheet cell strides by the whole "
+         "sheet's pitch rather than its own width: index raw as "
+         "y * stride + x * 4, never y * width * 4.")
 
     @property
     @cpp(get="self->image->clip()", set="self->image->clip({0})")
