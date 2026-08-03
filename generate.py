@@ -393,9 +393,11 @@ def emit_make_new(o, t):
     if mk.kind == "image":
         o("int w = mp_obj_get_int(args[0]);", 1)
         o("int h = mp_obj_get_int(args[1]);", 1)
+        o("size_t bytes = pv::check_image_size(w, h);", 1)
         o("if (n_args > 2) {", 1)
         o("mp_buffer_info_t bufinfo;", 2)
         o("mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);", 2)
+        o("pv::check_image_buffer(bufinfo.len, bytes);", 2)
         o("self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h);", 2)
         o("} else {", 1)
         o("self->image = new (m_malloc(sizeof(image_t))) image_t(w, h);", 2)

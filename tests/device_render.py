@@ -558,6 +558,35 @@ def unsettable(obj, name, value):
         return True
 
 
+def test_image_construction():
+    # A wrapped buffer was taken entirely on trust, so image(64, 64, <16 bytes>)
+    # built a 16KB image over 16 bytes and every draw ran past the end of it.
+    ok("a buffer big enough is accepted", image(4, 4, bytearray(4 * 4 * 4)).width == 4)
+    ok("...and one byte over is fine too", image(4, 4, bytearray(4 * 4 * 4 + 1)).width == 4)
+    for w, h, n in ((64, 64, 16), (4, 4, 4 * 4 * 4 - 1), (100, 1, 4)):
+        try:
+            image(w, h, bytearray(n))
+            ok("image(%d, %d, %d bytes) is refused" % (w, h, n), False)
+        except ValueError:
+            ok("image(%d, %d, %d bytes) is refused" % (w, h, n), True)
+
+    # A size that cannot be one, rather than one that wraps a 32-bit byte count
+    # into something small and plausible.
+    for w, h in ((0, 10), (10, 0), (-5, 10), (10, -5), (65536, 65536), (100000, 100000)):
+        try:
+            image(w, h)
+            ok("image(%d, %d) is refused" % (w, h), False)
+        except (ValueError, MemoryError):
+            ok("image(%d, %d) is refused" % (w, h), True)
+
+    # raw and the buffer protocol describe the same bytes.
+    img = image(8, 4)
+    ok("raw and memoryview agree", len(img.raw) == len(memoryview(img)),
+       "%d vs %d" % (len(img.raw), len(memoryview(img))))
+    ok("...and that is the whole buffer", len(img.raw) == 8 * 4 * 4, str(len(img.raw)))
+    ok("a full image strides by its width", img.stride == 8 * 4, str(img.stride))
+
+
 def test_indexed_image_type():
     sheet = image.load(GIF)
     plain = image(16, 16)
@@ -777,6 +806,7 @@ def main():
     test_custom_accepts_an_array()
     test_vector_text()
     test_animated_gif()
+    test_image_construction()
     test_indexed_image_type()
     test_spritesheet()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))

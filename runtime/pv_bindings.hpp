@@ -184,6 +184,33 @@ namespace pv {
     return box_color(color_from_premul(c));
   }
 
+  // ── constructing an image ──────────────────────────────────────────────────
+  // How many bytes an RGBA image of this size needs, refusing a size that cannot
+  // be one. The multiply is done in 64 bits and checked, because on the badge
+  // size_t is 32 bits: image(65536, 65536) wants 16GB, which wraps to something
+  // small and plausible, and the image then believes it owns the larger area.
+  static inline size_t check_image_size(int w, int h) {
+    if(w <= 0 || h <= 0) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image width and height must be positive"));
+    }
+    uint64_t bytes = (uint64_t)(uint32_t)w * (uint32_t)h * 4u;
+    if(bytes > (uint64_t)SIZE_MAX) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image is too large to address"));
+    }
+    return (size_t)bytes;
+  }
+
+  // A caller-supplied buffer has to hold the size it is being wrapped at. It was
+  // taken on trust, so image(64, 64, bytearray(16)) built a 16KB image over 16
+  // bytes and every draw wrote past the end of it.
+  static inline void check_image_buffer(size_t have, size_t want) {
+    if(have < want) {
+      mp_raise_msg_varg(&mp_type_ValueError,
+                        MP_ERROR_TEXT("buffer is %u bytes, need %u for an image this size"),
+                        (unsigned)have, (unsigned)want);
+    }
+  }
+
   // ── a source image, of either type ─────────────────────────────────────────
   // `image` and `indexed_image` are two MicroPython types over one image_t, and
   // an indexed buffer is a perfectly good thing to blit *from*. Both obj structs
