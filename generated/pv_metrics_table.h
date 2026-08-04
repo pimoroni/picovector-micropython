@@ -72,6 +72,8 @@ enum {
   PV_M_brush_image,  // brush.image
   PV_M_brush_gradient,  // brush.gradient
   PV_M_brush_geometry,  // brush.geometry
+  PV_M_brush_fractal,  // brush.fractal
+  PV_M_brush_ramp,  // brush.ramp
   PV_M_brush_erase,  // brush.erase
   PV_M_brush_pixelate,  // brush.pixelate
   PV_M_brush_blur,  // brush.blur

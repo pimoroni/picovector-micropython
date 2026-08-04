@@ -69,6 +69,8 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "brush.image",
   "brush.gradient",
   "brush.geometry",
+  "brush.fractal",
+  "brush.ramp",
   "brush.erase",
   "brush.pixelate",
   "brush.blur",

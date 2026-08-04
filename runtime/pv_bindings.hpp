@@ -279,6 +279,43 @@ namespace pv {
     g->geometry(x1, y1, x2, y2, transform);
   }
 
+  // ── fractal noise ──────────────────────────────────────────────────────────
+  // Reached through a plain brush, for the same reason gradient geometry is.
+  static inline fractal_brush_t *as_fractal_or_raise(brush_t *b) {
+    fractal_brush_t *f = b ? b->as_fractal() : nullptr;
+    if(!f) mp_raise_TypeError(MP_ERROR_TEXT("only a fractal brush has that"));
+    return f;
+  }
+
+  static inline void brush_ramp(brush_t *b, const float *positions,
+                                const color_t *stops, int stop_count) {
+    as_fractal_or_raise(b)->ramp(positions, stops, stop_count);
+  }
+
+  static inline mat3_t brush_placement(brush_t *b) {
+    return as_fractal_or_raise(b)->placement;
+  }
+
+  static inline void brush_place(brush_t *b, mat3_t m) {
+    as_fractal_or_raise(b)->geometry(&m);
+  }
+
+  static inline int brush_seed(brush_t *b) {
+    return (int)as_fractal_or_raise(b)->seed;
+  }
+
+  static inline int brush_repeat(brush_t *b) {
+    return as_fractal_or_raise(b)->repeat;
+  }
+
+  static inline float brush_cell(brush_t *b) {
+    return as_fractal_or_raise(b)->cell;
+  }
+
+  static inline void brush_resize(brush_t *b, float scale) {
+    as_fractal_or_raise(b)->resize(scale);
+  }
+
   static inline mp_obj_t box_brush(brush_t *b) {
     brush_obj_t *o = mp_obj_malloc(brush_obj_t, &type_brush);
     o->brush = b;

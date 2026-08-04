@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pv import api, cpp, const, overload, Range, ColorStops, Pattern8, AnyImage
+from pv import api, cpp, const, overload, Range, ColorStops, Pattern8, AnyImage, XY
 
 
 @api("brush_t", field="brush", ptr=True,
@@ -69,6 +69,69 @@ class brush:
         ("Move a gradient brush without rebuilding it. The stops are unchanged, "
          "so an animated gradient can be built once and repositioned each frame. "
          "Raises TypeError on any other kind of brush.")
+
+    # fractal(scale, octaves, persistence, transform) ------------------------
+    @staticmethod
+    @cpp(call="fractal_brush_t", emit="mnew")
+    def fractal(scale: float = 64.0,
+                octaves: Annotated[int, Range(1, 4, clamp=True)] = 3,
+                persistence: float = 0.4, repeat: int = 0, seed: int = 0,
+                transform: mat3 | None = None) -> brush:
+        ("Fractal (fBm) value noise brush - clouds, smoke, fire, terrain, marbling. "
+         "scale: device pixels per cell of the coarsest pass, which sets feature "
+         "size independently of the area filled. octaves: 1-4 passes, each double "
+         "the frequency of the last. persistence: how much each pass contributes "
+         "relative to the one below it, 0.05 smooth masses to 0.95 wispy detail. "
+         "repeat: tile period in cells, rounded down to a power of two, so the "
+         "field repeats every repeat * scale pixels and a translation of that much "
+         "is seamless; the maximum, and the default, is 256 >> (octaves - 1). "
+         "Starts black-to-white; call ramp() to colour it. Optional: transform "
+         "(mat3).")
+
+    # ramp(stops) ------------------------------------------------------------
+    @cpp(call="pv::brush_ramp", emit="free",
+         args="self->brush stops_positions stops_colors stops_n")
+    def ramp(self, stops: ColorStops) -> None:
+        ("Recolour a fractal brush. stops: list of (position 0-1, color), up to 16. "
+         "Positions are area fractions of the field, so a stop at 0.6 sits where "
+         "60% of the field is below it. Two stops sharing a "
+         "position are a hard edge, spaced stops a soft one; transparent stops lay "
+         "the field over existing content. Raises TypeError on any other kind of "
+         "brush.")
+
+    # scale -------------------------------------------------------------------
+    @property
+    @cpp(get="pv::brush_cell(self->brush)", set="pv::brush_resize(self->brush, {0})")
+    def scale(self) -> float:
+        ("A fractal brush's cell size in device pixels - its feature size. Composed "
+         "inside transform, so changing one leaves the other alone. Raises "
+         "TypeError on any other kind of brush.")
+
+    # seed --------------------------------------------------------------------
+    @property
+    @cpp(get="pv::brush_seed(self->brush)")
+    def seed(self) -> int:
+        ("The seed this fractal brush's field was built from. Raises TypeError on "
+         "any other kind of brush.")
+
+    # repeat ------------------------------------------------------------------
+    @property
+    @cpp(get="pv::brush_repeat(self->brush)")
+    def repeat(self) -> int:
+        ("A fractal brush's tile period in cells, after rounding down to a power of "
+         "two and capping at 256 >> (octaves - 1). Multiply by scale for the "
+         "seamless translation distance in pixels. Raises TypeError on any other "
+         "kind of brush.")
+
+    # transform ---------------------------------------------------------------
+    @property
+    @cpp(get="pv::brush_placement(self->brush)", set="pv::brush_place(self->brush, {0})")
+    def transform(self) -> mat3:
+        ("A fractal brush's placement, applied outside its scale: an identity "
+         "transform gives cells of scale pixels, and one that only rotates or "
+         "translates leaves feature size alone. Translation is in device pixels. "
+         "The ramp is unchanged, so this is what an animated fill assigns each "
+         "frame. Raises TypeError on any other kind of brush.")
 
     # erase(color=None) ------------------------------------------------------
     @overload

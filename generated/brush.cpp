@@ -93,6 +93,50 @@ mp_obj_t mpy_brush_geometry(size_t n_args, const mp_obj_t *args) {
   return mp_const_none;
 }
 
+// brush.fractal: Fractal (fBm) value noise brush - clouds, smoke, fire, terrain, marbling. scale: device pixels per cell of the coarsest pass, which sets feature size independently of the area filled. octaves: 1-4 passes, each double the frequency of the last. persistence: how much each pass contributes relative to the one below it, 0.05 smooth masses to 0.95 wispy detail. repeat: tile period in cells, rounded down to a power of two, so the field repeats every repeat * scale pixels and a translation of that much is seamless; the maximum, and the default, is 256 >> (octaves - 1). Starts black-to-white; call ramp() to colour it. Optional: transform (mat3).
+mp_obj_t mpy_brush_fractal(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_fractal);
+#endif
+  size_t _i = 0;
+  float scale = 64.0;
+  if (n_args > _i) { scale = mp_obj_get_float(args[_i]); _i++; }
+  int octaves = 3;
+  if (n_args > _i) { octaves = (int)mp_obj_get_float(args[_i]); _i++; }
+  if (octaves < 1) octaves = 1;
+  if (octaves > 4) octaves = 4;
+  float persistence = 0.4;
+  if (n_args > _i) { persistence = mp_obj_get_float(args[_i]); _i++; }
+  int repeat = 0;
+  if (n_args > _i) { repeat = (int)mp_obj_get_float(args[_i]); _i++; }
+  int seed = 0;
+  if (n_args > _i) { seed = (int)mp_obj_get_float(args[_i]); _i++; }
+  mat3_t * transform = nullptr;
+  if (n_args > _i && mp_obj_is_type(args[_i], &type_mat3)) { transform = &((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++; }
+  return pv::box_brush(m_new_class(fractal_brush_t, scale, octaves, persistence, repeat, seed, transform));
+}
+
+// brush.ramp: Recolour a fractal brush. stops: list of (position 0-1, color), up to 16. Positions are area fractions of the field, so a stop at 0.6 sits where 60% of the field is below it. Two stops sharing a position are a hard edge, spaced stops a soft one; transparent stops lay the field over existing content. Raises TypeError on any other kind of brush.
+mp_obj_t mpy_brush_ramp(size_t n_args, const mp_obj_t *args) {
+  self(args[0], brush_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_brush_ramp);
+#endif
+  size_t _i = 1;
+  size_t stops_n; mp_obj_t *stops_items;
+  mp_obj_get_array(args[_i], &stops_n, &stops_items); _i++;
+  if (stops_n < 1 || stops_n > 16) mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("gradient expects 1 to 16 colour stops"));
+  float stops_positions[16]; color_t stops_colors[16];
+  for (size_t _s = 0; _s < stops_n; _s++) {
+    size_t _sl; mp_obj_t *_stop; mp_obj_get_array(stops_items[_s], &_sl, &_stop);
+    if (_sl != 2 || !mp_obj_is_type(_stop[1], &type_color)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("each stop must be (position, color)"));
+    stops_positions[_s] = mp_obj_get_float(_stop[0]);
+    stops_colors[_s] = ((color_obj_t *)MP_OBJ_TO_PTR(_stop[1]))->c;
+  }
+  pv::brush_ramp(self->brush, stops_positions, stops_colors, stops_n);
+  return mp_const_none;
+}
+
 // brush.erase: Erase/window brush. No args erases (dst-out); pass a color for a translucent window that lerps the destination toward that colour by shape coverage.
 mp_obj_t mpy_brush_erase(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
@@ -338,6 +382,9 @@ static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_image_static_obj, MP_ROM_PTR(&
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_gradient_obj, 6, mpy_brush_gradient);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_gradient_static_obj, MP_ROM_PTR(&mpy_brush_gradient_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_geometry_obj, 5, mpy_brush_geometry);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_fractal_obj, 0, mpy_brush_fractal);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_fractal_static_obj, MP_ROM_PTR(&mpy_brush_fractal_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_ramp_obj, 2, mpy_brush_ramp);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_erase_obj, 0, mpy_brush_erase);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_erase_static_obj, MP_ROM_PTR(&mpy_brush_erase_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_pixelate_obj, 1, mpy_brush_pixelate);
@@ -383,6 +430,36 @@ static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_nightvision_static_obj, MP_ROM
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_brush_chromatic_obj, 1, mpy_brush_chromatic);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_brush_chromatic_static_obj, MP_ROM_PTR(&mpy_brush_chromatic_obj));
 
+void brush_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
+  self(self_in, brush_obj_t);
+  action_t action = m_attr_action(dest);
+  switch (attr) {
+    case MP_QSTR_scale:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_float(pv::brush_cell(self->brush)); return; }
+      if (action == SET) { pv::brush_resize(self->brush, mp_obj_get_float(dest[1])); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
+    case MP_QSTR_seed:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_int(pv::brush_seed(self->brush)); return; }
+      break;
+    }
+    case MP_QSTR_repeat:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_int(pv::brush_repeat(self->brush)); return; }
+      break;
+    }
+    case MP_QSTR_transform:
+    {
+      if (action == GET) { dest[0] = pv::box_mat3(pv::brush_placement(self->brush)); return; }
+      if (action == SET) { pv::brush_place(self->brush, ((mat3_obj_t *)MP_OBJ_TO_PTR(dest[1]))->m); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
+  }
+  dest[1] = MP_OBJ_SENTINEL;
+}
+
 static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_LINEAR), MP_ROM_INT(GRADIENT_LINEAR) },
   { MP_ROM_QSTR(MP_QSTR_RADIAL), MP_ROM_INT(GRADIENT_RADIAL) },
@@ -391,6 +468,8 @@ static const mp_rom_map_elem_t brush_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_image), MP_ROM_PTR(&mpy_brush_image_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_gradient), MP_ROM_PTR(&mpy_brush_gradient_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_geometry), MP_ROM_PTR(&mpy_brush_geometry_obj) },
+  { MP_ROM_QSTR(MP_QSTR_fractal), MP_ROM_PTR(&mpy_brush_fractal_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_ramp), MP_ROM_PTR(&mpy_brush_ramp_obj) },
   { MP_ROM_QSTR(MP_QSTR_erase), MP_ROM_PTR(&mpy_brush_erase_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_pixelate), MP_ROM_PTR(&mpy_brush_pixelate_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_blur), MP_ROM_PTR(&mpy_brush_blur_static_obj) },
@@ -420,6 +499,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
   type_brush,
   MP_QSTR_brush,
   MP_TYPE_FLAG_NONE,
+  attr, (const void *)brush_attr,
   locals_dict, &brush_locals_dict
 );
 
