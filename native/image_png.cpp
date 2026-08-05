@@ -173,6 +173,11 @@ extern "C" {
     }
 
     image_t *target = decode_data->image;
+
+    // Only the indexed branch stores one byte a pixel. The rest store four, so
+    // decoding into a palettised target would write past the end of every row.
+    if(target->has_palette() && pDraw->iPixelType != PNG_PIXEL_INDEXED) return;
+
     uint8_t *pixels = (uint8_t *)pDraw->pPixels;
 
     uint8_t *psrc = (uint8_t *)pDraw->pPixels;

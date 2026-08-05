@@ -146,6 +146,11 @@ extern "C" {
   static int jpegdec_decode_callback(JPEGDRAW *pDraw) {
     jpecdec_decode_data_t* decode_data = (jpecdec_decode_data_t*)pDraw->pUser;
     image_t *target = decode_data->image;
+
+    // A JPEG is never indexed, so every write below stores a four-byte pixel.
+    // Into a palettised target that would run past the end of every row.
+    if(target->has_palette()) return 1;
+
     uint8_t *pixels = (uint8_t *)pDraw->pPixels;
 
     fx16_t cur_y = f_to_fx16(decode_data->y_ratio * pDraw->y);
