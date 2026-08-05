@@ -30,7 +30,6 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/shape.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/palette.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/image.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/indexed_image.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/spritesheet.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/vector_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp

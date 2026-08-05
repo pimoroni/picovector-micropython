@@ -17,7 +17,7 @@
 import time
 from array import array
 
-from picovector import (color, rect, vec2, shape, image, indexed_image,
+from picovector import (color, rect, vec2, shape, image,
                         palette, spritesheet, tween, font)
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
@@ -475,6 +475,17 @@ GIF = (
     b'\x0cIp\xa4\x00\x86\x04\x02\x02\x00;'
 )
 
+# The same size, as a flat-filled truecolour PNG: what load_into decodes through
+# the four-bytes-a-pixel path, which a palettised target has to refuse.
+PNG = (
+    b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR'
+    b'\x00\x00\x00(\x00\x00\x00\x08\x08\x02\x00\x00\x00\x040*'
+    b'\x0c\x00\x00\x00\x18IDATx\xdacP\x98pa'
+    b'@\x10\xc3\xa8\xc5\xa3\x16\x8fZL-\x04\x00\xdc\xde\xe0'
+    b"\x10%\xe5\xfc'\x00\x00\x00\x00IEND\xaeB`"
+    b'\x82'
+)
+
 
 def test_animated_gif():
     img = image.load(GIF)
@@ -536,10 +547,7 @@ def test_animated_gif():
         ok("loading a gif at a size is refused", True)
 
 
-# ── the indexed image type ──────────────────────────────────────────────────
-# A palettised buffer is a source, never a render target: nothing in the library
-# can rasterise into one byte a pixel. So it gets a type that offers only what it
-# can answer, and the absence is the error message.
+# ── small helpers ───────────────────────────────────────────────────────────
 
 def gone(obj, name):
     """True when `name` is not a member of obj at all."""
@@ -577,6 +585,7 @@ def test_palette():
     # Indexing, negative indexing, and the bounds.
     p[1] = color.rgb(1, 2, 3)
     ok("an entry can be written", p[1] == color.rgb(1, 2, 3), str(p[1]))
+    ok("an index narrows a float too", p[1.0] == p[1])
     p[-1] = color.rgb(4, 5, 6)
     ok("a negative index is the end", p[len(p) - 1] == color.rgb(4, 5, 6))
     for bad in (len(p), -len(p) - 1, 999):
@@ -680,83 +689,100 @@ def test_image_construction():
     ok("a full image strides by its width", img.stride == 8 * 4, str(img.stride))
 
 
-def test_indexed_image_type():
+# ── a palettised image ──────────────────────────────────────────────────────
+# One byte a pixel indexing a colour table. Every brush and filter stores four,
+# so nothing can draw into one - the whole drawing surface is a quiet no-op and
+# the indices survive it. Blitting from one is the point, and the table is
+# writable. There is one image type; `palette` is what tells them apart.
+
+def test_palettised_image():
     sheet = image.load(GIF)
     plain = image(16, 16)
 
-    ok("a gif loads as an indexed_image", type(sheet) is indexed_image, str(type(sheet)))
-    ok("a plain buffer is an image", type(plain) is image, str(type(plain)))
-    ok("an indexed_image says it is palettised", sheet.has_palette)
-    ok("an indexed_image reports its table size", sheet.palette_size > 0,
-       str(sheet.palette_size))
+    ok("a gif loads as an image", type(sheet) is image, str(type(sheet)))
+    ok("...carrying a palette", sheet.palette is not None)
+    ok("a plain buffer has none", plain.palette is None)
+    ok("has_palette agrees", sheet.has_palette and not plain.has_palette)
+    ok("it reports its table size", sheet.palette_size > 0, str(sheet.palette_size))
 
-    # The whole drawing surface is absent, so the error names what is wrong.
-    for name in ("oilpaint", "blur", "dither", "text", "clear", "put", "shape",
-                 "rectangle", "circle", "blit", "load_into", "batch",
-                 "measure_text", "shapes"):
-        ok("indexed_image has no %s" % name, gone(sheet, name))
+    # Every way in draws nothing and leaves the indices exactly as they were.
+    before = bytes(sheet.raw)
+    sheet.pen = color.rgb(255, 255, 255)
+    sheet.clear()
+    sheet.rectangle(rect(2, 2, 6, 4))
+    sheet.circle(vec2(8, 4), 3)
+    sheet.line(vec2(0, 0), vec2(39, 7))
+    sheet.put(vec2(1, 1))
+    sheet.hspan(0, 0, 20)
+    sheet.vspan(0, 0, 8)
+    sheet.triangle(vec2(0, 0), vec2(10, 0), vec2(5, 7))
+    sheet.shape(shape.rectangle(0, 0, 8, 8))
+    sheet.blur(2.0)
+    sheet.dither()
+    sheet.invert()
+    sheet.oilpaint(2, 128)
+    sheet.bloom()
+    sheet.wave(4, 4)
+    sheet.zoom(128)
+    sheet.edgeglow()
+    ok("drawing into a palettised image changes nothing", bytes(sheet.raw) == before)
 
-    for name in ("pen", "font", "clip", "cursor", "fill_rule", "antialias"):
-        ok("indexed_image has no %s property" % name, gone(sheet, name))
+    # Including decode: the PNG and JPEG paths store four bytes a pixel too.
+    sheet.load_into(PNG)
+    ok("...and so does load_into", bytes(sheet.raw) == before)
 
-    ok("indexed_image refuses a pen", unsettable(sheet, "pen", color.rgb(255, 0, 0)))
-    ok("indexed_image refuses a clip", unsettable(sheet, "clip", rect(0, 0, 4, 4)))
+    # It is still a target for the things that are about the buffer, not the
+    # pixels: alpha is read from the source side of a blit.
+    sheet.alpha = 128
+    ok("alpha is settable", sheet.alpha == 128)
+    sheet.alpha = 255
 
     # A read-only property has to refuse rather than run on into the next
     # setter's branch: `img.width = n` once assigned img.clip.
-    before = sheet.alpha
+    before_alpha = sheet.alpha
     ok("width is read-only", unsettable(sheet, "width", 4))
-    ok("...and refusing it left alpha alone", sheet.alpha == before, str(sheet.alpha))
+    ok("...and refusing it left alpha alone", sheet.alpha == before_alpha)
 
-    # What it does keep: the table, the grid, the timings. alpha stays writable
-    # because a blit reads it from the source side.
-    sheet.alpha = 128
-    ok("indexed_image alpha is settable", sheet.alpha == 128)
-    sheet.alpha = 255
-
-    # The grid and the timings live on the sheet now, not on the image.
-    for name in ("cols", "rows", "delays", "duration", "frame_at"):
-        ok("indexed_image has no %s" % name, gone(sheet, name))
-    # Addressing a cell needs a sheet: an image has no grid to index, whatever
-    # file it came from.
-    ok("indexed_image has no sprite", gone(sheet, "sprite"))
+    # The grid and the timings live on the sheet, not on the image.
+    for name in ("cols", "rows", "delays", "duration", "frame_at", "sprite"):
+        ok("an image has no %s" % name, gone(sheet, name))
     grid = sheet.spritesheet()
-    ok("an indexed sheet keeps the grid", grid.cols == 4 and grid.rows == 1)
-    ok("an indexed sheet reports the timings", grid.timings == (60, 90, 120, 150))
+    ok("a palettised sheet keeps the grid", grid.cols == 4 and grid.rows == 1)
+    ok("...and reports the timings", grid.timings == (60, 90, 120, 150))
 
+    # Views share the table by pointer, so one write recolours every cell.
     frame = grid.sprite(1)
-    ok("a cell of an indexed sheet is indexed", type(frame) is indexed_image,
-       str(type(frame)))
-    ok("a window of an indexed_image is indexed",
-       type(sheet.window(rect(0, 0, 10, 8))) is indexed_image)
-
-    # Recolouring the table is the reason it stays writable, and a sprite view
-    # shares the table rather than copying it.
+    ok("a cell keeps the palette", frame.palette is not None)
+    ok("a window keeps it too", sheet.window(rect(0, 0, 10, 8)).palette is not None)
     sheet.palette[1] = color.rgb(255, 0, 255)
-    ok("an index narrows a float too", p[1.0] == p[1])
     ok("a palette entry can be rewritten",
        sheet.palette[1] == color.rgb(255, 0, 255), str(sheet.palette[1]))
-    ok("a sprite view shares the table", frame.palette[1] == sheet.palette[1])
+    ok("a cell shares the table", frame.palette[1] == sheet.palette[1])
 
-    # It is still a perfectly good blit source, which is the point.
+    # Blitting out of one is what it is for.
     dst = canvas(32, 32)
     dst.pen = BG
     dst.clear()
     dst.blit(frame, vec2(0, 0))
-    ok("an indexed frame blits onto an image", scan(dst)[0] > 0)
+    ok("a palettised frame blits onto an image", scan(dst)[0] > 0)
 
     dst.pen = BG
     dst.clear()
     dst.blit(frame, rect(0, 0, 10, 8), rect(0, 0, 20, 16))
-    ok("an indexed frame blits scaled", scan(dst)[0] > 0)
+    ok("...blits scaled", scan(dst)[0] > 0)
 
     dst.pen = BG
     dst.clear()
     dst.blit_vspan(frame, vec2(4, 0), 16, vec2(0, 0), vec2(9, 7))
-    ok("an indexed frame blits as a vspan", scan(dst)[0] > 0)
+    ok("...and blits as a vspan", scan(dst)[0] > 0)
 
-    # ...and the span blits now check what they were handed. They used to cast
-    # any object straight to an image struct and read through it.
+    # Blitting *into* one is refused as quietly as drawing is.
+    before = bytes(sheet.raw)
+    sheet.blit(plain, vec2(0, 0))
+    ok("blitting into a palettised image changes nothing", bytes(sheet.raw) == before)
+
+    # The span blits check what they were handed. They used to cast any object
+    # straight to an image struct and read through it.
     for bad in (None, 42, vec2(0, 0), "not an image"):
         try:
             dst.blit_vspan(bad, vec2(0, 0), 4, vec2(0, 0), vec2(1, 1))
@@ -850,9 +876,9 @@ def test_spritesheet():
     ok("...with the gif's own grid", direct.cols == 4 and direct.rows == 1)
     ok("...reporting the file's timings", direct.timings == (60, 90, 120, 150),
        str(direct.timings))
-    ok("an indexed file stays indexed through load",
-       type(direct.sprite(0)) is indexed_image, str(type(direct.sprite(0))))
-    ok("...and its source is an indexed_image", type(direct.source) is indexed_image)
+    ok("a palettised file stays palettised through load",
+       direct.sprite(0).palette is not None)
+    ok("...and so does its source", direct.source.palette is not None)
     ok("a sheet from a png has no timings", sheet.timings is None, str(sheet.timings))
     named = spritesheet.load(GIF, 4, 1)
     ok("a named grid is honoured", named.frames == 4, str(named.frames))
@@ -896,7 +922,7 @@ def main():
     test_animated_gif()
     test_palette()
     test_image_construction()
-    test_indexed_image_type()
+    test_palettised_image()
     test_spritesheet()
     print("RENDER TESTS: %d passed, %d failed" % (_p, _f))
 

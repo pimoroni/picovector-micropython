@@ -212,12 +212,11 @@ namespace pv {
     }
   }
 
-  // ── a source image, of either type ─────────────────────────────────────────
-  // `image` and `indexed_image` are two MicroPython types over one image_t, and
-  // an indexed buffer is a perfectly good thing to blit *from*. Both obj structs
-  // have the same layout, so one cast serves either.
+  // ── a source image ─────────────────────────────────────────────────────────
+  // A checked read, for the arguments a generated method reads without picking
+  // an overload - blit_vspan and blit_hspan cast blindly without this.
   static inline bool is_image(mp_obj_t o) {
-    return mp_obj_is_type(o, &type_image) || mp_obj_is_type(o, &type_indexed_image);
+    return mp_obj_is_type(o, &type_image);
   }
 
   static inline image_t *get_image(mp_obj_t o) {

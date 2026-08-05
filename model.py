@@ -74,17 +74,16 @@ SHAPELIST = Converter("shapelist", "", consumes=1, kind="shapelist")
 COLORLIST = Converter("colorlist", "", consumes=1, kind="colorlist",
                       _is_check="mp_obj_is_type({0}, &mp_type_list)")
 
-# A source image, of either type. Nothing requires a converter's check to be a
-# single mp_obj_is_type, so this one defers to a helper that accepts both; the
-# read raises on anything else, which is the first type check the span blits
-# have ever had.
-ANYIMAGE = Converter("anyimage", "image_t *", "pv::get_image({0})", None,
-                     "pv::is_image({0})")
+# An image argument that checks its type as it reads. A class annotation emits
+# its check only when picking an overload, so on a single-signature method the
+# read is a blind cast: this is the type check the span blits rely on.
+SOURCEIMAGE = Converter("sourceimage", "image_t *", "pv::get_image({0})", None,
+                        "pv::is_image({0})")
 
 _PSEUDO = {
     "XY": XY, "XYWH": XYWH, "ColorStops": STOPS, "Pattern8": PATTERN8,
     "PathList": PATHLIST, "ShapeOrList": SHAPELIST, "Filter": FILTER,
-    "Buffer": BUFFER, "AnyImage": ANYIMAGE,
+    "Buffer": BUFFER, "SourceImage": SOURCEIMAGE,
 }
 
 

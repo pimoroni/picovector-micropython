@@ -10,14 +10,21 @@ their signatures, docstrings and registration.
 from __future__ import annotations
 
 from pv import (api, cpp, native, overload, const,
-                XY, XYWH, Filter, Buffer, ShapeOrList, AnyImage, NEAREST)
+                XY, XYWH, Filter, Buffer, ShapeOrList, SourceImage, NEAREST)
 
 
 @api("image_t", field="image", ptr=True, buffer=True,
      print=("image(%d x %d)", "int(self->image->bounds().w)", "int(self->image->bounds().h)"),
      arg_read="((image_obj_t *)MP_OBJ_TO_PTR({0}))->image", arg_type="image_t *")
 class image:
-    """An RGBA pixel buffer you can draw into and blit around."""
+    """A pixel buffer you can draw into and blit around.
+
+    Usually four bytes a pixel. A palettised file loads as one byte a pixel
+    indexing a colour table instead, and since every brush and filter stores
+    four, nothing can draw into one: the whole drawing surface is a quiet no-op
+    there, and the buffer keeps its indices. Blitting *from* one is the point of
+    it, and the table stays writable. ``palette`` tells the two apart.
+    """
 
     # antialias / fill-rule / texture-filter constants
     X4 = const("antialias_t::X4", "Anti-aliasing: 4× supersample.")
@@ -78,9 +85,9 @@ class image:
     def palette_size(self) -> int: "Entries in the colour table, 0 if not palettised (read-only)."
 
     # ── the colour table ────────────────────────────────────────────────────
-    # A sequence of colours, and the one thing on an indexed image that *is*
-    # writable: one entry recolours every pixel indexing it. A view shares the
-    # table by pointer, so it reaches every sprite cut from the same sheet.
+    # A sequence of colours. Writing one entry recolours every pixel indexing
+    # it, and a view shares the table by pointer, so it reaches every sprite cut
+    # from the same sheet.
     @property
     @cpp(get_raw="palette_box(self)", set="palette_assign(self, {0})")
     def palette(self) -> None:
@@ -122,12 +129,13 @@ class image:
     @staticmethod
     @native
     def load(path_or_bytes, width: int = 0, height: int = 0) -> image:
-        ("Load a PNG/JPEG/GIF from a path or buffer. Returns an image, or an "
-         "indexed_image when the file is palettised. An animated GIF arrives as "
-         "an indexed sheet of composited frames, one column per frame; call "
-         "spritesheet() with no arguments to get that grid and the file's own "
-         "frame timings. width and height aren't available for a GIF, since it "
-         "has to composite at its own size.")
+        ("Load a PNG/JPEG/GIF from a path or buffer. A palettised file stays "
+         "palettised, one byte a pixel, which nothing can draw into: check "
+         "palette if it matters. An animated GIF arrives as a sheet of "
+         "composited frames, one column per frame; call spritesheet() with no "
+         "arguments to get that grid and the file's own frame timings. width and "
+         "height aren't available for a GIF, since it has to composite at its "
+         "own size.")
 
     @native
     def load_into(self, path_or_bytes) -> None:
@@ -259,17 +267,17 @@ class image:
     # ── blitting ─────────────────────────────────────────────────────────────
     @overload
     @cpp(args="self->image at")
-    def blit(self, src: AnyImage, at: vec2) -> None: "Blit src at a point."
+    def blit(self, src: SourceImage, at: vec2) -> None: "Blit src at a point."
     @overload
     @cpp(args="self->image vec2_t(x,y)")
-    def blit(self, src: AnyImage, x: float, y: float) -> None: "Blit src at (x, y)."
+    def blit(self, src: SourceImage, x: float, y: float) -> None: "Blit src at (x, y)."
     @overload
     @cpp(args="self->image source dst filter")
-    def blit(self, src: AnyImage, source: rect, dst: rect, filter: Filter = NEAREST) -> None:
+    def blit(self, src: SourceImage, source: rect, dst: rect, filter: Filter = NEAREST) -> None:
         "Blit a source rect of src into a destination rect."
     @overload
     @cpp(args="self->image dst filter")
-    def blit(self, src: AnyImage, dst: rect, filter: Filter = NEAREST) -> None:
+    def blit(self, src: SourceImage, dst: rect, filter: Filter = NEAREST) -> None:
         "Blit all of src into a destination rect."
 
     @cpp(recv="src", error="invalid parameter, expected blit(image, point), "
@@ -278,12 +286,12 @@ class image:
         "Blit another image onto this one (point, rect, or src-rect → dst-rect)."
 
     @cpp(recv="src", args="self->image p len uv0 uv1 filter")
-    def blit_vspan(self, src: AnyImage, p: XY, len: float, uv0: XY, uv1: XY,
+    def blit_vspan(self, src: SourceImage, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a vertical texture span (advanced; used by raycasters)."
 
     @cpp(recv="src", args="self->image p len uv0 uv1 filter")
-    def blit_hspan(self, src: AnyImage, p: XY, len: float, uv0: XY, uv1: XY,
+    def blit_hspan(self, src: SourceImage, p: XY, len: float, uv0: XY, uv1: XY,
                    filter: Filter = NEAREST) -> None:
         "Blit a horizontal texture span (advanced)."
 

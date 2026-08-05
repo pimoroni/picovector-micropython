@@ -92,13 +92,6 @@ extern "C" {
     mp_obj_t frame_delays;
   } image_obj_t;
 
-  // `indexed_image` is a second MicroPython type over the same image_t: a
-  // palettised buffer is a blit source, never a render target, so it exposes
-  // only the members that can answer for one. Sharing the layout is what lets
-  // both types read through the same cast, and lets the generated bindings for
-  // either reach pv::image_total_delay and friends unchanged.
-  typedef image_obj_t indexed_image_obj_t;
-
   // A colour table, as a Python sequence.
   //
   // Attached to an image (`source` set), it is a handle onto that image's own
@@ -171,10 +164,6 @@ extern "C" {
   extern uint32_t *palette_entries(palette_obj_t *self);
   extern mp_obj_t palette_box(image_obj_t *image);
   extern void palette_assign(image_obj_t *image, mp_obj_t value);
-
-  // Which image type a buffer is presented as (native/image_native.cpp): a
-  // palettised one cannot be drawn into, so it gets the type that doesn't offer to.
-  extern const mp_obj_type_t *image_type_for(image_t *image);
 
   // used by image.pen = N and picovector.pen() (global pen)
   extern brush_obj_t *mp_obj_to_brush(size_t n_args, const mp_obj_t *args);

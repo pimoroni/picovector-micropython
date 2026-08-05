@@ -48,8 +48,7 @@ class spritesheet:
         ("Load a PNG, JPEG or GIF and return a sheet over it, which is what "
          "image.load(...).spritesheet(...) spells the long way. Omit the grid for "
          "a GIF: it already declared its frames. The image keeps whatever format "
-         "the file was in, so an indexed one stays a byte a pixel and its cells "
-         "come back as indexed_image.")
+         "the file was in, so a palettised one stays a byte a pixel.")
 
     # ── the grid ────────────────────────────────────────────────────────────
     @property
@@ -79,8 +78,8 @@ class spritesheet:
         ("A cell of the grid, as a sub-image view sharing the sheet's pixels. "
          "sprite(n) takes a cell number, sprite(x, y) a column and a row. A "
          "negative number counts from the end, and anything outside the grid "
-         "clamps into it, so no caller has to bounds-check first. Returns an "
-         "indexed_image when the source is palettised.")
+         "clamps into it, so no caller has to bounds-check first. A cell of a "
+         "palettised sheet shares its colour table.")
 
     # ── what the file said ──────────────────────────────────────────────────
     @property

@@ -177,12 +177,6 @@ extern "C" {
     }
   }
 
-  // Which of the two image types a buffer should be handed back as. A palettised
-  // buffer cannot be drawn into, so it gets the type that doesn't offer to.
-  const mp_obj_type_t *image_type_for(image_t *image) {
-    return image->has_palette() ? &type_indexed_image : &type_image;
-  }
-
   mp_obj_t image_load(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_load);
@@ -192,10 +186,6 @@ extern "C" {
     int target_width  = n_args >= 2 ? (int)mp_obj_get_float(args[1]) : 0;
     int target_height = n_args >= 3 ? (int)mp_obj_get_float(args[2]) : 0;
     image_open_helper(*result, args[0], target_width, target_height);
-    // The decoder decides: a GIF or an indexed PNG lands palettised, so load()
-    // is the factory for both types. Retagging after the fact keeps the helper
-    // (and load_into, which cannot change its receiver's type) unaware of it.
-    result->base.type = image_type_for(result->image);
     return MP_OBJ_FROM_PTR(result);
   }
 
@@ -221,15 +211,10 @@ extern "C" {
       x = mp_obj_get_float(args[1]); y = mp_obj_get_float(args[2]);
       w = mp_obj_get_float(args[3]); h = mp_obj_get_float(args[4]);
     }
-    image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(self->image));
+    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image, rect_t(x, y, w, h));
     result->parent = (void *)self;
     return MP_OBJ_FROM_PTR(result);
-  }
-
-  // The obj structs are one struct, so a view of either type is the same code.
-  mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args) {
-    return image_window(n_args, args);
   }
 
   static inline bool pv_is_num(mp_obj_t o) {

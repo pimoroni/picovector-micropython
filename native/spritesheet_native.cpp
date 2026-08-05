@@ -9,10 +9,6 @@
 
 extern "C" {
 
-  // A palettised buffer cannot be drawn into, so it gets the type that does not
-  // offer to. image_native.cpp owns this.
-  extern const mp_obj_type_t *image_type_for(image_t *image);
-
   extern mp_obj_t image_load(size_t n_args, const mp_obj_t *args);
 
   namespace {
@@ -24,7 +20,7 @@ extern "C" {
       int sw = (int)source->bounds().w / self->sheet.cols();
       int sh = (int)source->bounds().h / self->sheet.rows();
 
-      image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(source));
+      image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
       result->image = new (m_malloc(sizeof(image_t)))
         image_t(source, rect_t(x * sw, y * sh, sw, sh));
       result->parent = (void *)self->source;
@@ -56,11 +52,6 @@ extern "C" {
     o->source = self;
     new (&o->sheet) spritesheet_t(cols, rows);
     return MP_OBJ_FROM_PTR(o);
-  }
-
-  // The obj structs are one struct, so this is the same code.
-  mp_obj_t indexed_image_spritesheet(size_t n_args, const mp_obj_t *args) {
-    return image_spritesheet(n_args, args);
   }
 
   // spritesheet.load(path_or_bytes, cols=0, rows=0). Forwards to both natives so

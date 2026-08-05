@@ -41,8 +41,7 @@ CHECKS = {
     ],
     "image": [
         # blit overloads: n_args checked first, then arg types; receiver is `src`.
-        # A source is AnyImage, so the check is the helper that takes either
-        # image type, not a single mp_obj_is_type.
+        # A source is SourceImage, so the check is the helper it reads through.
         "if (n_args == 3 && pv::is_image(args[1]) "
         "&& mp_obj_is_type(args[2], &type_vec2)) {",
         "src->blit(self->image, source, dst, filter)",
@@ -60,12 +59,6 @@ CHECKS = {
         "dest[0] = spritesheet_box_timings(self); return;",
         # sprite() takes one argument or two, so its arity is the lower bound
         "static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_spritesheet_sprite_obj, 2, spritesheet_sprite);",
-    ],
-    "indexed_image": [
-        # the read-only half: no setter for anything but alpha, and none of the
-        # drawing surface. The fall-through is what reports the absence.
-        "dest[1] = MP_OBJ_SENTINEL;",
-        "return pv::box_color_packed(self->image->get(p.x, p.y));",
     ],
     "brush": [
         # pixelate clamps size at 1 (Range(1, None, clamp=True))
