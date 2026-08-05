@@ -142,7 +142,7 @@ mp_obj_t mpy_color_max_chroma(size_t n_args, const mp_obj_t *args) {
   return mp_obj_new_int(color_t::max_chroma(l, h));
 }
 
-// color.rotate: Return this colour with its hue rotated by counts, wrapping (256 is a full turn). Where with_h sets an absolute hue, this moves relative to the one it has.
+// color.rotate: Return this colour with its hue rotated by counts, wrapping (256 is a full turn), relative to the hue it has.
 mp_obj_t mpy_color_rotate(size_t n_args, const mp_obj_t *args) {
   self(args[0], color_obj_t);
 #if PV_METRICS
@@ -244,94 +244,6 @@ mp_obj_t mpy_color_over(size_t n_args, const mp_obj_t *args) {
   return pv::box_color(self->c.over(background));
 }
 
-// color.with_r: Return this colour with a different red channel. RGB colours only.
-mp_obj_t mpy_color_with_r(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_r);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_RGB).with_component(0, value));
-}
-
-// color.with_g: Return this colour with a different green channel. RGB colours only.
-mp_obj_t mpy_color_with_g(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_g);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_RGB).with_component(1, value));
-}
-
-// color.with_b: Return this colour with a different blue channel. RGB colours only.
-mp_obj_t mpy_color_with_b(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_b);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_RGB).with_component(2, value));
-}
-
-// color.with_h: Return this colour at a different hue. HSV and OKLCH colours only.
-mp_obj_t mpy_color_with_h(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_h);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_with_hue(self->c, value));
-}
-
-// color.with_s: Return this colour at a different saturation. HSV colours only.
-mp_obj_t mpy_color_with_s(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_s);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_HSV).with_component(1, value));
-}
-
-// color.with_v: Return this colour at a different value. HSV colours only.
-mp_obj_t mpy_color_with_v(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_v);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_HSV).with_component(2, value));
-}
-
-// color.with_l: Return this colour at a different lightness. OKLCH colours only.
-mp_obj_t mpy_color_with_l(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_l);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_OKLCH).with_component(0, value));
-}
-
-// color.with_c: Return this colour at a different chroma. OKLCH colours only.
-mp_obj_t mpy_color_with_c(size_t n_args, const mp_obj_t *args) {
-  self(args[0], color_obj_t);
-#if PV_METRICS
-  pv::metric_scope _pvm(PV_M_color_with_c);
-#endif
-  size_t _i = 1;
-  int value = (int)mp_obj_get_float(args[_i]); _i++;
-  return pv::box_color(pv::color_require(self->c, COLOR_OKLCH).with_component(1, value));
-}
-
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_rgb_obj, 3, mpy_color_rgb);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_color_rgb_static_obj, MP_ROM_PTR(&mpy_color_rgb_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_hsv_obj, 3, mpy_color_hsv);
@@ -361,14 +273,6 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_scale_obj, 2, mpy_color_scale);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_alpha_obj, 2, mpy_color_with_alpha);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_mix_obj, 3, mpy_color_mix);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_over_obj, 2, mpy_color_over);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_r_obj, 2, mpy_color_with_r);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_g_obj, 2, mpy_color_with_g);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_b_obj, 2, mpy_color_with_b);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_h_obj, 2, mpy_color_with_h);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_s_obj, 2, mpy_color_with_s);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_v_obj, 2, mpy_color_with_v);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_l_obj, 2, mpy_color_with_l);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_color_with_c_obj, 2, mpy_color_with_c);
 
 static mp_obj_t color_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_in) {
   color_obj_t *lhs = (color_obj_t *)MP_OBJ_TO_PTR(lhs_in);
@@ -544,14 +448,6 @@ static const mp_rom_map_elem_t color_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_with_alpha), MP_ROM_PTR(&mpy_color_with_alpha_obj) },
   { MP_ROM_QSTR(MP_QSTR_mix), MP_ROM_PTR(&mpy_color_mix_obj) },
   { MP_ROM_QSTR(MP_QSTR_over), MP_ROM_PTR(&mpy_color_over_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_r), MP_ROM_PTR(&mpy_color_with_r_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_g), MP_ROM_PTR(&mpy_color_with_g_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_b), MP_ROM_PTR(&mpy_color_with_b_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_h), MP_ROM_PTR(&mpy_color_with_h_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_s), MP_ROM_PTR(&mpy_color_with_s_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_v), MP_ROM_PTR(&mpy_color_with_v_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_l), MP_ROM_PTR(&mpy_color_with_l_obj) },
-  { MP_ROM_QSTR(MP_QSTR_with_c), MP_ROM_PTR(&mpy_color_with_c_obj) },
 };
 static MP_DEFINE_CONST_DICT(color_locals_dict, color_locals_dict_table);
 

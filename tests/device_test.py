@@ -130,7 +130,9 @@ ok("color.lighten leaves the original", BG.l == 40)
 ok("color.darken", BG.darken(10).l == 30)
 ok("color.scale", BG.scale(50).l == 20)
 ok("color.with_alpha", BG.with_alpha(128).a == 128 and BG.with_alpha(128).l == 40)
-ok("color.with_l", BG.with_l(200).l == 200)
+# one component changed is a reconstruction, which needs no member of its own
+ok("a component can be replaced by rebuilding",
+   color.oklch(200, BG.c, BG.h).l == 200 and color.oklch(200, BG.c, BG.h).h == 250)
 ok("color.mix endpoints", BG.mix(color.oklch(80, 30, 250), 0) == BG)
 ok("color.mix midpoint", BG.mix(color.oklch(80, 30, 250), 128).l == 60)
 ok("color.over an opaque background", color.red.with_alpha(0).over(color.blue) == color.blue)

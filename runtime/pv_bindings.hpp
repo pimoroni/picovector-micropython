@@ -167,11 +167,6 @@ namespace pv {
     return c;
   }
 
-  // Hue sits in a different component slot in each space that has one.
-  static inline color_t color_with_hue(const color_t &c, uint8_t value) {
-    return color_require_hue(c).with_component(c.space() == COLOR_OKLCH ? 2 : 0, value);
-  }
-
   // Doubles as the name of the constructor that made the colour, so a repr reads
   // back as the call that would rebuild it.
   static inline qstr color_space_qstr(const color_t &c) {

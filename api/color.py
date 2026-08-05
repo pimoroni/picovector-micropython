@@ -198,8 +198,7 @@ class color:
     # therefore OKLCH whatever went in.
     def rotate(self, counts: int) -> color:
         ("Return this colour with its hue rotated by counts, wrapping (256 is a "
-         "full turn). Where with_h sets an absolute hue, this moves relative to "
-         "the one it has.")
+         "full turn), relative to the hue it has.")
 
     def saturate(self, amount: int) -> color:
         ("Return this colour with more chroma (OKLCH) or saturation (HSV). "
@@ -250,46 +249,6 @@ class color:
     def over(self, background: color) -> color:
         ("Return this colour as it lands over background, weighted by its own "
          "alpha. The same composite the renderer performs.")
-
-    # ── one authored component replaced, in the authoring space ──────────────
-    @cpp(call="pv::color_require(self->c, COLOR_RGB).with_component", emit="free",
-         args="0 value")
-    def with_r(self, value: int) -> color:
-        "Return this colour with a different red channel. RGB colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_RGB).with_component", emit="free",
-         args="1 value")
-    def with_g(self, value: int) -> color:
-        "Return this colour with a different green channel. RGB colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_RGB).with_component", emit="free",
-         args="2 value")
-    def with_b(self, value: int) -> color:
-        "Return this colour with a different blue channel. RGB colours only."
-
-    @cpp(call="pv::color_with_hue", emit="free", args="self->c value")
-    def with_h(self, value: int) -> color:
-        "Return this colour at a different hue. HSV and OKLCH colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_HSV).with_component", emit="free",
-         args="1 value")
-    def with_s(self, value: int) -> color:
-        "Return this colour at a different saturation. HSV colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_HSV).with_component", emit="free",
-         args="2 value")
-    def with_v(self, value: int) -> color:
-        "Return this colour at a different value. HSV colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_OKLCH).with_component", emit="free",
-         args="0 value")
-    def with_l(self, value: int) -> color:
-        "Return this colour at a different lightness. OKLCH colours only."
-
-    @cpp(call="pv::color_require(self->c, COLOR_OKLCH).with_component", emit="free",
-         args="1 value")
-    def with_c(self, value: int) -> color:
-        "Return this colour at a different chroma. OKLCH colours only."
 
     # ── operators ───────────────────────────────────────────────────────────
     # No inplace variants: colours are immutable, and mp_binary_op falls back to
