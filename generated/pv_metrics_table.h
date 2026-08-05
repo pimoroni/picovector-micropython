@@ -165,14 +165,8 @@ enum {
   PV_M_indexed_image_spritesheet,  // indexed_image.spritesheet
   PV_M_indexed_image_sprite,  // indexed_image.sprite
   PV_M_indexed_image_get,  // indexed_image.get
+  PV_M_spritesheet_load,  // spritesheet.load
   PV_M_spritesheet_sprite,  // spritesheet.sprite
-  PV_M_spritesheet_frame,  // spritesheet.frame
-  PV_M_spritesheet_range,  // spritesheet.range
-  PV_M_spritesheet_interval,  // spritesheet.interval
-  PV_M_spritesheet_index,  // spritesheet.index
-  PV_M_spritesheet_at,  // spritesheet.at
-  PV_M_spritesheet_start,  // spritesheet.start
-  PV_M_spritesheet_stop,  // spritesheet.stop
   PV_M_algorithm_clip_line,  // algorithm.clip_line
   PV_M_algorithm_dda,  // algorithm.dda
   PV_M_algorithm_raycast,  // algorithm.raycast

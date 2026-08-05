@@ -83,6 +83,12 @@ namespace pv {
     return r;
   }
 
+  // A numeric argument, narrowed. Generated bindings read `int` params this way
+  // so a computed value needs no cast at the call site - sheet.sprite(t.now) and
+  // color.rgb(0, 0, 0, 100 * pulse) both work. Hand-written natives use this to
+  // match; mp_obj_get_int would reject the float outright.
+  static inline int to_int(mp_obj_t o) { return (int)mp_obj_get_float(o); }
+
   // Range validation. clamp=false raises ValueError; clamp=true silently clamps.
   static inline float check_range_f(float v, float lo, float hi, bool clamp,
                                     const char *name) {

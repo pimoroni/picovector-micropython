@@ -147,7 +147,7 @@ extern "C" {
     }
 #endif
 
-    mp_int_t i = mp_obj_get_int(index_in);
+    mp_int_t i = pv::to_int(index_in);
     if(i < 0) i += count;                       // palette[-1] is the last entry
     if(i < 0 || i >= count) {
       mp_raise_msg(&mp_type_IndexError, MP_ERROR_TEXT("palette index out of range"));

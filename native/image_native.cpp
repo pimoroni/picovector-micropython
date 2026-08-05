@@ -232,8 +232,8 @@ extern "C" {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_image_sprite);
 #endif
-    int x = mp_obj_get_int(args[1]);
-    int y = mp_obj_get_int(args[2]);
+    int x = pv::to_int(args[1]);
+    int y = pv::to_int(args[2]);
     image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(self->image));
     result->image = new (m_malloc(sizeof(image_t))) image_t(self->image->sprite(x, y));
     result->parent = (void *)self;
