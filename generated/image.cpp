@@ -579,8 +579,6 @@ extern "C" mp_obj_t image_window(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_window_obj, 2, image_window);
 extern "C" mp_obj_t image_spritesheet(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_spritesheet_obj, 1, image_spritesheet);
-extern "C" mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_sprite_obj, 3, image_sprite);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_clear_obj, 1, mpy_image_clear);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_rectangle_obj, 2, mpy_image_rectangle);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_hspan_obj, 4, mpy_image_hspan);
@@ -793,7 +791,6 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },
   { MP_ROM_QSTR(MP_QSTR_spritesheet), MP_ROM_PTR(&mpy_image_spritesheet_obj) },
-  { MP_ROM_QSTR(MP_QSTR_sprite), MP_ROM_PTR(&mpy_image_sprite_obj) },
   { MP_ROM_QSTR(MP_QSTR_clear), MP_ROM_PTR(&mpy_image_clear_obj) },
   { MP_ROM_QSTR(MP_QSTR_rectangle), MP_ROM_PTR(&mpy_image_rectangle_obj) },
   { MP_ROM_QSTR(MP_QSTR_hspan), MP_ROM_PTR(&mpy_image_hspan_obj) },

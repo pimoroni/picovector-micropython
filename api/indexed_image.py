@@ -83,22 +83,16 @@ class indexed_image:
 
     # ── views (procedural → native) ─────────────────────────────────────────
     # A view of an indexed image is indexed too: it shares both the pixels and
-    # the colour table.
+    # the colour table. So is a cell of a sheet cut from it.
     @native
     def window(self, area: XYWH) -> indexed_image:
         "Return a sub-image view of this buffer (shares pixels and palette)."
 
     @native
-    def spritesheet(self, cols: int = 0, rows: int = 0, timings=None) -> spritesheet:
-        ("A cols x rows grid over this image, as a spritesheet. Omit the grid to "
-         "use the one the image already carries, which for a loaded GIF is its "
-         "frames and their delays. timings is a single ms value for a uniform "
-         "rate, or one value per frame.")
-
-    @native
-    def sprite(self, x: int, y: int) -> indexed_image:
-        ("Return the spritesheet cell at grid (x, y) as a sub-image view (shares "
-         "pixels and palette). x is the column, y the row.")
+    def spritesheet(self, cols: int = 0, rows: int = 0) -> spritesheet:
+        ("A cols x rows grid over this image, as a spritesheet - which is what "
+         "addresses individual cells. Omit the grid to use the one the image "
+         "already carries: a loaded GIF has its frames there.")
 
     # ── reading a pixel ─────────────────────────────────────────────────────
     @cpp(args="p.x p.y", box="pv::box_color_packed({0})")

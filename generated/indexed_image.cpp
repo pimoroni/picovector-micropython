@@ -19,8 +19,6 @@ extern "C" mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_window_obj, 2, indexed_image_window);
 extern "C" mp_obj_t indexed_image_spritesheet(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_spritesheet_obj, 1, indexed_image_spritesheet);
-extern "C" mp_obj_t indexed_image_sprite(size_t n_args, const mp_obj_t *args);
-static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_sprite_obj, 3, indexed_image_sprite);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_indexed_image_get_obj, 2, mpy_indexed_image_get);
 
 static void indexed_image_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -89,7 +87,6 @@ static mp_int_t indexed_image_get_buffer(mp_obj_t self_in, mp_buffer_info_t *buf
 static const mp_rom_map_elem_t indexed_image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_indexed_image_window_obj) },
   { MP_ROM_QSTR(MP_QSTR_spritesheet), MP_ROM_PTR(&mpy_indexed_image_spritesheet_obj) },
-  { MP_ROM_QSTR(MP_QSTR_sprite), MP_ROM_PTR(&mpy_indexed_image_sprite_obj) },
   { MP_ROM_QSTR(MP_QSTR_get), MP_ROM_PTR(&mpy_indexed_image_get_obj) },
 };
 static MP_DEFINE_CONST_DICT(indexed_image_locals_dict, indexed_image_locals_dict_table);

@@ -114,7 +114,6 @@ enum {
   PV_M_image_load_into,  // image.load_into
   PV_M_image_window,  // image.window
   PV_M_image_spritesheet,  // image.spritesheet
-  PV_M_image_sprite,  // image.sprite
   PV_M_image_clear,  // image.clear
   PV_M_image_rectangle,  // image.rectangle
   PV_M_image_hspan,  // image.hspan
@@ -163,7 +162,6 @@ enum {
   PV_M_image_batch,  // image.batch
   PV_M_indexed_image_window,  // indexed_image.window
   PV_M_indexed_image_spritesheet,  // indexed_image.spritesheet
-  PV_M_indexed_image_sprite,  // indexed_image.sprite
   PV_M_indexed_image_get,  // indexed_image.get
   PV_M_spritesheet_load,  // spritesheet.load
   PV_M_spritesheet_sprite,  // spritesheet.sprite

@@ -673,6 +673,7 @@ def test_image_construction():
 
     # raw and the buffer protocol describe the same bytes.
     img = image(8, 4)
+    ok("an image has no sprite either", gone(img, "sprite"))
     ok("raw and memoryview agree", len(img.raw) == len(memoryview(img)),
        "%d vs %d" % (len(img.raw), len(memoryview(img))))
     ok("...and that is the whole buffer", len(img.raw) == 8 * 4 * 4, str(len(img.raw)))
@@ -716,12 +717,15 @@ def test_indexed_image_type():
     # The grid and the timings live on the sheet now, not on the image.
     for name in ("cols", "rows", "delays", "duration", "frame_at"):
         ok("indexed_image has no %s" % name, gone(sheet, name))
+    # Addressing a cell needs a sheet: an image has no grid to index, whatever
+    # file it came from.
+    ok("indexed_image has no sprite", gone(sheet, "sprite"))
     grid = sheet.spritesheet()
     ok("an indexed sheet keeps the grid", grid.cols == 4 and grid.rows == 1)
-    ok("an indexed sheet keeps the timings", grid.duration == 420)
+    ok("an indexed sheet reports the timings", grid.timings == (60, 90, 120, 150))
 
-    frame = sheet.sprite(1, 0)
-    ok("a view of an indexed_image is indexed", type(frame) is indexed_image,
+    frame = grid.sprite(1)
+    ok("a cell of an indexed sheet is indexed", type(frame) is indexed_image,
        str(type(frame)))
     ok("a window of an indexed_image is indexed",
        type(sheet.window(rect(0, 0, 10, 8))) is indexed_image)

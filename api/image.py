@@ -138,17 +138,11 @@ class image:
         "Return a sub-image view of this canvas (shares pixels)."
 
     @native
-    def spritesheet(self, cols: int = 0, rows: int = 0, timings=None) -> spritesheet:
-        ("A cols x rows grid over this image, as a spritesheet. Omit the grid to "
-         "use the one the image already carries, which for a loaded GIF is its "
-         "frames and their delays and for anything else is 1x1. timings is a "
-         "single ms value for a uniform rate, or one value per frame.")
-
-    @native
-    def sprite(self, x: int, y: int) -> image:
-        ("Return the spritesheet cell at grid (x, y) as a sub-image view (shares "
-         "pixels). x is the column, y the row; cell size is the sheet divided by "
-         "its cols x rows layout.")
+    def spritesheet(self, cols: int = 0, rows: int = 0) -> spritesheet:
+        ("A cols x rows grid over this image, as a spritesheet - which is what "
+         "addresses individual cells. Omit the grid to use the one the image "
+         "already carries: a loaded GIF has its frames there, anything else is "
+         "1x1.")
 
     # ── raster primitives ───────────────────────────────────────────────────
     def clear(self) -> None: "Fill the whole image with the current pen."

@@ -227,27 +227,9 @@ extern "C" {
     return MP_OBJ_FROM_PTR(result);
   }
 
-  mp_obj_t image_sprite(size_t n_args, const mp_obj_t *args) {
-    self(args[0], image_obj_t);
-#if PV_METRICS
-    pv::metric_scope _pvm(PV_M_image_sprite);
-#endif
-    int x = pv::to_int(args[1]);
-    int y = pv::to_int(args[2]);
-    image_obj_t *result = mp_obj_malloc(image_obj_t, image_type_for(self->image));
-    result->image = new (m_malloc(sizeof(image_t))) image_t(self->image->sprite(x, y));
-    result->parent = (void *)self;
-    return MP_OBJ_FROM_PTR(result);
-  }
-
-  // indexed_image's window/spritesheet/sprite are the same code: the generator
-  // asks for one symbol per type, and the obj structs are the same struct.
+  // The obj structs are one struct, so a view of either type is the same code.
   mp_obj_t indexed_image_window(size_t n_args, const mp_obj_t *args) {
     return image_window(n_args, args);
-  }
-
-  mp_obj_t indexed_image_sprite(size_t n_args, const mp_obj_t *args) {
-    return image_sprite(n_args, args);
   }
 
   static inline bool pv_is_num(mp_obj_t o) {
