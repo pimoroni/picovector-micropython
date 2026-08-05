@@ -107,7 +107,12 @@ class image:
 
     @property
     @cpp(get="self->image->alpha()", set="self->image->alpha({0})")
-    def alpha(self) -> int: "Global layer alpha 0–255."
+    def alpha(self) -> int:
+        ("Global layer alpha 0-255: everything drawn into this image is weighted "
+         "by it, shapes, text and blits alike. Set it on the image being drawn "
+         "*into*, never on a source - a source carries no alpha of its own. The "
+         "filters are the exception: they rewrite the pixels they read rather "
+         "than compositing onto them, and take a strength instead.")
 
     @property
     @cpp(emit="pen")
