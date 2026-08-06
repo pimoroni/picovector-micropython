@@ -86,8 +86,7 @@ extern "C" {
     return MP_OBJ_FROM_PTR(result);
   }
 
-  static int gifdec_open(image_obj_t &target, gif_reader_t reader) {
-    gif_info_t info;
+  static int gifdec_open(image_obj_t &target, gif_reader_t reader, gif_info_t &info) {
     gif_frame_t *frames = gif_frames();
     gif_scratch_t *scratch = gif_scratch();
 
@@ -124,13 +123,14 @@ extern "C" {
     return GIF_OK;
   }
 
-  int gifdec_open_ram(image_obj_t &target, const void* buffer, const size_t size) {
+  int gifdec_open_ram(image_obj_t &target, const void* buffer, const size_t size,
+                      gif_info_t *info) {
     gif_ram_source_t source = { (const uint8_t *)buffer, size, 0 };
     gif_reader_t reader = { gifdec_ram_read, gifdec_ram_rewind, &source };
-    return gifdec_open(target, reader);
+    return gifdec_open(target, reader, *info);
   }
 
-  int gifdec_open_file(image_obj_t &target, const char *path) {
+  int gifdec_open_file(image_obj_t &target, const char *path, gif_info_t *info) {
     mp_obj_t args[2] = {
       mp_obj_new_str(path, (mp_uint_t)strlen(path)),
       MP_ROM_QSTR(MP_QSTR_r),
@@ -140,7 +140,7 @@ extern "C" {
     gif_handle.fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
 
     gif_reader_t reader = { gifdec_read_callback, gifdec_rewind_callback, &gif_handle };
-    int status = gifdec_open(target, reader);
+    int status = gifdec_open(target, reader, *info);
 
     mp_stream_close(gif_handle.fhandle);
     return status;

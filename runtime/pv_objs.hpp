@@ -177,9 +177,12 @@ extern "C" {
   extern int jpegdec_open_ram(image_obj_t &target, const void* buffer, const size_t size, int target_width, int target_height);
 
   // ... and gifdec_open_file and gifdec_open_ram from image_gif, which build a
-  // spritesheet rather than a single frame.
-  extern int gifdec_open_file(image_obj_t &target, const char* path);
-  extern int gifdec_open_ram(image_obj_t &target, const void* buffer, const size_t size);
+  // spritesheet rather than a single frame. `info` comes back filled whenever the
+  // file survived its header, so a refusal can be reported in the file's own
+  // figures.
+  extern int gifdec_open_file(image_obj_t &target, const char* path, gif_info_t *info);
+  extern int gifdec_open_ram(image_obj_t &target, const void* buffer, const size_t size,
+                             gif_info_t *info);
 
   // Font loaders. `font` is a namespace singleton (native/font_native.cpp) whose
   // `load` sniffs the file and returns a vector_font or pixel_font. The two

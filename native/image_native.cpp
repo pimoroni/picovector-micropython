@@ -79,14 +79,19 @@ extern "C" {
     }
   }
 
-  static void raise_gif_error(int status) {
+  static void raise_gif_error(int status, const gif_info_t &info) {
     switch (status) {
       case GIF_UNSUPPORTED:
         mp_raise_msg(&mp_type_ValueError,
           MP_ERROR_TEXT("cannot load GIF: more than 256 colours across its frames"));
       case GIF_TOO_BIG:
-        mp_raise_msg(&mp_type_MemoryError,
-          MP_ERROR_TEXT("cannot load GIF: too large to composite as a spritesheet"));
+        // The figures are the whole point of this one: the limit is a build
+        // setting, so a caller can only act on knowing by how much it was missed.
+        mp_raise_msg_varg(&mp_type_MemoryError,
+          MP_ERROR_TEXT("cannot load GIF: %d frames of %dx%d composite to %dKB, over the %dKB limit. Scale it down, or use fewer frames"),
+          info.frame_count, info.width, info.height,
+          (int)(((size_t)info.width * info.height * info.frame_count + 1023) / 1024),
+          (int)(PV_GIF_MAX_BYTES / 1024));
       case GIF_TOO_MANY_FRAMES:
         mp_raise_msg(&mp_type_ValueError,
           MP_ERROR_TEXT("cannot load GIF: too many frames"));
@@ -115,6 +120,7 @@ extern "C" {
     int gif_status = GIF_OK;
     bool tried_jpeg = false;
     bool tried_gif = false;
+    gif_info_t gif_info = {};
 
     if (mp_obj_is_str(path_or_bytes_in)) {
       const char *path = mp_obj_str_get_str(path_or_bytes_in);
@@ -124,7 +130,7 @@ extern "C" {
         jpeg_status = jpegdec_open_file(target, path, target_width, target_height);
         if (jpeg_status == JPEG_INVALID_FILE) {
           tried_gif = true;
-          gif_status = gifdec_open_file(target, path);
+          gif_status = gifdec_open_file(target, path, &gif_info);
         }
       }
     } else {
@@ -136,7 +142,7 @@ extern "C" {
         jpeg_status = jpegdec_open_ram(target, buf.buf, buf.len, target_width, target_height);
         if (jpeg_status == JPEG_INVALID_FILE) {
           tried_gif = true;
-          gif_status = gifdec_open_ram(target, buf.buf, buf.len);
+          gif_status = gifdec_open_ram(target, buf.buf, buf.len, &gif_info);
         }
       }
     }
@@ -153,7 +159,7 @@ extern "C" {
         // JPEG signature matched but the decode failed: a genuine JPEG problem.
         raise_jpeg_error(jpeg_status);
       } else if (gif_status != GIF_BAD_MAGIC) {
-        raise_gif_error(gif_status);
+        raise_gif_error(gif_status, gif_info);
       } else {
         // No decoder recognised the data (e.g. an AppleDouble ._ file, a
         // renamed non-image, or a truncated download).
