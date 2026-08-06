@@ -29,7 +29,7 @@ void spritesheet_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
       if (action == GET) { dest[0] = mp_obj_new_int(self->sheet.rows()); return; }
       break;
     }
-    case MP_QSTR_frames:
+    case MP_QSTR_sprites:
     {
       if (action == GET) { dest[0] = mp_obj_new_int(self->sheet.frames()); return; }
       break;

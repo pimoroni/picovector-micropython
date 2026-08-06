@@ -24,7 +24,7 @@ curves, and the sheet resolves the cell::
 
 A loop needs no start time at all::
 
-    screen.blit(sheet.sprite(badge.ticks // 100 % sheet.frames), pos)
+    screen.blit(sheet.sprite(badge.ticks // 100 % sheet.sprites), pos)
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ class spritesheet:
 
     @property
     @cpp(get="self->sheet.frames()")
-    def frames(self) -> int:
+    def sprites(self) -> int:
         ("Cells in the grid (read-only), and so the frame count of an animation - "
          "what you hand a tween as its endpoint. Always at least 1.")
 
