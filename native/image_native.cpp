@@ -486,7 +486,15 @@ extern "C" {
       y += line_advance;
     }
 
-    if (draw) self->image->clip(old_clip);
+    if (draw) {
+      self->image->clip(old_clip);
+      // Leave the caret at the start of the line after the block. The per-word
+      // draws each set origin_x to their own x and every font draw() ends with
+      // an implicit newline back to it, so without this the caret would sit
+      // under the last word of the last line.
+      text_cursor_t *c = self->image->text_cursor_state();
+      c->x = bounds.x; c->origin_x = bounds.x; c->y = y; c->valid = true;
+    }
 
     float w = max_x - min_x;
     return rect_t{min_x, y0, w > 0.0f ? w : 0.0f, total_h};
