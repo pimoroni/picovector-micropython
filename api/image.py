@@ -227,7 +227,7 @@ class image:
     @cpp(native=True, kw=True)
     def text(self, text: str, at: XY = None, font_size: float = 0,
              align=None, overflow=None, line_height: float = 1,
-             word_spacing: float = 1) -> rect:
+             word_spacing: float = 1, transform: mat3 = None) -> rect:
         ("Draw text with the current font; returns the drawn bounding box as a "
          "rect. at selects the mode: a vec2 or (x, y) "
          "draws a single run from that point (resetting the caret); a rect lays "
@@ -236,11 +236,20 @@ class image:
          "'\\n' always starts a new line. font_size (sentinel 0 = the font's "
          "default): point size for vector fonts (default 12), or the integer "
          "nearest-neighbour scale for pixel fonts (default 1; 2 = double, ...). "
-         "The remaining settings apply only with a rect: align is a "
-         "(horizontal, vertical) pair from LEFT/CENTER/RIGHT and "
+         "align, overflow, line_height and word_spacing apply only with a rect: "
+         "align is a (horizontal, vertical) pair from LEFT/CENTER/RIGHT and "
          "TOP/MIDDLE/BOTTOM (default (LEFT, TOP)); overflow is CLIP or ELLIPSES "
          "(default CLIP); line_height scales the per-line advance; word_spacing "
-         "scales the space width.")
+         "scales the space width. transform is a mat3 mapping the drawn glyphs "
+         "in image space, applied after layout: the text is laid out at at (or "
+         "the caret) as usual, then the whole block is mapped, so rotate about "
+         "the anchor with mat3().translate(anchor).rotate(a).translate(-anchor). "
+         "Layout, the caret and measure_text() all stay in untransformed text "
+         "space; the returned rect is the axis-aligned bounds of the transformed "
+         "block. A vector font transforms exactly. A pixel font is resampled "
+         "nearest-neighbour, which is much slower than the plain blit and gives "
+         "ragged edges off the axis. Inline [name] glyph renderers draw at the "
+         "untransformed caret, so they are placed but not transformed.")
 
     @staticmethod
     @native

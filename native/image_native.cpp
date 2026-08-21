@@ -228,13 +228,14 @@ extern "C" {
   }
 
   // Position the caret and draw one word span [ws, we) with the active font.
+  // `xf` is the caller's text transform, or nullptr for the untransformed case.
   static inline void image_draw_span(image_obj_t *self, bool vector, float fs,
                                      int scale, const char *ws, const char *we,
-                                     float px, float y) {
+                                     float px, float y, const mat3_t *xf) {
     text_cursor_t *c = self->image->text_cursor_state();
     c->x = px; c->y = y; c->origin_x = px; c->valid = true;
-    if (vector) self->image->font()->draw(self->image, ws, we, fs);
-    else        self->image->pixel_font()->draw(self->image, ws, we, scale);
+    if (vector) self->image->font()->draw(self->image, ws, we, fs, xf);
+    else        self->image->pixel_font()->draw(self->image, ws, we, scale, xf);
   }
 
   static inline float image_measure_span(image_obj_t *self, bool vector, float fs,
@@ -298,7 +299,8 @@ extern "C" {
   static float image_layout_line(image_obj_t *self, bool vector, float fs,
                                   int scale, const char **pp, const char *end,
                                   float max_w, float space_w, bool draw,
-                                  float ox, float y, bool *hard_break) {
+                                  float ox, float y, bool *hard_break,
+                                  const mat3_t *xf) {
     const char *p = *pp;
     float x = 0.0f;        // placed line width so far
     float pending = 0.0f;  // space width accumulated before the next item
@@ -365,7 +367,7 @@ extern "C" {
           mp_obj_t dargs[3] = { MP_OBJ_FROM_PTR(self), params, mp_const_false };
           mp_call_function_n_kw(fn, 3, 0, dargs);
         } else {
-          image_draw_span(self, vector, fs, scale, ws, we, px, y);
+          image_draw_span(self, vector, fs, scale, ws, we, px, y, xf);
         }
       }
       x = px - ox + w;
@@ -383,7 +385,8 @@ extern "C" {
   static rect_t image_layout_text(image_obj_t *self, const char *text, rect_t bounds,
                                   float size, text_align_t align_h,
                                   text_align_t align_v, text_overflow_t overflow,
-                                  float line_height, float word_spacing, bool draw) {
+                                  float line_height, float word_spacing, bool draw,
+                                  const mat3_t *xf) {
     bool vector = (bool)self->font;
     float fs = size > 0.0f ? size : 12.0f;   // vector point size
     int scale = size > 0.0f ? (int)size : 1; // pixel integer scale
@@ -409,7 +412,7 @@ extern "C" {
       while (p < end) {
         const char *ls = p;
         image_layout_line(self, vector, fs, scale, &p, end, bounds.w, space_w,
-                          false, 0.0f, 0.0f, &hard);
+                          false, 0.0f, 0.0f, &hard, nullptr);
         n++;
         if (p == ls && !hard) break;  // safety: no progress
       }
@@ -440,7 +443,10 @@ extern "C" {
                   : self->image->pixel_font()->measure(self->image, ellipsis, scale).w;
 
     rect_t old_clip{0, 0, 0, 0};
-    if (draw) { old_clip = self->image->clip(); self->image->clip(bounds); }
+    if (draw) {
+      old_clip = self->image->clip();
+      self->image->clip(xf ? bounds.transformed(*xf) : bounds);
+    }
 
     // Pass 2: place each line at its aligned x, tracking the bounds (and
     // drawing, unless this is a measure-only run).
@@ -452,7 +458,7 @@ extern "C" {
       const char *line_start = p;
       bool hard;
       float lw = image_layout_line(self, vector, fs, scale, &p, end, bounds.w,
-                                   space_w, false, 0.0f, 0.0f, &hard);
+                                   space_w, false, 0.0f, 0.0f, &hard, nullptr);
 
       bool last_trunc = truncate && i == draw_count - 1;
       float eff_w = last_trunc ? lw + ew : lw;
@@ -467,14 +473,14 @@ extern "C" {
       if (draw) {
         const char *dp = line_start;
         image_layout_line(self, vector, fs, scale, &dp, end, bounds.w, space_w,
-                          true, ox, y, &hard);
+                          true, ox, y, &hard, xf);
 
         if (last_trunc) {
           text_cursor_t *c = self->image->text_cursor_state();
           float px = ox + lw;
           c->x = px; c->y = y; c->origin_x = px; c->valid = true;
-          if (vector) self->image->font()->draw(self->image, ellipsis, fs);
-          else        self->image->pixel_font()->draw(self->image, ellipsis, scale);
+          if (vector) self->image->font()->draw(self->image, ellipsis, fs, xf);
+          else        self->image->pixel_font()->draw(self->image, ellipsis, scale, xf);
         }
       }
       y += line_advance;
@@ -546,8 +552,18 @@ extern "C" {
     text_align_t align_h = LEFT, align_v = TOP;
     text_overflow_t overflow = CLIP;
     float line_height = 1.0f, word_spacing = 1.0f;
+    mat3_t xform;
+    const mat3_t *xf = nullptr;   // nullptr is the untransformed fast path
     if (kw_args && kw_args->used) {
       mp_map_elem_t *e;
+      if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_transform), MP_MAP_LOOKUP))
+          && e->value != mp_const_none) {
+        if (!mp_obj_is_type(e->value, &type_mat3)) {
+          mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("transform must be a mat3"));
+        }
+        xform = ((mat3_obj_t *)MP_OBJ_TO_PTR(e->value))->m;
+        xf = &xform;
+      }
       if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_font_size), MP_MAP_LOOKUP)))
         size = mp_obj_get_float(e->value);
       if ((e = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_line_height), MP_MAP_LOOKUP)))
@@ -572,8 +588,8 @@ extern "C" {
     // Bounded layout path. Returns the drawn bounding box.
     if (has_rect) {
       rect_t bb = image_layout_text(self, text, bounds, size, align_h, align_v,
-                                    overflow, line_height, word_spacing, true);
-      return pv::box_rect(bb);
+                                    overflow, line_height, word_spacing, true, xf);
+      return pv::box_rect(xf ? bb.transformed(*xf) : bb);
     }
 
     // Fast path: a single run from the caret / position (size is a sentinel-0
@@ -589,15 +605,15 @@ extern "C" {
     rect_t bb;
     if (self->font) {
       float fs = size > 0.0f ? size : 12.0f;
-      self->image->font()->draw(self->image, text, fs);
+      self->image->font()->draw(self->image, text, fs, xf);
       bb = self->image->font()->measure(self->image, text, fs);
     } else {
       int scale = size > 0.0f ? (int)size : 1;
-      self->image->pixel_font()->draw(self->image, text, scale);
+      self->image->pixel_font()->draw(self->image, text, scale, xf);
       bb = self->image->pixel_font()->measure(self->image, text, scale);
     }
     bb.x = bx; bb.y = by;
-    return pv::box_rect(bb);
+    return pv::box_rect(xf ? bb.transformed(*xf) : bb);
   }
 
   mp_obj_t image_measure_text(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
@@ -639,7 +655,7 @@ extern "C" {
     if (has_rect) {
       // measure-only layout (no draw); align does not affect the size
       rect_t bb = image_layout_text(self, text, bounds, size, LEFT, TOP, CLIP,
-                                    line_height, word_spacing, false);
+                                    line_height, word_spacing, false, nullptr);
       result[0] = mp_obj_new_float(bb.w);
       result[1] = mp_obj_new_float(bb.h);
       return mp_obj_new_tuple(2, result);
