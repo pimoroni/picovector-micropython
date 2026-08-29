@@ -573,6 +573,9 @@ mp_obj_t mpy_image_blit_hspan(size_t n_args, const mp_obj_t *args) {
 extern "C" mp_obj_t image_load(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_obj, 1, image_load);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_load_static_obj, MP_ROM_PTR(&mpy_image_load_obj));
+extern "C" mp_obj_t image_qr(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_qr_obj, 1, image_qr);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_image_qr_static_obj, MP_ROM_PTR(&mpy_image_qr_obj));
 extern "C" mp_obj_t image_load_into(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_image_load_into_obj, 2, image_load_into);
 extern "C" mp_obj_t image_window(size_t n_args, const mp_obj_t *args);
@@ -779,6 +782,10 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_NEAREST), MP_ROM_INT(filter_t::NEAREST) },
   { MP_ROM_QSTR(MP_QSTR_BILINEAR), MP_ROM_INT(filter_t::BILINEAR) },
   { MP_ROM_QSTR(MP_QSTR_BICUBIC), MP_ROM_INT(filter_t::BICUBIC) },
+  { MP_ROM_QSTR(MP_QSTR_QR_LOW), MP_ROM_INT(qr_ecc_t::QR_LOW) },
+  { MP_ROM_QSTR(MP_QSTR_QR_MEDIUM), MP_ROM_INT(qr_ecc_t::QR_MEDIUM) },
+  { MP_ROM_QSTR(MP_QSTR_QR_QUARTILE), MP_ROM_INT(qr_ecc_t::QR_QUARTILE) },
+  { MP_ROM_QSTR(MP_QSTR_QR_HIGH), MP_ROM_INT(qr_ecc_t::QR_HIGH) },
   { MP_ROM_QSTR(MP_QSTR_LEFT), MP_ROM_INT(text_align_t::LEFT) },
   { MP_ROM_QSTR(MP_QSTR_CENTER), MP_ROM_INT(text_align_t::CENTER) },
   { MP_ROM_QSTR(MP_QSTR_RIGHT), MP_ROM_INT(text_align_t::RIGHT) },
@@ -788,6 +795,7 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_CLIP), MP_ROM_INT(text_overflow_t::CLIP) },
   { MP_ROM_QSTR(MP_QSTR_ELLIPSES), MP_ROM_INT(text_overflow_t::ELLIPSES) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_qr), MP_ROM_PTR(&mpy_image_qr_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
   { MP_ROM_QSTR(MP_QSTR_window), MP_ROM_PTR(&mpy_image_window_obj) },
   { MP_ROM_QSTR(MP_QSTR_spritesheet), MP_ROM_PTR(&mpy_image_spritesheet_obj) },

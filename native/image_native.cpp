@@ -195,6 +195,28 @@ extern "C" {
     return MP_OBJ_FROM_PTR(result);
   }
 
+  mp_obj_t image_qr(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+    pv::metric_scope _pvm(PV_M_image_qr);
+#endif
+    const char *text = mp_obj_str_get_str(args[0]);
+    qr_ecc_t ecc = n_args >= 2 ? (qr_ecc_t)mp_obj_get_int(args[1]) : QR_MEDIUM;
+    int border = n_args >= 3 ? mp_obj_get_int(args[2]) : 4;
+    if(ecc < QR_LOW || ecc > QR_HIGH) {
+      mp_raise_ValueError(MP_ERROR_TEXT("image.qr: unknown error correction level"));
+    }
+    if(border < 0) {
+      mp_raise_ValueError(MP_ERROR_TEXT("image.qr: border cannot be negative"));
+    }
+    image_t *code = image_t::qr(text, ecc, border);
+    if(!code) {
+      mp_raise_ValueError(MP_ERROR_TEXT("image.qr: text too long to encode"));
+    }
+    image_obj_t *result = mp_obj_malloc(image_obj_t, &type_image);
+    result->image = code;
+    return MP_OBJ_FROM_PTR(result);
+  }
+
   mp_obj_t image_load_into(size_t n_args, const mp_obj_t *args) {
     self(args[0], image_obj_t);
 #if PV_METRICS

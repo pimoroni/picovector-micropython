@@ -36,6 +36,12 @@ class image:
     BILINEAR = const("filter_t::BILINEAR", "Texture filter: bilinear (smooth).")
     BICUBIC = const("filter_t::BICUBIC", "Texture filter: bicubic (highest quality).")
 
+    # QR error correction levels, ascending redundancy
+    QR_LOW = const("qr_ecc_t::QR_LOW", "QR error correction: recovers ~7%.")
+    QR_MEDIUM = const("qr_ecc_t::QR_MEDIUM", "QR error correction: recovers ~15%.")
+    QR_QUARTILE = const("qr_ecc_t::QR_QUARTILE", "QR error correction: recovers ~25%.")
+    QR_HIGH = const("qr_ecc_t::QR_HIGH", "QR error correction: recovers ~30%.")
+
     # text align / overflow — for text() bounded layout. align is a (horizontal,
     # vertical) pair; a single CENTER reads for either axis.
     LEFT = const("text_align_t::LEFT", "Text align: left (horizontal).")
@@ -141,6 +147,14 @@ class image:
          "arguments to get that grid and the file's own frame timings. width and "
          "height aren't available for a GIF, since it has to composite at its "
          "own size.")
+
+    @staticmethod
+    @native
+    def qr(text: str, ecc: int = 1, border: int = 4) -> image:
+        "Encode text as a QR code: a two-colour palette image, one pixel per "
+        "module, with a border-module quiet zone. Scale it when blitting rather "
+        "than here. ecc is one of image.QR_LOW/QR_MEDIUM/QR_QUARTILE/QR_HIGH. "
+        "Raises ValueError if the text is too long to encode."
 
     @native
     def load_into(self, path_or_bytes) -> None:

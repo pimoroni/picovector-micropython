@@ -103,6 +103,7 @@ enum {
   PV_M_shape_bounds,  // shape.bounds
   PV_M_palette___getitem__,  // palette.__getitem__
   PV_M_image_load,  // image.load
+  PV_M_image_qr,  // image.qr
   PV_M_image_load_into,  // image.load_into
   PV_M_image_window,  // image.window
   PV_M_image_spritesheet,  // image.spritesheet
