@@ -31,23 +31,27 @@ mp_obj_t mpy_brush_pattern(size_t n_args, const mp_obj_t *args) {
   mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.pattern(color, color, index | tuple[8])"));
 }
 
-// brush.image: Image brush. Args: img (image). Optional: transform (mat3).
+// brush.image: Image brush. Args: img (image). Optional: transform (mat3), filter (image.NEAREST, image.BILINEAR or image.BICUBIC). A filtered brush samples 4 texels per pixel (bilinear) or 16 (bicubic).
 mp_obj_t mpy_brush_image(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
   pv::metric_scope _pvm(PV_M_brush_image);
 #endif
-  if (n_args == 1 && pv::is_image(args[0])) {
-    size_t _i = 0;
-    image_t * img = pv::get_image(args[_i]); _i++;
-    return pv::box_brush(m_new_class(image_brush_t, img));
-  }
-  if (n_args == 2 && pv::is_image(args[0]) && mp_obj_is_type(args[1], &type_mat3)) {
+  if (n_args >= 2 && pv::is_image(args[0]) && mp_obj_is_type(args[1], &type_mat3)) {
     size_t _i = 0;
     image_t * img = pv::get_image(args[_i]); _i++;
     mat3_t transform = ((mat3_obj_t *)MP_OBJ_TO_PTR(args[_i]))->m; _i++;
-    return pv::box_brush(m_new_class(image_brush_t, img, &transform));
+    filter_t filter = NEAREST;
+    if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
+    return pv::box_brush(m_new_class(image_brush_t, img, &transform, filter));
   }
-  mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.image(image, [mat3])"));
+  if (n_args >= 1 && pv::is_image(args[0])) {
+    size_t _i = 0;
+    image_t * img = pv::get_image(args[_i]); _i++;
+    filter_t filter = NEAREST;
+    if (n_args > _i) { filter = (filter_t)mp_obj_get_int(args[_i]); _i++; }
+    return pv::box_brush(m_new_class(image_brush_t, img, filter));
+  }
+  mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("invalid parameter, expected brush.image(image, [mat3], [filter])"));
 }
 
 // brush.gradient: Gradient brush. stops: list of (position 0–1, color), up to 16. type: brush.LINEAR, where p1 and p2 are the ends of the axis; brush.RADIAL, where p1 is the centre and |p2-p1| the radius; or brush.CONICAL, where p1 is the centre and the p1→p2 direction is where the ramp starts. A conical's stop positions are fractions of a full turn, clockwise, so a 270° gauge puts its stops in 0–0.75.

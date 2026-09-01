@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pv import api, cpp, const, overload, Range, ColorStops, Pattern8, SourceImage, XY
+from pv import (api, cpp, const, overload, Range, ColorStops, Pattern8, SourceImage,
+                XY, Filter, NEAREST)
 
 
 @api("brush_t", field="brush", ptr=True,
@@ -35,18 +36,24 @@ class brush:
     def pattern(c1, c2, p) -> brush:
         "Checkerboard pattern brush. Args: c1, c2 (colors), index (0–37) or 8-tuple."
 
-    # image(img, transform=None) --------------------------------------------
+    # image(img, transform=None, filter=NEAREST) -----------------------------
+    # the mat3 overload is declared first: dispatch guards only cover required
+    # params, so the shorter one would otherwise swallow brush.image(img, mat3).
     @overload
-    def image(img: SourceImage) -> brush: "Image brush at the origin."
+    @cpp(args="img &transform filter")
+    def image(img: SourceImage, transform: mat3, filter: Filter = NEAREST) -> brush:
+        "Image brush positioned by a mat3."
     @overload
-    @cpp(args="img &transform")
-    def image(img: SourceImage, transform: mat3) -> brush: "Image brush positioned by a mat3."
+    def image(img: SourceImage, filter: Filter = NEAREST) -> brush:
+        "Image brush at the origin."
 
     @staticmethod
     @cpp(call="image_brush_t", emit="mnew",
-         error="invalid parameter, expected brush.image(image, [mat3])")
-    def image(img, transform=None) -> brush:
-        "Image brush. Args: img (image). Optional: transform (mat3)."
+         error="invalid parameter, expected brush.image(image, [mat3], [filter])")
+    def image(img, transform=None, filter=NEAREST) -> brush:
+        ("Image brush. Args: img (image). Optional: transform (mat3), filter "
+         "(image.NEAREST, image.BILINEAR or image.BICUBIC). A filtered brush "
+         "samples 4 texels per pixel (bilinear) or 16 (bicubic).")
 
     # gradient(type, x1, y1, x2, y2, stops, transform=None) -----------------
     @staticmethod
