@@ -86,6 +86,7 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "brush.nightvision",
   "brush.chromatic",
   "shape.custom",
+  "shape.combine",
   "shape.regular_polygon",
   "shape.circle",
   "shape.ellipse",

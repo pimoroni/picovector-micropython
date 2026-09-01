@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Self, Annotated
 
-from pv import api, cpp, const, same, Range, XY, XYWH, PathList
+from pv import api, cpp, const, same, Range, XY, XYWH, PathList, ShapeList
 
 
 @api("shape_t", field="shape", ptr=True, box="pv::box_shape({0})",
@@ -31,6 +31,14 @@ class shape:
     @cpp(emit="expr", args="paths_shape")
     def custom(paths: PathList) -> shape:
         "Custom shape from one or more contours (extra contours = holes); each is a list of vec2, or an array('f') of flat x, y pairs which boxes no vec2."
+
+    @staticmethod
+    @cpp(call="append", emit="expr", args="combined")
+    def combine(shapes: ShapeList) -> shape:
+        ("One compound shape from several, each source's transform baked into "
+         "the copy it contributes. Draw it with fill_rule = NON_ZERO to fill the "
+         "union; under EVEN_ODD the overlaps come out hollow. The whole thing "
+         "rasterises in one pass, which is capped at 1024 points.")
 
     @staticmethod
     @cpp(args="c.x c.y sides r")

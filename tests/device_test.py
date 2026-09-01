@@ -254,6 +254,22 @@ ok("shape.squircle (arg count)", shape.squircle(vec2(8, 8), 6).bounds().w > 0)
 ok("shape.custom(points)", shape.custom([vec2(0, 0), vec2(10, 0), vec2(5, 10)]).bounds().w > 0)
 ok("shape.stroke() returns shape", shape.circle(8, 8, 4).stroke(2).bounds().w > 0)
 
+# ── shape.combine ───────────────────────────────────────────────────────────
+_a = shape.circle(8, 8, 6)
+_b = shape.rectangle(8, 4, 12, 8)
+ok("shape.combine(a, b)", shape.combine(_a, _b).bounds().w > 0)
+ok("shape.combine([a, b])  [list form]", shape.combine([_a, _b]).bounds().w > 0)
+ok("shape.combine spans both", near(shape.combine(_a, _b).bounds().w, 18, 1.5))
+# the sources' own transforms are baked in, and the sources are left alone
+_t = shape.rectangle(0, 0, 10, 10)
+_t.transform = mat3().translate(40, 0)
+ok("shape.combine bakes the transform", near(shape.combine(shape.rectangle(0, 0, 10, 10), _t).bounds().w, 50, 0.5))
+ok("shape.combine leaves the source", near(_t.bounds().x, 40, 0.5))
+ok("shape.combine(one) copies", shape.combine(_a).bounds().w > 0)
+raises("shape.combine() needs an argument", TypeError, lambda: shape.combine())
+raises("shape.combine(not a shape)", TypeError, lambda: shape.combine(1))
+raises("shape.combine([not a shape])", TypeError, lambda: shape.combine([1]))
+
 # ── image: raster + float args + draw + overloads ────────────────────────────
 img = image(32, 32)
 ok("image size", img.width == 32 and img.height == 32)

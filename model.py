@@ -71,6 +71,7 @@ PATTERN8 = Converter("pattern8", "", consumes=1, kind="pattern8",
                      _is_check="mp_obj_is_type({0}, &mp_type_tuple)")
 PATHLIST = Converter("pathlist", "", consumes=1, kind="pathlist")
 SHAPELIST = Converter("shapelist", "", consumes=1, kind="shapelist")
+SHAPEARGS = Converter("shapeargs", "", consumes=1, kind="shapeargs")
 COLORLIST = Converter("colorlist", "", consumes=1, kind="colorlist",
                       _is_check="mp_obj_is_type({0}, &mp_type_list)")
 
@@ -82,7 +83,8 @@ SOURCEIMAGE = Converter("sourceimage", "image_t *", "pv::get_image({0})", None,
 
 _PSEUDO = {
     "XY": XY, "XYWH": XYWH, "ColorStops": STOPS, "Pattern8": PATTERN8,
-    "PathList": PATHLIST, "ShapeOrList": SHAPELIST, "Filter": FILTER,
+    "PathList": PATHLIST, "ShapeOrList": SHAPELIST, "ShapeList": SHAPEARGS,
+    "Filter": FILTER,
     "Buffer": BUFFER, "SourceImage": SOURCEIMAGE,
 }
 

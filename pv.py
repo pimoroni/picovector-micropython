@@ -26,7 +26,7 @@ from typing import Annotated, overload, Optional  # noqa: F401  (overload re-exp
 __all__ = [
     "Range", "api", "cpp", "native", "overload", "Annotated", "same", "Palette",
     "const",
-    "XY", "XYWH", "ColorStops", "Pattern8", "PathList", "ShapeOrList",
+    "XY", "XYWH", "ColorStops", "Pattern8", "PathList", "ShapeOrList", "ShapeList",
     "Filter", "Buffer", "NEAREST", "BILINEAR", "BICUBIC",
 ]
 
@@ -105,6 +105,8 @@ Pattern8 = _Pseudo("Pattern8", "An 8-element tuple of row bitmasks (custom patte
 PathList = _Pseudo("PathList", "One or more shape contours, each a list of vec2 "
                    "or an array('f') of flat x, y pairs.")
 ShapeOrList = _Pseudo("ShapeOrList", "A shape, or a list of shapes.")
+ShapeList = _Pseudo("ShapeList", "One or more shapes, each given as a shape or "
+                    "a list of shapes.")
 Filter = _Pseudo("Filter", "A texture filter constant: NEAREST, BILINEAR or BICUBIC.")
 Buffer = _Pseudo("Buffer", "A writable buffer-protocol object (bytes/bytearray/array).")
 # An image read through a type check. A plain `image` annotation is checked only

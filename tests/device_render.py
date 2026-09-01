@@ -17,7 +17,7 @@
 import time
 from array import array
 
-from picovector import (color, rect, vec2, shape, image,
+from picovector import (color, rect, vec2, mat3, shape, image,
                         palette, spritesheet, tween, font)
 
 OFF, X2, X4 = image.OFF, image.X2, image.X4
@@ -229,6 +229,72 @@ def test_fill_rules_differ_on_self_intersection():
     nz2.fill_rule = NON_ZERO
     nz2.shape(shape.circle(32, 32, 20))
     ok("fill rules agree on a circle", same(eo2, nz2))
+
+
+# ── compound shapes ─────────────────────────────────────────────────────────
+
+def test_combine_fills_as_one():
+    a = shape.circle(24, 32, 14)
+    b = shape.rectangle(24, 24, 24, 16)
+
+    nz = canvas(aa=OFF)
+    nz.fill_rule = NON_ZERO
+    nz.shape(shape.combine(a, b))
+    ok("combined overlap fills solid", pixel(nz, 28, 32) == 255)
+    ok("combined circle side fills", pixel(nz, 16, 32) == 255)
+    ok("combined rectangle side fills", pixel(nz, 44, 32) == 255)
+
+    # the same pair drawn separately covers the same ground
+    sep = canvas(aa=OFF)
+    sep.shape([a, b])
+    ok("combined covers what two draws do", scan(nz)[0] == scan(sep)[0],
+       "combined %d, separate %d" % (scan(nz)[0], scan(sep)[0]))
+
+    # under even-odd the overlap is a hole instead, which is the documented
+    # reason combine() asks for NON_ZERO
+    eo = canvas(aa=OFF)
+    eo.fill_rule = EVEN_ODD
+    eo.shape(shape.combine(a, b))
+    ok("even-odd hollows the overlap", pixel(eo, 28, 32) == 0)
+
+    # a translucent pen over a compound blends once, where two draws blend twice
+    over = canvas(aa=OFF)
+    over.fill_rule = NON_ZERO
+    over.alpha = 128
+    over.shape(shape.combine(a, b))
+    twice = canvas(aa=OFF)
+    twice.alpha = 128
+    twice.shape([a, b])
+    ok("compound overlap blends once", pixel(over, 28, 32) < pixel(twice, 28, 32),
+       "compound %d, separate %d" % (pixel(over, 28, 32), pixel(twice, 28, 32)))
+
+
+def test_combine_keeps_holes_and_transforms():
+    # an even-odd ring: outer contour plus a counter-wound inner one
+    import math
+    outer = []
+    inner = []
+    for i in range(32):
+        a = math.radians(i * 360 / 32)
+        outer.append(vec2(24 + math.cos(a) * 16, 32 + math.sin(a) * 16))
+        inner.append(vec2(24 - math.cos(a) * 8, 32 + math.sin(a) * 8))
+    ring = shape.custom(outer, inner)
+
+    img = canvas(aa=OFF)
+    img.fill_rule = NON_ZERO
+    img.shape(shape.combine(ring, shape.rectangle(40, 28, 18, 8)))
+    ok("combined ring keeps its hole", pixel(img, 24, 32) == 0)
+    ok("combined ring keeps its rim", pixel(img, 24, 20) == 255)
+    ok("combined bar draws", pixel(img, 50, 32) == 255)
+
+    # a source transform is baked in, not dropped
+    moved = shape.rectangle(0, 0, 12, 12)
+    moved.transform = mat3().translate(40, 40)
+    placed = canvas(aa=OFF)
+    placed.fill_rule = NON_ZERO
+    placed.shape(shape.combine(shape.rectangle(4, 4, 12, 12), moved))
+    ok("combined source transform is baked in", pixel(placed, 45, 45) == 255)
+    ok("combined first source stays put", pixel(placed, 8, 8) == 255)
 
 
 # ── clipping ────────────────────────────────────────────────────────────────
@@ -914,6 +980,8 @@ def main():
     test_antialias_only_softens_edges()
     test_antialias_levels_agree()
     test_fill_rules_differ_on_self_intersection()
+    test_combine_fills_as_one()
+    test_combine_keeps_holes_and_transforms()
     test_offscreen_and_clipped()
     test_tile_seams()
     test_drawing_twice_is_stable()

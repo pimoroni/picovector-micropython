@@ -33,6 +33,27 @@ mp_obj_t mpy_shape_custom(size_t n_args, const mp_obj_t *args) {
   return pv::box_shape(paths_shape);
 }
 
+// shape.combine: One compound shape from several, each source's transform baked into the copy it contributes. Draw it with fill_rule = NON_ZERO to fill the union; under EVEN_ODD the overlaps come out hollow. The whole thing rasterises in one pass, which is capped at 1024 points.
+mp_obj_t mpy_shape_combine(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_shape_combine);
+#endif
+  shape_t *combined = new (PV_MALLOC(sizeof(shape_t))) shape_t(n_args);
+  for (size_t _s = 0; _s < n_args; _s++) {
+    if (mp_obj_is_type(args[_s], &type_shape)) {
+      combined->append(*((shape_obj_t *)MP_OBJ_TO_PTR(args[_s]))->shape);
+      continue;
+    }
+    if (!mp_obj_is_type(args[_s], &mp_type_list)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("expected a shape or a list of shapes"));
+    size_t _sc; mp_obj_t *_items; mp_obj_list_get(args[_s], &_sc, &_items);
+    for (size_t _k = 0; _k < _sc; _k++) {
+      if (!mp_obj_is_type(_items[_k], &type_shape)) mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT("expected a shape or a list of shapes"));
+      combined->append(*((shape_obj_t *)MP_OBJ_TO_PTR(_items[_k]))->shape);
+    }
+  }
+  return pv::box_shape(combined);
+}
+
 // shape.regular_polygon: Regular polygon. Args: centre, radius, number of sides.
 mp_obj_t mpy_shape_regular_polygon(size_t n_args, const mp_obj_t *args) {
 #if PV_METRICS
@@ -197,6 +218,8 @@ mp_obj_t mpy_shape_bounds(size_t n_args, const mp_obj_t *args) {
 
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_custom_obj, 1, mpy_shape_custom);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_custom_static_obj, MP_ROM_PTR(&mpy_shape_custom_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_combine_obj, 1, mpy_shape_combine);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_combine_static_obj, MP_ROM_PTR(&mpy_shape_combine_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_regular_polygon_obj, 3, mpy_shape_regular_polygon);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_regular_polygon_static_obj, MP_ROM_PTR(&mpy_shape_regular_polygon_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_circle_obj, 2, mpy_shape_circle);
@@ -247,6 +270,7 @@ static const mp_rom_map_elem_t shape_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_CAP_ROUND), MP_ROM_INT(CAP_ROUND) },
   { MP_ROM_QSTR(MP_QSTR_CAP_SQUARE), MP_ROM_INT(CAP_SQUARE) },
   { MP_ROM_QSTR(MP_QSTR_custom), MP_ROM_PTR(&mpy_shape_custom_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_combine), MP_ROM_PTR(&mpy_shape_combine_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_regular_polygon), MP_ROM_PTR(&mpy_shape_regular_polygon_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_circle), MP_ROM_PTR(&mpy_shape_circle_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_ellipse), MP_ROM_PTR(&mpy_shape_ellipse_static_obj) },

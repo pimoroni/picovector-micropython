@@ -89,6 +89,7 @@ enum {
   PV_M_brush_nightvision,  // brush.nightvision
   PV_M_brush_chromatic,  // brush.chromatic
   PV_M_shape_custom,  // shape.custom
+  PV_M_shape_combine,  // shape.combine
   PV_M_shape_regular_polygon,  // shape.regular_polygon
   PV_M_shape_circle,  // shape.circle
   PV_M_shape_ellipse,  // shape.ellipse

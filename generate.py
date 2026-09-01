@@ -281,6 +281,11 @@ def emit_member(o, t, m):
         o("}")
         o("")
         return
+    if len(m.params) == 1 and m.params[0].conv.kind == "shapeargs":
+        _emit_shapeargs_body(o, t, m)
+        o("}")
+        o("")
+        return
 
     if m.overloads:
         for ov in m.overloads:
@@ -333,6 +338,28 @@ def _emit_pathlist_body(o, t, m):
     o(f"{name}->add_path(poly);", 2)
     o("}", 1)
     o(f"return pv::box_shape({name});", 1)
+
+
+def _emit_shapeargs_body(o, t, m):
+    """A variadic run of shapes folded into one compound shape. Each positional
+    argument is a shape or a list of shapes, so `combine(a, b)`, `combine(*group)`
+    and `combine(group)` all read the same."""
+    _bad = ('mp_raise_msg_varg(&mp_type_TypeError, MP_ERROR_TEXT('
+            '"expected a shape or a list of shapes"));')
+    o("shape_t *combined = new (PV_MALLOC(sizeof(shape_t))) shape_t(n_args);", 1)
+    o("for (size_t _s = 0; _s < n_args; _s++) {", 1)
+    o("if (mp_obj_is_type(args[_s], &type_shape)) {", 2)
+    o(f"combined->{m.call}(*((shape_obj_t *)MP_OBJ_TO_PTR(args[_s]))->shape);", 3)
+    o("continue;", 3)
+    o("}", 2)
+    o(f"if (!mp_obj_is_type(args[_s], &mp_type_list)) {_bad}", 2)
+    o("size_t _sc; mp_obj_t *_items; mp_obj_list_get(args[_s], &_sc, &_items);", 2)
+    o("for (size_t _k = 0; _k < _sc; _k++) {", 2)
+    o(f"if (!mp_obj_is_type(_items[_k], &type_shape)) {_bad}", 3)
+    o(f"combined->{m.call}(*((shape_obj_t *)MP_OBJ_TO_PTR(_items[_k]))->shape);", 3)
+    o("}", 2)
+    o("}", 1)
+    o("return pv::box_shape(combined);", 1)
 
 
 def _emit_shapelist_body(o, t, m):
