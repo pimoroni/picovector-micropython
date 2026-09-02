@@ -1,9 +1,10 @@
 # picovector-micropython.cmake — the MicroPython side of PicoVector.
 #
-# Wires the generated bindings + PNG/JPEG decoders into the firmware and
-# configures the core picovector library for RP2 MicroPython rasterise on core1
-# (PV_DUAL_CORE), enlarge the shared working buffer to fit PNGDEC/JPEGDEC decode
-# state, and expose optional metrics/profiling.
+# Wires the generated bindings (the `picovector` and `pico3d` modules) plus the
+# PNG/JPEG decoders into the firmware, and configures the core picovector library
+# for RP2 MicroPython: rasterise on core1 (PV_DUAL_CORE), enlarge the shared
+# working buffer to fit PNGDEC/JPEGDEC decode state, and expose optional
+# metrics/profiling.
 
 if(NOT DEFINED ${PICOVECTOR_DIR})
   set(PICOVECTOR_DIR "${CMAKE_CURRENT_LIST_DIR}/picovector")
@@ -35,6 +36,15 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/tween.cpp
+  # the pico3d module table + its per-type bindings
+  ${CMAKE_CURRENT_LIST_DIR}/generated/pico3d_bindings.c
+  ${CMAKE_CURRENT_LIST_DIR}/generated/vec3.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/mat4.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/mesh.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/material.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/light.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/surface.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pv_metrics_names.cpp
   # shared glue + hand-written (native) bodies + companion image decoders
   ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_support.cpp
@@ -47,6 +57,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/native/spritesheet_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/tween_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native/pico3d_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_jpeg.cpp
   # GIF needs no vendored decoder: the parser is core, so the host tests cover it

@@ -19,6 +19,7 @@ from . import image         # noqa: F401
 from . import spritesheet   # noqa: F401  (image returns one)
 from . import algorithm     # noqa: F401
 from . import tween         # noqa: F401
+from . import pico3d        # noqa: F401  (its own module; see api/pico3d/)
 
 #: MicroPython module name.
 MODULE_NAME = "picovector"

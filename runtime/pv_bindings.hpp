@@ -279,4 +279,46 @@ namespace pv {
     return MP_OBJ_FROM_PTR(o);
   }
 
+  // ── pico3d ─────────────────────────────────────────────────────────────────
+  static inline mp_obj_t box_vec3(const vec3_t &v) {
+    vec3_obj_t *o = mp_obj_malloc(vec3_obj_t, &type_vec3);
+    o->v = v;
+    return MP_OBJ_FROM_PTR(o);
+  }
+
+  static inline mp_obj_t box_mat4(const mat4_t &m) {
+    mat4_obj_t *o = mp_obj_malloc(mat4_obj_t, &type_mat4);
+    o->m = m;
+    return MP_OBJ_FROM_PTR(o);
+  }
+
+  // pico3d's colour word shares picovector's channel order (R low, B high) but
+  // carries no alpha, so a colour crosses into the engine as its resolved sRGB
+  // and comes back out opaque.
+  static inline uint32_t pico3d_rgb_of(mp_obj_t o) {
+    if (!mp_obj_is_type(o, &type_color)) {
+      mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("expected a color"));
+    }
+    const color_t &c = ((color_obj_t *)MP_OBJ_TO_PTR(o))->c;
+    return pico3d_rgb(c.r(), c.g(), c.b());
+  }
+
+  static inline mp_obj_t box_pico3d_rgb(uint32_t w) {
+    return box_color(rgb_color_t((int)(w & 0xff), (int)((w >> 8) & 0xff),
+                                 (int)((w >> 16) & 0xff), 255));
+  }
+
+  // Fill a texture view from an image, refusing anything that isn't four bytes a
+  // pixel: the engine samples the buffer as RGBA words with no palette indirection.
+  static inline void pico3d_texture_of(mp_obj_t o, pico3d_texture_t &tv) {
+    image_t *im = get_image(o);
+    if (im->pixel_format() != RGBA8888) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("a texture must be an RGBA image"));
+    }
+    rect_t b = im->bounds();
+    tv.texels = (const uint32_t *)im->ptr(0, 0);
+    tv.width = (int)b.w;
+    tv.height = (int)b.h;
+  }
+
 }  // namespace pv

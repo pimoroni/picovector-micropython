@@ -2,8 +2,9 @@
 
 The MicroPython binding layer for the [PicoVector](../picovector) core library:
 the `picovector` C extension module (`vec2`, `rect`, `mat3`, `color`, `brush`,
-`shape`, `image`, `font`, `pixel_font`, `algorithm`) plus the glue that wires the
-rasteriser onto MicroPython's GC heap.
+`shape`, `image`, `font`, `pixel_font`, `algorithm`) and the `pico3d` module
+(`vec3`, `mat4`, `mesh`, `material`, `light`, `surface`), plus the glue that
+wires the rasteriser onto MicroPython's GC heap.
 
 The bindings are described in Python and generated. The stubs under [`api/`](api/)
 read like a `.pyi` of the library *as if it were written in Python* — types,
@@ -26,6 +27,7 @@ prone to.
 pv.py            authoring surface the stubs import (decorators, pseudo-types, Range)
 api/*.py         one stub class per type (vec2, rect, mat3, color, brush, shape,
                  image, font, pixel_font, algorithm) — the human-edited source
+api/pico3d/*.py  the same, for the pico3d module's types
 model.py         internal IR + the loader that introspects the stubs
 generate.py      IR -> C++ (run this to (re)generate)
 picovector.config.hpp   MicroPython config: routes the core onto the GC heap and
@@ -33,13 +35,13 @@ picovector.config.hpp   MicroPython config: routes the core onto the GC heap and
 runtime/
   pv_bindings.hpp lean inline helpers used by the generated code
   pv_support.cpp  shared glue (attr action, file readers, vec2/rect/brush helpers)
-  pv_objs.hpp     picovector MicroPython obj structs + type_* externs
+  pv_objs.hpp     picovector + pico3d MicroPython obj structs, type_* externs
   mp_allocator.hpp  std::vector allocator: scan vs no-scan by element type
   pv_metrics.{hpp,cpp}  optional per-binding call/time metrics (picovector.metrics)
 native/*.cpp     hand-written bodies for the few irreducibly-procedural members,
                  plus the companion PNG/JPEG decoders (image_png/jpeg.cpp)
-generated/       emitted output: <type>.cpp, types.h, picovector_bindings.c,
-                 pv_metrics_table.h, pv_metrics_names.cpp
+generated/       emitted output: <type>.cpp, types.h, one <module>_bindings.c
+                 per module, pv_metrics_table.h, pv_metrics_names.cpp
 picovector-micropython.cmake   binding sources, include dirs + build knobs
 ```
 
@@ -85,6 +87,10 @@ Things convention can't express, declared with `@cpp`/pseudo-types:
   temporary, e.g. boxed by value), `emit="mnew"` (GC `m_new_class`),
   `emit="new"` (raw `new` — **not** GC-tracked, avoid for owned heap),
   `recv="src"` (call on an argument, e.g. `image.blit`).
+* **which module a type belongs to** → `@api(module="pico3d")`; the generator
+  emits one `<module>_bindings.c` table per module. Types share one flat name
+  space for annotations either way, so a `pico3d` stub can take a picovector
+  `image` or `color`.
 
 ## Memory & GC
 
@@ -113,7 +119,7 @@ automatically via `__has_include` when this component is on the include path.
 ## Generate
 
 ```
-python generate.py            # writes generated/*.cpp, types.h, picovector_bindings.c
+python generate.py            # writes generated/*.cpp, types.h, <module>_bindings.c
 python generate.py --list     # print the surface
 ```
 
@@ -135,10 +141,58 @@ These are declared in the DSL (so it stays the single source of truth for the
   dispatch.
 * `algorithm.clip_line` / `dda` / `raycast` — in-place mutation and
   lambda-driven nested results.
+* `pico3d.mesh` / `material` / `light` / `surface` (their constructors, plus
+  `surface.render` and `engine.profile`) — reading borrowed buffers and images
+  into the engine's pointer views, and owning the depth buffer.
 
 Everything else — all the vec2/rect/mat3 maths, the colour factories, every
 brush, every shape factory (incl. `custom`), and the bulk of `image` (incl.
 `blit`'s four overloads and the `XY`/`XYWH` forms) — is generated.
+
+## pico3d
+
+The 3D module is a second surface over the same core checkout, generated from
+[`api/pico3d/`](api/pico3d/) exactly like the 2D one. It is a separate import
+rather than more names in `picovector` — the engine is a fixed-function
+rasteriser with its own vocabulary, and a `surface` sitting next to an `image`
+in one namespace would only read as a synonym.
+
+The two meet at the types that are genuinely shared: a texture is a picovector
+`image`, every colour is a picovector `color`, and a `surface` renders into an
+image, so 3D and 2D draw into one framebuffer and the image's clip rect frames
+the 3D viewport.
+
+```python
+import picovector, pico3d
+from array import array
+
+screen = picovector.image(320, 240)
+view = pico3d.surface(screen)
+
+cube = pico3d.mesh(positions=array('f', [...]), indices=array('H', [...]),
+                   normals=array('f', [...]))
+brass = pico3d.material(color=picovector.color.rgb(200, 160, 60),
+                        shading=pico3d.material.GOURAUD)
+sun = pico3d.light(direction=pico3d.vec3(-1, -1, -1),
+                   ambient=picovector.color.rgb(30, 30, 40))
+
+camera = pico3d.mat4.perspective(60, 320 / 240, 0.5, 100).multiply(
+         pico3d.mat4.look_at(pico3d.vec3(0, 2, 6), pico3d.vec3(0, 0, 0),
+                             pico3d.vec3(0, 1, 0)))
+
+while True:
+    screen.clear()
+    view.clear_depth()
+    view.render(cube, pico3d.mat4().rotate_y(angle), camera, brass, sun)
+```
+
+Geometry is borrowed, never copied: a `mesh` points into the arrays it was
+given and holds them alive, so they stay writable and deforming a mesh is a
+write into `positions` with no rebuild. The constructor bounds-checks the
+indices and array lengths once, because the transform pass does not.
+
+`pico3d.engine.cores(2)` splits the rasterise pass across both cores. It borrows
+the same core1 the picovector rasteriser uses, so the two never overlap.
 
 ## Metrics (optional)
 
@@ -168,5 +222,5 @@ fit PNG/JPEG decode state, and the optional `PV_METRICS` / `PV_PROFILE` toggles.
 
 It is included from `board/usermodules.cmake` immediately after
 `find_package(PICOVECTOR)` — the core library creates the `usermod_picovector`
-target, and this file augments it. The bindings register the `picovector` module
-and its types directly.
+target, and this file augments it. The bindings register the `picovector` and
+`pico3d` modules and their types directly.

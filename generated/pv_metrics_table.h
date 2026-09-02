@@ -162,5 +162,29 @@ enum {
   PV_M_tween_at,  // tween.at
   PV_M_tween_start,  // tween.start
   PV_M_tween_stop,  // tween.stop
+  PV_M_vec3_length,  // vec3.length
+  PV_M_vec3_length_squared,  // vec3.length_squared
+  PV_M_vec3_normalized,  // vec3.normalized
+  PV_M_vec3_dot,  // vec3.dot
+  PV_M_vec3_cross,  // vec3.cross
+  PV_M_vec3_lerp,  // vec3.lerp
+  PV_M_mat4_perspective,  // mat4.perspective
+  PV_M_mat4_look_at,  // mat4.look_at
+  PV_M_mat4_translate,  // mat4.translate
+  PV_M_mat4_scale,  // mat4.scale
+  PV_M_mat4_rotate_x,  // mat4.rotate_x
+  PV_M_mat4_rotate_y,  // mat4.rotate_y
+  PV_M_mat4_rotate_z,  // mat4.rotate_z
+  PV_M_mat4_rotate_x_radians,  // mat4.rotate_x_radians
+  PV_M_mat4_rotate_y_radians,  // mat4.rotate_y_radians
+  PV_M_mat4_rotate_z_radians,  // mat4.rotate_z_radians
+  PV_M_mat4_multiply,  // mat4.multiply
+  PV_M_mat4_project,  // mat4.project
+  PV_M_mat4_transform_direction,  // mat4.transform_direction
+  PV_M_surface_clear_depth,  // surface.clear_depth
+  PV_M_surface_render,  // surface.render
+  PV_M_engine_cores,  // engine.cores
+  PV_M_engine_core_count,  // engine.core_count
+  PV_M_engine_profile,  // engine.profile
   PV_METRIC_COUNT
 };

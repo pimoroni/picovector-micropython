@@ -14,6 +14,7 @@
 #include "spritesheet.hpp"
 #include "blend.hpp"
 #include "rasteriser.hpp"
+#include "pico3d.hpp"
 #include "tween/tween.hpp"
 #include "PNGdec.h"
 #endif
@@ -194,6 +195,56 @@ extern "C" {
   // The `font` namespace singleton object, registered in the module globals.
   typedef struct _font_ns_obj_t { mp_obj_base_t base; } font_ns_obj_t;
   extern const font_ns_obj_t pv_font_ns_obj;
+
+  // ── pico3d ────────────────────────────────────────────────────────────────
+  // The 3D module's objs. The engine works in plain pointer views, so these are
+  // where image_t and the GC heap meet it: every borrowed Python buffer is held
+  // by the obj that points into it, so the GC can't free it under the engine.
+
+  typedef struct _vec3_obj_t {
+    mp_obj_base_t base;
+    vec3_t v;
+  } vec3_obj_t;
+
+  typedef struct _mat4_obj_t {
+    mp_obj_base_t base;
+    mat4_t m;
+  } mat4_obj_t;
+
+  typedef struct _mesh_obj_t {
+    mp_obj_base_t base;
+    pico3d_mesh_t mesh;
+    // GC roots for the borrowed geometry mesh points into.
+    mp_obj_t positions_ref, indices_ref, normals_ref, uvs_ref, colors_ref, tangents_ref;
+  } mesh_obj_t;
+
+  typedef struct _material_obj_t {
+    mp_obj_base_t base;
+    pico3d_material_t mat;
+    pico3d_texture_t tex, nmap, mcap;   // views mat's pointers refer to
+    pico3d_shading_t shading;
+    mp_obj_t texture_ref, normal_map_ref, matcap_ref;   // GC roots
+  } material_obj_t;
+
+  typedef struct _light_obj_t {
+    mp_obj_base_t base;
+    pico3d_light_t light;
+  } light_obj_t;
+
+  // Wraps an RGBA8888 image and owns the depth buffer and per-vertex transform
+  // scratch that go with it. Both are sized on demand and reused across frames.
+  typedef struct _surface_obj_t {
+    mp_obj_base_t base;
+    image_obj_t *source;
+    uint16_t *depth;
+    int w, h;
+    pico3d_vcache_t *vcache;
+    uint32_t vcache_cap;
+  } surface_obj_t;
+
+  // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
+  // entry point and the two engine-wide accessors behind the `engine` namespace.
+  extern void surface_view(surface_obj_t *self, pico3d_target_t *t);
 }
 
 extern rect_t mp_obj_get_rect(mp_obj_t rect_in);
