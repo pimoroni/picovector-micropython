@@ -310,9 +310,14 @@ namespace pv {
 
   // Fill a texture view from an image, refusing anything that isn't four bytes a
   // pixel: the engine samples the buffer as RGBA words with no palette indirection.
+  //
+  // has_palette() is the check that matters and it is separate from the format: a
+  // palettised image reports RGBA8888, because that describes its colour table,
+  // while the pixels themselves are one byte of index. Sampling those as words
+  // reads four times past the end of the buffer.
   static inline void pico3d_texture_of(mp_obj_t o, pico3d_texture_t &tv) {
     image_t *im = get_image(o);
-    if (im->pixel_format() != RGBA8888) {
+    if (im->pixel_format() != RGBA8888 || im->has_palette()) {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("a texture must be an RGBA image"));
     }
     rect_t b = im->bounds();

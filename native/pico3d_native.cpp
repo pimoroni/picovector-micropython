@@ -238,7 +238,10 @@ extern "C" {
       mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("surface() expects an image"));
     }
     image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(args[0]);
-    if (img->image->pixel_format() != RGBA8888) {
+    // has_palette() is separate from the format: a palettised image reports
+    // RGBA8888 for its colour table while its pixels are one byte of index, so
+    // writing RGBA words into it would run four times past the end.
+    if (img->image->pixel_format() != RGBA8888 || img->image->has_palette()) {
       mp_raise_msg(&mp_type_ValueError,
                    MP_ERROR_TEXT("pico3d needs an RGBA image"));
     }
