@@ -39,7 +39,10 @@ cxx:
 	  else echo "FAIL \$\$(basename \$\$f)"; head -25 /tmp/pverr; exit 1; fi; \\
 	done
 c:
-	@arm-none-eabi-gcc \$(C_DEFINES) \$(C_INCLUDES) \$(C_FLAGS) \$(INC) -fsyntax-only $HERE/generated/picovector_bindings.c && echo "OK  picovector_bindings.c"
+	@for f in $HERE/generated/*_bindings.c; do \\
+	  arm-none-eabi-gcc \$(C_DEFINES) \$(C_INCLUDES) \$(C_FLAGS) \$(INC) -fsyntax-only \$\$f \\
+	    && echo "OK  \$\$(basename \$\$f)" || exit 1; \\
+	done
 MKEOF
 
 echo "== syntax-checking bindings against $BUILD critical flags =="

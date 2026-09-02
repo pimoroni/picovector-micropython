@@ -227,6 +227,8 @@ class PaletteColor:
 @dataclass
 class Type:
     name: str
+    module: str
+    stub: str
     mp_type: str
     obj_struct: str
     cpp_class: str
@@ -607,7 +609,9 @@ def load() -> list[Type]:
         if box is None and name in ("vec2", "rect", "mat3", "shape", "color", "brush"):
             box = f"pv::box_{name}({{0}})"
         t = Type(
-            name=name, mp_type=f"type_{name}", obj_struct=obj, cpp_class=api["cpp"],
+            name=name, module=api["module"],
+            stub=cls.__module__.replace(".", "/") + ".py",
+            mp_type=f"type_{name}", obj_struct=obj, cpp_class=api["cpp"],
             field=api["field"], field_is_ptr=ptr, arg_read=arg_read,
             arg_type=arg_type, box=box, has_buffer=bool(api["buffer"]),
             has_subscr=api["subscr"],

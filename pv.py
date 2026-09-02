@@ -121,7 +121,8 @@ REGISTRY: list = []
 
 def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False, subscr=False,
         del_native=False, del_stmt="", includes=(), print=None,
-        aliases=None, palette=(), arg_read=None, arg_type=None, box=None):
+        aliases=None, palette=(), arg_read=None, arg_type=None, box=None,
+        module="picovector"):
     """Class decorator declaring the C++ wiring for a whole picovector type.
 
     ``cpp`` is the underlying C++ class (e.g. ``"vec2_t"``); ``field`` is the
@@ -130,6 +131,11 @@ def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False, subscr=
     slots (finaliser, buffer protocol, custom ``__del__``, ``__repr__`` format)
     and supply rarely-needed extras (extra includes, attribute aliases, a colour
     palette).
+
+    ``module`` is the MicroPython module the type is registered in.  Everything
+    2D is ``picovector``; the pico3d types declare ``module="pico3d"`` so the 3D
+    surface stays its own import.  Types across modules still share one flat
+    name space for annotations, so a pico3d stub can take a picovector ``image``.
     """
     def deco(cls):
         cls.__pv_api__ = dict(
@@ -137,7 +143,7 @@ def api(cpp=None, *, field="", ptr=False, finaliser=False, buffer=False, subscr=
             del_native=del_native, del_stmt=del_stmt, includes=tuple(includes),
             subscr=subscr,
             print=print, aliases=dict(aliases or {}), palette=tuple(palette),
-            arg_read=arg_read, arg_type=arg_type, box=box,
+            arg_read=arg_read, arg_type=arg_type, box=box, module=module,
         )
         REGISTRY.append(cls)
         return cls
