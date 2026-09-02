@@ -1,4 +1,4 @@
 [submodule "picovector"]
 	path = picovector
 	url = https://github.com/pimoroni/picovector
-	branch = v3.1.0
+	branch = pico3d-v3.1.0
