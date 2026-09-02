@@ -207,6 +207,38 @@ mp_obj_t mpy_shape_stroke(size_t n_args, const mp_obj_t *args) {
   return MP_OBJ_FROM_PTR(self);
 }
 
+// shape.grow: Replace this shape with one offset outward by amount along its edge normals, joining convex corners per join (a JOIN_* value). Winding does not matter: a positive amount always grows outward. Returns self.
+mp_obj_t mpy_shape_grow(size_t n_args, const mp_obj_t *args) {
+  self(args[0], shape_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_shape_grow);
+#endif
+  size_t _i = 1;
+  float amount = mp_obj_get_float(args[_i]); _i++;
+  int join = 0;
+  if (n_args > _i) { join = (int)mp_obj_get_float(args[_i]); _i++; }
+  float miter_limit = 4.0;
+  if (n_args > _i) { miter_limit = mp_obj_get_float(args[_i]); _i++; }
+  self->shape->grow(amount, join, miter_limit);
+  return MP_OBJ_FROM_PTR(self);
+}
+
+// shape.shrink: The same, inset by amount instead of outset. Returns self.
+mp_obj_t mpy_shape_shrink(size_t n_args, const mp_obj_t *args) {
+  self(args[0], shape_obj_t);
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_shape_shrink);
+#endif
+  size_t _i = 1;
+  float amount = mp_obj_get_float(args[_i]); _i++;
+  int join = 0;
+  if (n_args > _i) { join = (int)mp_obj_get_float(args[_i]); _i++; }
+  float miter_limit = 4.0;
+  if (n_args > _i) { miter_limit = mp_obj_get_float(args[_i]); _i++; }
+  self->shape->shrink(amount, join, miter_limit);
+  return MP_OBJ_FROM_PTR(self);
+}
+
 // shape.bounds: Device-space bounding box (local bbox run through the current transform).
 mp_obj_t mpy_shape_bounds(size_t n_args, const mp_obj_t *args) {
   self(args[0], shape_obj_t);
@@ -241,6 +273,8 @@ static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_star_static_obj, MP_ROM_PTR(&m
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_line_obj, 3, mpy_shape_line);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_shape_line_static_obj, MP_ROM_PTR(&mpy_shape_line_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_stroke_obj, 2, mpy_shape_stroke);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_grow_obj, 2, mpy_shape_grow);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_shrink_obj, 2, mpy_shape_shrink);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_shape_bounds_obj, 1, mpy_shape_bounds);
 
 void shape_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
@@ -282,6 +316,8 @@ static const mp_rom_map_elem_t shape_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_star), MP_ROM_PTR(&mpy_shape_star_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_line), MP_ROM_PTR(&mpy_shape_line_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_stroke), MP_ROM_PTR(&mpy_shape_stroke_obj) },
+  { MP_ROM_QSTR(MP_QSTR_grow), MP_ROM_PTR(&mpy_shape_grow_obj) },
+  { MP_ROM_QSTR(MP_QSTR_shrink), MP_ROM_PTR(&mpy_shape_shrink_obj) },
   { MP_ROM_QSTR(MP_QSTR_bounds), MP_ROM_PTR(&mpy_shape_bounds_obj) },
 };
 static MP_DEFINE_CONST_DICT(shape_locals_dict, shape_locals_dict_table);

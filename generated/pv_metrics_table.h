@@ -101,6 +101,8 @@ enum {
   PV_M_shape_star,  // shape.star
   PV_M_shape_line,  // shape.line
   PV_M_shape_stroke,  // shape.stroke
+  PV_M_shape_grow,  // shape.grow
+  PV_M_shape_shrink,  // shape.shrink
   PV_M_shape_bounds,  // shape.bounds
   PV_M_palette___getitem__,  // palette.__getitem__
   PV_M_image_load,  // image.load

@@ -98,6 +98,8 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "shape.star",
   "shape.line",
   "shape.stroke",
+  "shape.grow",
+  "shape.shrink",
   "shape.bounds",
   "palette.__getitem__",
   "image.load",

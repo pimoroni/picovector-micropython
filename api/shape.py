@@ -97,6 +97,14 @@ class shape:
         ("Replace this shape with its stroked outline. flags: OR of "
          "ALIGN_*/PATH_*/JOIN_*/CAP_* (each default is the 0 value). Returns self.")
 
+    def grow(self, amount: float, join: int = 0, miter_limit: float = 4.0) -> Self:
+        ("Replace this shape with one offset outward by amount along its edge "
+         "normals, joining convex corners per join (a JOIN_* value). Winding does "
+         "not matter: a positive amount always grows outward. Returns self.")
+
+    def shrink(self, amount: float, join: int = 0, miter_limit: float = 4.0) -> Self:
+        "The same, inset by amount instead of outset. Returns self."
+
     def bounds(self) -> rect:
         "Device-space bounding box (local bbox run through the current transform)."
 
