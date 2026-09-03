@@ -6,6 +6,8 @@ extern "C" {
 
 extern "C" mp_obj_t surface_clear_depth(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_surface_clear_depth_obj, 1, surface_clear_depth);
+extern "C" mp_obj_t surface_draw(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_surface_draw_obj, 2, surface_draw);
 extern "C" mp_obj_t surface_render(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args);
 static MP_DEFINE_CONST_FUN_OBJ_KW(mpy_surface_render_obj, 5, surface_render);
 
@@ -44,6 +46,7 @@ void surface_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
 
 static const mp_rom_map_elem_t surface_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_clear_depth), MP_ROM_PTR(&mpy_surface_clear_depth_obj) },
+  { MP_ROM_QSTR(MP_QSTR_draw), MP_ROM_PTR(&mpy_surface_draw_obj) },
   { MP_ROM_QSTR(MP_QSTR_render), MP_ROM_PTR(&mpy_surface_render_obj) },
 };
 static MP_DEFINE_CONST_DICT(surface_locals_dict, surface_locals_dict_table);

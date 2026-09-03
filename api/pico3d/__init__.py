@@ -15,5 +15,6 @@ from . import mat4        # noqa: F401
 from . import mesh        # noqa: F401
 from . import material    # noqa: F401
 from . import light       # noqa: F401
+from . import scene       # noqa: F401
 from . import surface     # noqa: F401
 from . import engine      # noqa: F401

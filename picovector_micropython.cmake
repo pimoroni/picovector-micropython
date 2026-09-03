@@ -43,6 +43,7 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/mesh.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/material.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/light.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/generated/scene.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/surface.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pv_metrics_names.cpp

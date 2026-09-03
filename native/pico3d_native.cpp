@@ -9,6 +9,7 @@
 
 #include "pv_bindings.hpp"
 #include "types.h"
+#include "picovector_working_buffer.h"   // the banded depth strip lives here
 
 extern "C" {
   #include "py/runtime.h"
@@ -114,7 +115,18 @@ extern "C" {
       m.colors = (const uint32_t *)cbi.buf;
       self->colors_ref = vals[ARG_colors].u_obj;
     }
+    // The bounding box for whole-mesh frustum culling, measured once here.
+    // positions stays borrowed and writable, so a mesh that animates a vertex
+    // out past this box has to call update_bounds().
+    pico3d_mesh_bounds(&m);
     return MP_OBJ_FROM_PTR(self);
+  }
+
+  mp_obj_t mesh_update_bounds(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    self(args[0], mesh_obj_t);
+    pico3d_mesh_bounds(&self->mesh);
+    return mp_const_none;
   }
 
   // ── material ──────────────────────────────────────────────────────────────
@@ -205,6 +217,48 @@ extern "C" {
   }
 
   // ── surface ───────────────────────────────────────────────────────────────
+  // Point a surface's depth buffer at bytes the caller owns. The buffer is
+  // borrowed, not copied, and held alive by the surface. Why bother: the depth
+  // buffer is the single biggest thing a render touches - two accesses a pixel,
+  // every pixel - so on a board whose heap is in external memory, being able to
+  // hand the engine a slab of on-chip RAM instead is worth more than any
+  // amount of tuning inside the rasteriser.
+  static void borrow_depth(surface_obj_t *self, mp_obj_t buf, int w, int h) {
+    mp_buffer_info_t bi;
+    mp_get_buffer_raise(buf, &bi, MP_BUFFER_RW);
+    if (bi.len < (size_t)w * (size_t)h * sizeof(uint16_t)) {
+      mp_raise_msg_varg(&mp_type_ValueError,
+                        MP_ERROR_TEXT("depth buffer needs %d bytes for %dx%d"),
+                        (int)((size_t)w * (size_t)h * sizeof(uint16_t)), w, h);
+    }
+    // The engine indexes it as uint16_t, so an odd address would fault on a
+    // core that traps unaligned halfword access.
+    if (((uintptr_t)bi.buf & 1) != 0) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("depth buffer must be 2-byte aligned"));
+    }
+    self->depth = (uint16_t *)bi.buf;
+    self->depth_obj = buf;
+  }
+
+  // Point a banded surface's depth buffer at picovector's shared working buffer.
+  // That buffer is on-chip SRAM and is idle while a 3D pass runs (nothing else
+  // is rasterising), which is exactly what a depth buffer wants and exactly
+  // what the heap - external PSRAM on this board - is not. One band at a time
+  // means the strip is (height / bands) rows, so three bands turn a 150 KB
+  // full-screen buffer into a 51 KB strip that fits.
+  static void band_depth(surface_obj_t *self) {
+    int rows = (self->h + self->bands - 1) / self->bands;
+    size_t need = (size_t)rows * (size_t)self->w * sizeof(uint16_t);
+    if (need > working_buffer_size) {
+      mp_raise_msg_varg(&mp_type_ValueError,
+                        MP_ERROR_TEXT("%d bands of %dx%d needs %d bytes of working buffer, have %d"),
+                        self->bands, self->w, rows, (int)need, (int)working_buffer_size);
+    }
+    self->depth = (uint16_t *)PicoVector_working_buffer;
+    self->band_rows = rows;
+    self->depth_obj = MP_OBJ_NULL;      // not borrowed, not heap-allocated
+  }
+
   // Fill a render-target view from the wrapped image, reallocating the depth
   // buffer if the image has been resized (a window()ed view can hand back a
   // different size) since the surface was built.
@@ -213,9 +267,14 @@ extern "C" {
     rect_t b = im->bounds(), cl = im->clip();
     int w = (int)b.w, h = (int)b.h;
     if (w != self->w || h != self->h) {
-      self->depth = m_new(uint16_t, (size_t)w * h);
+      // A borrowed buffer cannot be grown, so a view that has outgrown it is an
+      // error rather than a silent overrun into whatever follows it.
       self->w = w;
       self->h = h;
+      if (self->bands > 0) band_depth(self);        // restripe for the new size
+      else if (self->depth_obj == mp_const_false) { /* depth=False: stays none */ }
+      else if (self->depth_obj != MP_OBJ_NULL) borrow_depth(self, self->depth_obj, w, h);
+      else self->depth = m_new(uint16_t, (size_t)w * h);
     }
     t->color = (uint32_t *)im->ptr(0, 0);
     t->depth = self->depth;
@@ -223,6 +282,9 @@ extern "C" {
     t->height = h;
     t->color_stride = im->row_stride() / im->bytes_per_pixel();
     t->depth_stride = w;
+    t->depth_y0 = 0;                    // pico3d_scene_draw walks this per band
+    t->row_step = 1;                    // every row; the banded path splits these
+    t->row_phase = 0;                   // across cores, nobody else touches them
     // The image's clip rect bounds the render, so a 3D viewport is framed the
     // same way anything else is.
     t->clip_x0 = (int)cl.x;
@@ -233,11 +295,19 @@ extern "C" {
 
   mp_obj_t surface_make_new_impl(const mp_obj_type_t *type, size_t n_args,
                                  size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 1, 1, false);
-    if (!pv::is_image(args[0])) {
+    enum { ARG_image, ARG_depth, ARG_bands };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_image, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+      { MP_QSTR_depth, MP_ARG_OBJ,                   {.u_rom_obj = MP_ROM_NONE} },
+      { MP_QSTR_bands, MP_ARG_INT,                   {.u_int = 0} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
+    mp_obj_t image_in = vals[ARG_image].u_obj;
+    if (!pv::is_image(image_in)) {
       mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("surface() expects an image"));
     }
-    image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(args[0]);
+    image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(image_in);
     // has_palette() is separate from the format: a palettised image reports
     // RGBA8888 for its colour table while its pixels are one byte of index, so
     // writing RGBA words into it would run four times past the end.
@@ -251,7 +321,28 @@ extern "C" {
     self->source = img;
     self->w = (int)b.w;
     self->h = (int)b.h;
-    self->depth = m_new(uint16_t, (size_t)self->w * self->h);
+    mp_obj_t depth_in = vals[ARG_depth].u_obj;
+    int bands = vals[ARG_bands].u_int;
+    if (bands > 0) {
+      if (depth_in != mp_const_none) {
+        mp_raise_msg(&mp_type_ValueError,
+                     MP_ERROR_TEXT("bands and depth are two ways to place the same buffer"));
+      }
+      self->bands = bands;
+      band_depth(self);
+    } else if (depth_in == mp_const_false) {
+      // No depth buffer at all. Every render then takes the rasteriser's
+      // depth-free path, and the app orders its own draws. Worth having as a
+      // first-class option, not just depth=False on every render call: it also
+      // means the surface never allocates the buffer, which at 320x240 is
+      // 150 KB of heap that a painter's-order renderer has no use for.
+      self->depth = nullptr;
+      self->depth_obj = mp_const_false;       // marks it deliberate, not unset
+    } else if (depth_in != mp_const_none) {
+      borrow_depth(self, depth_in, self->w, self->h);
+    } else {
+      self->depth = m_new(uint16_t, (size_t)self->w * self->h);
+    }
     return MP_OBJ_FROM_PTR(self);
   }
 
@@ -261,13 +352,20 @@ extern "C" {
     pv::metric_scope _pvm(PV_M_surface_clear_depth);
 #endif
     uint16_t value = n_args > 1 ? (uint16_t)mp_obj_get_int(args[1]) : 0xFFFF;
+    // Bounded by the image's clip rect, the same way render() is. It used to
+    // clear the whole buffer whatever the clip, which made a clipped 3D
+    // viewport pay for rows it never draws - and makes clearing one band of a
+    // banded render impossible.
+    rect_t cl = self->source->image->clip().intersection(self->source->image->bounds());
     pico3d_target_t t{};
     t.depth = self->depth;
     t.width = self->w;
     t.height = self->h;
     t.depth_stride = self->w;
-    t.clip_x1 = self->w;
-    t.clip_y1 = self->h;
+    t.clip_x0 = (int)cl.x;
+    t.clip_y0 = (int)cl.y;
+    t.clip_x1 = (int)(cl.x + cl.w);
+    t.clip_y1 = (int)(cl.y + cl.h);
     pico3d_depth_clear(&t, value);
     return mp_const_none;
   }
@@ -322,7 +420,7 @@ extern "C" {
       self->vcache_cap = mesh->mesh.vertex_count;
     }
 
-    pico3d_target_t t;
+    pico3d_target_t t{};
     surface_view(self, &t);
     // depth=False drops the Z-buffer for this call. Both the read and the write
     // go to PSRAM, so it is a real saving on a mesh that cannot occlude itself.
@@ -330,6 +428,137 @@ extern "C" {
 
     int drawn = pico3d_draw_mesh(&t, &mesh->mesh, &model->m, &vp->m, &mat->mat,
                                  mat->shading, light, self->vcache, view);
+    return mp_obj_new_int(drawn);
+  }
+
+  // ── scene ─────────────────────────────────────────────────────────────────
+  mp_obj_t scene_make_new_impl(const mp_obj_type_t *type, size_t n_args,
+                               size_t n_kw, const mp_obj_t *args) {
+    enum { ARG_surface, ARG_meshes, ARG_vertices, ARG_triangles };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_surface,   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_meshes,    MP_ARG_INT, {.u_int = 64} },
+      { MP_QSTR_vertices,  MP_ARG_INT, {.u_int = 1024} },
+      { MP_QSTR_triangles, MP_ARG_INT, {.u_int = 512} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
+    // A scene is built FOR a surface: add() projects to screen coordinates, so
+    // it has to know the viewport, and geometry gathered for one size would land
+    // in the wrong place in another.
+    if (!mp_obj_is_type(vals[ARG_surface].u_obj, &type_surface)) {
+      mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("scene() expects a pico3d.surface"));
+    }
+    int nm = vals[ARG_meshes].u_int;
+    int nv = vals[ARG_vertices].u_int;
+    int nt = vals[ARG_triangles].u_int;
+    if (nm < 1 || nv < 3 || nt < 1) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("a scene needs room for at least one triangle"));
+    }
+
+    scene_obj_t *self = mp_obj_malloc(scene_obj_t, type);
+    self->target = (surface_obj_t *)MP_OBJ_TO_PTR(vals[ARG_surface].u_obj);
+    self->sc.subs  = m_new(pico3d_sub_t, nm);      self->sc.sub_cap  = (uint32_t)nm;
+    self->sc.verts = m_new(pico3d_vcache_t, nv);   self->sc.vert_cap = (uint32_t)nv;
+    self->sc.ys    = m_new(int16_t, (size_t)nt * 2); self->sc.tri_cap = (uint32_t)nt;
+    // bin holds ONE submission's live triangles, so the whole scene's worth is
+    // always enough however the triangles are distributed between meshes.
+    self->sc.bin   = m_new(uint16_t, nt);          self->sc.bin_cap  = (uint32_t)nt;
+    self->refs     = m_new(mp_obj_t, (size_t)nm * 3);
+    pico3d_scene_reset(&self->sc);
+    for (int i = 0; i < nm * 3; i++) self->refs[i] = MP_OBJ_NULL;
+    return MP_OBJ_FROM_PTR(self);
+  }
+
+  // Signature must match what the generator emits for @native, which is
+  // MP_DEFINE_CONST_FUN_OBJ_VAR - (n_args, args), not (self). C linkage matches
+  // on the name alone, so getting this wrong links cleanly and then hands the
+  // argument COUNT over as the object pointer.
+  mp_obj_t scene_reset(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    self(args[0], scene_obj_t);
+    pico3d_scene_reset(&self->sc);
+    // Drop the roots too, or last frame's geometry stays alive for nothing.
+    for (uint32_t i = 0, n = self->sc.sub_cap * 3; i < n; i++) self->refs[i] = MP_OBJ_NULL;
+    return mp_const_none;
+  }
+
+  mp_obj_t scene_add(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    self(args[0], scene_obj_t);
+    enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_view };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_mesh,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_model,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_view_proj, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_material,  MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_light,     MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+      { MP_QSTR_view,      MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all(n_args - 1, args + 1, kw_args,
+                     MP_ARRAY_SIZE(allowed), allowed, vals);
+
+    auto need = [](mp_obj_t o, const mp_obj_type_t *want, mp_rom_error_text_t msg) -> void * {
+      if (!mp_obj_is_type(o, want)) mp_raise_msg(&mp_type_TypeError, msg);
+      return MP_OBJ_TO_PTR(o);
+    };
+    mesh_obj_t *mesh = (mesh_obj_t *)need(vals[ARG_mesh].u_obj, &type_mesh,
+                                          MP_ERROR_TEXT("mesh must be a pico3d.mesh"));
+    mat4_obj_t *model = (mat4_obj_t *)need(vals[ARG_model].u_obj, &type_mat4,
+                                           MP_ERROR_TEXT("model must be a pico3d.mat4"));
+    mat4_obj_t *vp = (mat4_obj_t *)need(vals[ARG_view_proj].u_obj, &type_mat4,
+                                        MP_ERROR_TEXT("view_proj must be a pico3d.mat4"));
+    material_obj_t *mat = (material_obj_t *)need(vals[ARG_material].u_obj, &type_material,
+                                                 MP_ERROR_TEXT("material must be a pico3d.material"));
+    pico3d_light_t *light = nullptr;
+    if (vals[ARG_light].u_obj != mp_const_none) {
+      light = &((light_obj_t *)need(vals[ARG_light].u_obj, &type_light,
+                                    MP_ERROR_TEXT("light must be a pico3d.light")))->light;
+    }
+    const mat4_t *view = nullptr;
+    if (vals[ARG_view].u_obj != mp_const_none) {
+      view = &((mat4_obj_t *)need(vals[ARG_view].u_obj, &type_mat4,
+                                  MP_ERROR_TEXT("view must be a pico3d.mat4")))->m;
+    }
+
+    pico3d_target_t t{};
+    surface_view(self->target, &t);        // for the viewport it projects into
+
+    uint32_t slot = self->sc.sub_count;
+    bool ok = pico3d_scene_add(&self->sc, &t, &mesh->mesh, &model->m, &vp->m,
+                               &mat->mat, mat->shading, light, view);
+    if (ok) {
+      // Root what the submission now points at, so a collection between add()
+      // and draw() cannot free geometry out from under the rasteriser.
+      self->refs[slot * 3 + 0] = vals[ARG_mesh].u_obj;
+      self->refs[slot * 3 + 1] = vals[ARG_material].u_obj;
+      self->refs[slot * 3 + 2] = vals[ARG_light].u_obj;
+    }
+    return mp_obj_new_bool(ok);
+  }
+
+  mp_obj_t surface_draw(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    self(args[0], surface_obj_t);
+#if PV_METRICS
+    pv::metric_scope _pvm(PV_M_surface_draw);
+#endif
+    enum { ARG_scene, ARG_clear };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_scene, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_clear, MP_ARG_INT, {.u_int = 0xFFFF} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all(n_args - 1, args + 1, kw_args,
+                     MP_ARRAY_SIZE(allowed), allowed, vals);
+    if (!mp_obj_is_type(vals[ARG_scene].u_obj, &type_scene)) {
+      mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("draw() expects a pico3d.scene"));
+    }
+    scene_obj_t *sc = (scene_obj_t *)MP_OBJ_TO_PTR(vals[ARG_scene].u_obj);
+
+    pico3d_target_t t{};
+    surface_view(self, &t);
+    int drawn = pico3d_scene_draw(&sc->sc, &t, self->bands > 0 ? self->band_rows : 0,
+                                  (uint16_t)vals[ARG_clear].u_int);
     return mp_obj_new_int(drawn);
   }
 

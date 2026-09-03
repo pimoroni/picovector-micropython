@@ -9,6 +9,7 @@ static const mp_rom_map_elem_t modpico3d_globals_table[] = {
   { MP_ROM_QSTR(MP_QSTR_mesh), MP_ROM_PTR(&type_mesh) },
   { MP_ROM_QSTR(MP_QSTR_material), MP_ROM_PTR(&type_material) },
   { MP_ROM_QSTR(MP_QSTR_light), MP_ROM_PTR(&type_light) },
+  { MP_ROM_QSTR(MP_QSTR_scene), MP_ROM_PTR(&type_scene) },
   { MP_ROM_QSTR(MP_QSTR_surface), MP_ROM_PTR(&type_surface) },
   { MP_ROM_QSTR(MP_QSTR_engine), MP_ROM_PTR(&type_engine) },
 };

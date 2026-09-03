@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pv import api, cpp, Buffer
+from pv import api, cpp, native, Buffer
 
 
 @api(field="mesh", module="pico3d",
@@ -35,6 +35,15 @@ class mesh:
          "shading, uvs (2 floats) for a texture, colors (one array('I') packed "
          "RGB word a vertex) for per-vertex colour, and tangents (3 floats) for "
          "a normal map.")
+
+    @native
+    def update_bounds(self) -> None:
+        ("Re-measure the bounding box used for frustum culling.\n\n"
+         "It is measured when the mesh is built, and a mesh is culled - skipped "
+         "entirely, before any vertex is transformed - when that box falls "
+         "outside the view. positions stays borrowed and writable, so animating "
+         "a vertex out past the old box would make the mesh vanish early: call "
+         "this after any change that grows it.")
 
     @property
     @cpp(get="self->mesh.vertex_count")

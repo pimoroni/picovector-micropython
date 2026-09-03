@@ -233,14 +233,29 @@ extern "C" {
 
   // Wraps an RGBA8888 image and owns the depth buffer and per-vertex transform
   // scratch that go with it. Both are sized on demand and reused across frames.
+  // depth_obj is set only when the caller supplied the depth buffer: the surface
+  // then borrows those bytes instead of allocating, and keeps the object alive.
   typedef struct _surface_obj_t {
     mp_obj_base_t base;
     image_obj_t *source;
     uint16_t *depth;
+    mp_obj_t depth_obj;
     int w, h;
+    int bands;            // 0 = one full-surface depth buffer; >0 = a working-buffer strip
+    int band_rows;        // rows the strip covers (bands > 0 only)
     pico3d_vcache_t *vcache;
     uint32_t vcache_cap;
   } surface_obj_t;
+
+  // A frame's gathered geometry. The arenas are m_new'd once and never grown;
+  // `refs` roots the mesh/material/light objects a submission points at, so the
+  // GC cannot collect geometry the scene is still holding raw pointers to.
+  typedef struct _scene_obj_t {
+    mp_obj_base_t base;
+    surface_obj_t *target;   // the surface it was built for (its viewport, and a root)
+    pico3d_scene_t sc;
+    mp_obj_t *refs;          // 3 per submission: mesh, material, light
+  } scene_obj_t;
 
   // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
   // entry point and the two engine-wide accessors behind the `engine` namespace.

@@ -4,6 +4,8 @@
 
 extern "C" {
 
+extern "C" mp_obj_t mesh_update_bounds(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_mesh_update_bounds_obj, 1, mesh_update_bounds);
 
 extern "C" mp_obj_t mesh_make_new_impl(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
 static mp_obj_t mesh_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -63,13 +65,19 @@ void mesh_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
   dest[1] = MP_OBJ_SENTINEL;
 }
 
+static const mp_rom_map_elem_t mesh_locals_dict_table[] = {
+  { MP_ROM_QSTR(MP_QSTR_update_bounds), MP_ROM_PTR(&mpy_mesh_update_bounds_obj) },
+};
+static MP_DEFINE_CONST_DICT(mesh_locals_dict, mesh_locals_dict_table);
+
 MP_DEFINE_CONST_OBJ_TYPE(
   type_mesh,
   MP_QSTR_mesh,
   MP_TYPE_FLAG_NONE,
   make_new, (const void *)mesh_make_new,
   print, (const void *)mesh_print,
-  attr, (const void *)mesh_attr
+  attr, (const void *)mesh_attr,
+  locals_dict, &mesh_locals_dict
 );
 
 }

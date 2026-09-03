@@ -183,7 +183,11 @@ enum {
   PV_M_mat4_multiply,  // mat4.multiply
   PV_M_mat4_project,  // mat4.project
   PV_M_mat4_transform_direction,  // mat4.transform_direction
+  PV_M_mesh_update_bounds,  // mesh.update_bounds
+  PV_M_scene_reset,  // scene.reset
+  PV_M_scene_add,  // scene.add
   PV_M_surface_clear_depth,  // surface.clear_depth
+  PV_M_surface_draw,  // surface.draw
   PV_M_surface_render,  // surface.render
   PV_M_engine_cores,  // engine.cores
   PV_M_engine_core_count,  // engine.core_count
