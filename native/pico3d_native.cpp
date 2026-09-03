@@ -229,6 +229,9 @@ extern "C" {
     t->clip_y0 = (int)cl.y;
     t->clip_x1 = (int)(cl.x + cl.w);
     t->clip_y1 = (int)(cl.y + cl.h);
+    t->fog = self->fog;
+    t->fog_near = self->fog_near;
+    t->fog_far = self->fog_far;
   }
 
   mp_obj_t surface_make_new_impl(const mp_obj_type_t *type, size_t n_args,

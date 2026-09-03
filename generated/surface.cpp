@@ -38,6 +38,24 @@ void surface_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
       if (action == GET) { dest[0] = mp_obj_new_int(self->h); return; }
       break;
     }
+    case MP_QSTR_fog:
+    {
+      if (action == GET) { dest[0] = pv::box_pico3d_rgb(self->fog); return; }
+      if (action == SET) { self->fog = pv::pico3d_rgb_of(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
+    case MP_QSTR_fog_near:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_float(self->fog_near); return; }
+      if (action == SET) { self->fog_near = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
+    case MP_QSTR_fog_far:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_float(self->fog_far); return; }
+      if (action == SET) { self->fog_far = mp_obj_get_float(dest[1]); dest[0] = MP_OBJ_NULL; return; }
+      break;
+    }
   }
   dest[1] = MP_OBJ_SENTINEL;
 }
