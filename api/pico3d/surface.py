@@ -47,6 +47,31 @@ class surface:
     @cpp(get="self->h")
     def height(self) -> int: "Height in pixels (read-only)."
 
+    # ── depth fog ───────────────────────────────────────────────────────────
+    @property
+    @cpp(get_raw="pv::box_pico3d_rgb(self->fog)",
+         set="self->fog = pv::pico3d_rgb_of({0})")
+    def fog(self) -> None:
+        ("The colour every surface fades towards with distance, as a picovector "
+         "color. Set fog_far past fog_near to turn it on; it is off until you do. "
+         "Match it to whatever the frame is cleared to and the scene recedes into "
+         "the background instead of into a haze that sits in front of it.")
+
+    @property
+    @cpp(get="self->fog_near", set="self->fog_near = {0}")
+    def fog_near(self) -> float:
+        "Distance from the eye at which the fade starts. Nearer than this is untouched."
+
+    @property
+    @cpp(get="self->fog_far", set="self->fog_far = {0}")
+    def fog_far(self) -> float:
+        ("Distance at which a surface is entirely fog. Leave it at or below "
+         "fog_near - which is how a surface starts - and no fog is applied.\n\n"
+         "The fade is resolved per vertex, after the light, so it depends only on "
+         "depth: a wall seen edge-on fogs exactly as much as one faced square-on "
+         "at the same distance. A point light parked on the camera looks like the "
+         "same thing until you notice its falloff is scaled by n.L.")
+
     @native
     def clear_depth(self, value: int = 65535) -> None:
         ("Reset the depth buffer to value (0 is the near plane, 65535 the far "

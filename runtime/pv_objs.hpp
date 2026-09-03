@@ -240,6 +240,8 @@ extern "C" {
     int w, h;
     pico3d_vcache_t *vcache;
     uint32_t vcache_cap;
+    uint32_t fog;                       // linear depth fog, copied into the target
+    float fog_near, fog_far;
   } surface_obj_t;
 
   // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
