@@ -94,6 +94,16 @@ if(PV_DUAL_CORE)
   target_compile_definitions(usermod_picovector INTERFACE PV_DUAL_CORE=1)
 endif()
 
+# Framebuffer pixel format, for the whole build: 1 is RGBA8888, the core library's
+# default, and 2 is RGBA4444, which halves every image so a full 320x240 canvas fits
+# beside the heap on a board with only SRAM. Set per-board with
+# set(PV_PIXEL_FORMAT 2) before find_package(PICOVECTOR_MICROPYTHON ...), or cmake
+# -DPV_PIXEL_FORMAT=2. A display driver reading the framebuffer, such as spidisplay,
+# takes the same variable, so setting it once keeps both at one width.
+if(DEFINED PV_PIXEL_FORMAT)
+  target_compile_definitions(usermod_picovector INTERFACE PV_PIXEL_FORMAT=${PV_PIXEL_FORMAT})
+endif()
+
 # Optional per-binding call-count + timing metrics (the picovector.metrics
 # module). Off by default (zero cost):  cmake -DPV_METRICS=ON ...
 option(PV_METRICS "Instrument picovector bindings with call/time metrics" OFF)

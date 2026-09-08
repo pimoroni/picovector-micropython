@@ -6,7 +6,7 @@
 // component's directory is on the include path — see picovector.hpp. It wires
 // the rasteriser and std::vector containers onto MicroPython's GC heap, then
 // pulls in config_default.hpp for the shared, overridable knobs (PV_PROFILE,
-// PV_DUAL_CORE, PV_WORKING_BUFFER_SIZE) — left at their defaults here and set,
+// PV_DUAL_CORE, PV_PIXEL_FORMAT, PV_WORKING_BUFFER_SIZE) — left at their defaults here and set,
 // where needed, by picovector-micropython.cmake.
 
 #include "runtime/mp_allocator.hpp"
