@@ -76,7 +76,8 @@ class image:
         ("Bytes from the start of one row of raw to the next (read-only). A view "
          "inherits its parent's, so a spritesheet cell strides by the whole "
          "sheet's pitch rather than its own width: index raw as "
-         "y * stride + x * 4, never y * width * 4.")
+         "y * stride + x * bytes, never y * width * bytes, where bytes is the "
+         "pixel width the firmware was built with, 4 at RGBA8888 and 2 at RGBA4444.")
 
     @property
     @cpp(get="self->image->clip()", set="self->image->clip({0})")
