@@ -164,7 +164,9 @@ generated + native + support sources, puts this directory (for
 `picovector.config.hpp`), `generated/` and `runtime/` on the include path, links
 the PNG/JPEG decoders, and configures the core library for the badge:
 `PV_DUAL_CORE=1` (rasterise on core1), `PV_WORKING_BUFFER_SIZE` enlarged to also
-fit PNG/JPEG decode state, and the optional `PV_METRICS` / `PV_PROFILE` toggles.
+fit PNG/JPEG decode state, `PV_PIXEL_FORMAT` passed through when the board sets it
+(2 for RGBA4444, halving every image), and the optional `PV_METRICS` /
+`PV_PROFILE` toggles.
 
 It is included from `board/usermodules.cmake` immediately after
 `find_package(PICOVECTOR)` — the core library creates the `usermod_picovector`
