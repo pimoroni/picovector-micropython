@@ -186,15 +186,16 @@ namespace pv {
   }
 
   // ── constructing an image ──────────────────────────────────────────────────
-  // How many bytes an RGBA image of this size needs, refusing a size that cannot
-  // be one. The multiply is done in 64 bits and checked, because on the badge
-  // size_t is 32 bits: image(65536, 65536) wants 16GB, which wraps to something
-  // small and plausible, and the image then believes it owns the larger area.
+  // How many bytes a direct image of this size needs at the build's pixel format,
+  // refusing a size that cannot be one. The multiply is done in 64 bits and
+  // checked, because on the badge size_t is 32 bits: image(65536, 65536) wants
+  // 16GB, which wraps to something small and plausible, and the image then
+  // believes it owns the larger area.
   static inline size_t check_image_size(int w, int h) {
     if(w <= 0 || h <= 0) {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image width and height must be positive"));
     }
-    uint64_t bytes = (uint64_t)(uint32_t)w * (uint32_t)h * 4u;
+    uint64_t bytes = (uint64_t)(uint32_t)w * (uint32_t)h * (uint32_t)sizeof(pv_store_t);
     if(bytes > (uint64_t)SIZE_MAX) {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image is too large to address"));
     }
