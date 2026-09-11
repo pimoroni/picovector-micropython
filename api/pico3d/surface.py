@@ -29,10 +29,15 @@ class surface:
     """
 
     @cpp(emit="native")
-    def __init__(self, image):
+    def __init__(self, image, bands: int = 1):
         ("Wrap an RGBA image as a render target, allocating a depth buffer to "
          "match. The image is held alive by the surface; a palettised one is "
-         "refused, since the engine writes pixels rather than indices.")
+         "refused, since the engine writes pixels rather than indices.\n\n"
+         "bands splits the surface horizontally for draw(), and the depth buffer "
+         "is allocated one band tall rather than one screen tall - at 320x240, "
+         "four bands is 38 KB instead of 150 KB, small enough to keep out of "
+         "PSRAM. It only applies to draw(); render() needs the whole buffer and "
+         "refuses a surface with more than one band.")
 
     @property
     @cpp(get_raw="MP_OBJ_FROM_PTR(self->source)")
@@ -46,6 +51,16 @@ class surface:
     @property
     @cpp(get="self->h")
     def height(self) -> int: "Height in pixels (read-only)."
+
+    @property
+    @cpp(get="self->bands")
+    def bands(self) -> int:
+        "How many horizontal bands draw() splits the surface into (read-only)."
+
+    @property
+    @cpp(get="self->band_rows")
+    def band_rows(self) -> int:
+        "Rows one band covers, which is also the depth buffer's height (read-only)."
 
     # ── depth fog ───────────────────────────────────────────────────────────
     @property
@@ -91,3 +106,12 @@ class surface:
          "matrix on its own, and only matcap and specular materials need it - "
          "they resolve against the camera, so without it a matcap is fixed in "
          "world space and a highlight will not appear.")
+
+    @native
+    def draw(self, scene, clear_to: int = 65535) -> int:
+        ("Rasterise a scene, one band of rows at a time, and return the number of "
+         "triangles drawn. Each band clears its own slice of the depth buffer to "
+         "clear_to first, so there is no clear_depth() to remember.\n\n"
+         "The scene has to be one built against this surface: add() projects for "
+         "a particular viewport, and replaying that through another would put "
+         "every triangle in the wrong place.")

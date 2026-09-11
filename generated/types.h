@@ -21,4 +21,5 @@ extern const mp_obj_type_t type_mesh;
 extern const mp_obj_type_t type_material;
 extern const mp_obj_type_t type_light;
 extern const mp_obj_type_t type_surface;
+extern const mp_obj_type_t type_scene;
 extern const mp_obj_type_t type_engine;

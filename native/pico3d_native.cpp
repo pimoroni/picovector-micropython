@@ -114,7 +114,18 @@ extern "C" {
       m.colors = (const uint32_t *)cbi.buf;
       self->colors_ref = vals[ARG_colors].u_obj;
     }
+    // Measure the model-space box once, here, so pico3d_cull_mesh can reject a
+    // whole mesh before a vertex is transformed. Without it has_bounds stays
+    // clear and nothing is ever culled.
+    pico3d_mesh_bounds(&m);
     return MP_OBJ_FROM_PTR(self);
+  }
+
+  mp_obj_t mesh_update_bounds(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    self(args[0], mesh_obj_t);
+    pico3d_mesh_bounds(&self->mesh);
+    return mp_const_none;
   }
 
   // ── material ──────────────────────────────────────────────────────────────
@@ -205,6 +216,12 @@ extern "C" {
   }
 
   // ── surface ───────────────────────────────────────────────────────────────
+  // Rows one band covers, which is also the height of the depth buffer. Rounded
+  // up, so the last band is the short one rather than the buffer being a row shy.
+  static int surface_band_rows(const surface_obj_t *self) {
+    return self->bands > 1 ? (self->h + self->bands - 1) / self->bands : self->h;
+  }
+
   // Fill a render-target view from the wrapped image, reallocating the depth
   // buffer if the image has been resized (a window()ed view can hand back a
   // different size) since the surface was built.
@@ -213,9 +230,10 @@ extern "C" {
     rect_t b = im->bounds(), cl = im->clip();
     int w = (int)b.w, h = (int)b.h;
     if (w != self->w || h != self->h) {
-      self->depth = m_new(uint16_t, (size_t)w * h);
       self->w = w;
       self->h = h;
+      self->band_rows = surface_band_rows(self);
+      self->depth = m_new(uint16_t, (size_t)w * self->band_rows);
     }
     t->color = (uint32_t *)im->ptr(0, 0);
     t->depth = self->depth;
@@ -232,15 +250,28 @@ extern "C" {
     t->fog = self->fog;
     t->fog_near = self->fog_near;
     t->fog_far = self->fog_far;
+    // Whole surface, every row, one core: pico3d_scene_draw walks depth_y0 down
+    // the bands itself and splits the rows between cores. Both are read on every
+    // path, so leaving them to a stack target's garbage renders nothing.
+    t->depth_y0 = 0;
+    t->row_step = 1;
+    t->row_phase = 0;
   }
 
   mp_obj_t surface_make_new_impl(const mp_obj_type_t *type, size_t n_args,
                                  size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 1, 1, false);
-    if (!pv::is_image(args[0])) {
+    enum { ARG_image, ARG_bands };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_image, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_bands, MP_ARG_INT, {.u_int = 1} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
+
+    if (!pv::is_image(vals[ARG_image].u_obj)) {
       mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("surface() expects an image"));
     }
-    image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(args[0]);
+    image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(vals[ARG_image].u_obj);
     // has_palette() is separate from the format: a palettised image reports
     // RGBA8888 for its colour table while its pixels are one byte of index, so
     // writing RGBA words into it would run four times past the end.
@@ -248,13 +279,18 @@ extern "C" {
       mp_raise_msg(&mp_type_ValueError,
                    MP_ERROR_TEXT("pico3d needs an RGBA image"));
     }
+    if (vals[ARG_bands].u_int < 1) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("bands must be at least 1"));
+    }
     rect_t b = img->image->bounds();
 
     surface_obj_t *self = mp_obj_malloc(surface_obj_t, type);
     self->source = img;
     self->w = (int)b.w;
     self->h = (int)b.h;
-    self->depth = m_new(uint16_t, (size_t)self->w * self->h);
+    self->bands = (int)vals[ARG_bands].u_int;
+    self->band_rows = surface_band_rows(self);
+    self->depth = m_new(uint16_t, (size_t)self->w * self->band_rows);
     return MP_OBJ_FROM_PTR(self);
   }
 
@@ -264,13 +300,15 @@ extern "C" {
     pv::metric_scope _pvm(PV_M_surface_clear_depth);
 #endif
     uint16_t value = n_args > 1 ? (uint16_t)mp_obj_get_int(args[1]) : 0xFFFF;
+    // band_rows rows, not h: on a banded surface that is the whole buffer, and
+    // draw() clears each band for itself anyway.
     pico3d_target_t t{};
     t.depth = self->depth;
     t.width = self->w;
-    t.height = self->h;
+    t.height = self->band_rows;
     t.depth_stride = self->w;
     t.clip_x1 = self->w;
-    t.clip_y1 = self->h;
+    t.clip_y1 = self->band_rows;
     pico3d_depth_clear(&t, value);
     return mp_const_none;
   }
@@ -280,6 +318,12 @@ extern "C" {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_surface_render);
 #endif
+    // A banded surface's depth buffer is one band tall, and render() depth-tests
+    // the whole surface in one pass, so there is nothing sane to do here.
+    if (self->bands > 1) {
+      mp_raise_msg(&mp_type_ValueError,
+                   MP_ERROR_TEXT("render() needs bands=1; use draw(scene)"));
+    }
     enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_depth, ARG_view };
     static const mp_arg_t allowed[] = {
       { MP_QSTR_mesh,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -334,6 +378,151 @@ extern "C" {
     int drawn = pico3d_draw_mesh(&t, &mesh->mesh, &model->m, &vp->m, &mat->mat,
                                  mat->shading, light, self->vcache, view);
     return mp_obj_new_int(drawn);
+  }
+
+  mp_obj_t surface_draw(size_t n_args, const mp_obj_t *args) {
+    self(args[0], surface_obj_t);
+#if PV_METRICS
+    pv::metric_scope _pvm(PV_M_surface_draw);
+#endif
+    if (!mp_obj_is_type(args[1], &type_scene)) {
+      mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("draw() expects a pico3d.scene"));
+    }
+    scene_obj_t *sc = (scene_obj_t *)MP_OBJ_TO_PTR(args[1]);
+    // add() projected the geometry for this surface's viewport, so replaying it
+    // through another one would put every triangle in the wrong place.
+    if (sc->target != self) {
+      mp_raise_msg(&mp_type_ValueError,
+                   MP_ERROR_TEXT("scene belongs to a different surface"));
+    }
+    uint16_t clear_to = n_args > 2 ? (uint16_t)mp_obj_get_int(args[2]) : 0xFFFF;
+
+    pico3d_target_t t;
+    surface_view(self, &t);
+    // A one-band buffer is as tall as a band, so its row 0 is the first row
+    // drawn. Banding overwrites this per band; it matters only when the clip is
+    // shorter than a band, because then nothing bands and the rows still have to
+    // land inside the short buffer. A full-height buffer keeps render()'s
+    // mapping, so the two can share a surface.
+    if (self->bands > 1) t.depth_y0 = t.clip_y0;
+    int drawn = pico3d_scene_draw(&sc->scene, &t,
+                                  self->bands > 1 ? self->band_rows : 0, clear_to);
+    return mp_obj_new_int(drawn);
+  }
+
+  // ── scene ─────────────────────────────────────────────────────────────────
+  mp_obj_t scene_make_new_impl(const mp_obj_type_t *type, size_t n_args,
+                               size_t n_kw, const mp_obj_t *args) {
+    enum { ARG_surface, ARG_meshes, ARG_vertices, ARG_triangles };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_surface,   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_meshes,    MP_ARG_INT, {.u_int = 16} },
+      { MP_QSTR_vertices,  MP_ARG_INT, {.u_int = 512} },
+      { MP_QSTR_triangles, MP_ARG_INT, {.u_int = 512} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
+
+    if (!mp_obj_is_type(vals[ARG_surface].u_obj, &type_surface)) {
+      mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("scene() expects a pico3d.surface"));
+    }
+    if (vals[ARG_meshes].u_int < 1 || vals[ARG_vertices].u_int < 1 ||
+        vals[ARG_triangles].u_int < 1) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("scene capacities must be positive"));
+    }
+
+    scene_obj_t *self = mp_obj_malloc(scene_obj_t, type);
+    self->target = (surface_obj_t *)MP_OBJ_TO_PTR(vals[ARG_surface].u_obj);
+    pico3d_scene_t &sc = self->scene;
+    sc.sub_cap  = (uint32_t)vals[ARG_meshes].u_int;
+    sc.vert_cap = (uint32_t)vals[ARG_vertices].u_int;
+    sc.tri_cap  = (uint32_t)vals[ARG_triangles].u_int;
+    // A band concatenates every submission's live triangles into one bin without
+    // a bounds check, so it has to hold the whole scene's worth.
+    sc.bin_cap  = sc.tri_cap;
+
+    sc.subs  = m_new(pico3d_sub_t, sc.sub_cap);
+    // The arena is the big one - 2048 vertices is ~150 KB - and holds no
+    // pointers, so keeping it out of the GC's reach saves scanning it every pass.
+    sc.verts = (pico3d_vcache_t *)m_malloc_no_scan(sizeof(pico3d_vcache_t) * sc.vert_cap);
+    sc.ys    = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 2 * sc.tri_cap);
+    sc.bin   = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+    self->refs = m_new(mp_obj_t, sc.sub_cap * 3);
+    for (uint32_t i = 0; i < sc.sub_cap * 3; i++) self->refs[i] = mp_const_none;
+    pico3d_scene_reset(&sc);
+    return MP_OBJ_FROM_PTR(self);
+  }
+
+  mp_obj_t scene_reset(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    self(args[0], scene_obj_t);
+    pico3d_scene_reset(&self->scene);
+    // Drop last frame's roots with it, so a mesh retired from the scene is not
+    // held alive until the slot is overwritten.
+    for (uint32_t i = 0, e = self->scene.sub_cap * 3; i < e; i++) {
+      self->refs[i] = mp_const_none;
+    }
+    return mp_const_none;
+  }
+
+  mp_obj_t scene_add(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    self(args[0], scene_obj_t);
+#if PV_METRICS
+    pv::metric_scope _pvm(PV_M_scene_add);
+#endif
+    enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_view };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_mesh,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_model,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_view_proj, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_material,  MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+      { MP_QSTR_light,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
+      { MP_QSTR_view,      MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    };
+    mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all(n_args - 1, args + 1, kw_args,
+                     MP_ARRAY_SIZE(allowed), allowed, vals);
+
+    auto need = [](mp_obj_t o, const mp_obj_type_t *want, mp_rom_error_text_t msg) -> void * {
+      if (!mp_obj_is_type(o, want)) mp_raise_msg(&mp_type_TypeError, msg);
+      return MP_OBJ_TO_PTR(o);
+    };
+
+    mesh_obj_t *mesh = (mesh_obj_t *)need(vals[ARG_mesh].u_obj, &type_mesh,
+                                          MP_ERROR_TEXT("mesh must be a pico3d.mesh"));
+    mat4_obj_t *model = (mat4_obj_t *)need(vals[ARG_model].u_obj, &type_mat4,
+                                           MP_ERROR_TEXT("model must be a pico3d.mat4"));
+    mat4_obj_t *vp = (mat4_obj_t *)need(vals[ARG_view_proj].u_obj, &type_mat4,
+                                        MP_ERROR_TEXT("view_proj must be a pico3d.mat4"));
+    material_obj_t *mat = (material_obj_t *)need(vals[ARG_material].u_obj, &type_material,
+                                                 MP_ERROR_TEXT("material must be a pico3d.material"));
+    pico3d_light_t *light = nullptr;
+    if (vals[ARG_light].u_obj != mp_const_none) {
+      light = &((light_obj_t *)need(vals[ARG_light].u_obj, &type_light,
+                                    MP_ERROR_TEXT("light must be a pico3d.light")))->light;
+    }
+    const mat4_t *view = nullptr;
+    if (vals[ARG_view].u_obj != mp_const_none) {
+      view = &((mat4_obj_t *)need(vals[ARG_view].u_obj, &type_mat4,
+                                  MP_ERROR_TEXT("view must be a pico3d.mat4")))->m;
+    }
+
+    pico3d_target_t t;
+    surface_view(self->target, &t);
+    const uint32_t before = self->scene.sub_count;
+    if (!pico3d_scene_add(&self->scene, &t, &mesh->mesh, &model->m, &vp->m,
+                          &mat->mat, mat->shading, light, view)) {
+      return mp_const_false;
+    }
+    // A culled mesh is a success that added nothing, so root against the slot
+    // that was actually taken rather than assuming one was.
+    if (self->scene.sub_count != before) {
+      mp_obj_t *slot = self->refs + (size_t)before * 3;
+      slot[0] = vals[ARG_mesh].u_obj;
+      slot[1] = vals[ARG_material].u_obj;
+      slot[2] = vals[ARG_light].u_obj;
+    }
+    return mp_const_true;
   }
 
   // ── engine ────────────────────────────────────────────────────────────────

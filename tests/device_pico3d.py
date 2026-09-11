@@ -39,7 +39,7 @@ def raises(name, fn, exc=Exception):
 
 # ── module surface ──────────────────────────────────────────────────────────
 ok('module exports', sorted(a for a in dir(pico3d) if not a.startswith('_'))
-   == ['engine', 'light', 'mat4', 'material', 'mesh', 'surface', 'vec3'])
+   == ['engine', 'light', 'mat4', 'material', 'mesh', 'scene', 'surface', 'vec3'])
 
 # ── vec3 ────────────────────────────────────────────────────────────────────
 v = pico3d.vec3(3, 4, 0)
@@ -193,6 +193,75 @@ _above = sum(1 for y in range(0, 16) for x in range(32)
              if canvas.raw[y * canvas.stride + x * 4] > 8)
 ok('it paints below the horizon', _below > 40, 'got %d px' % _below)
 ok('and nothing above it', _above == 0, 'got %d px' % _above)
+
+# ── scene ───────────────────────────────────────────────────────────────────
+# The banded path has to land the same ink as the immediate one: same geometry,
+# same camera, one drawn a band at a time against a buffer a quarter the height.
+banded_canvas = image(32, 32)
+banded = pico3d.surface(banded_canvas, bands=4)
+ok('bands is remembered', banded.bands == 4)
+ok('a band is a quarter of the surface', banded.band_rows == 8)
+ok('an unbanded surface is one band', surf.bands == 1 and surf.band_rows == 32)
+raises('bands must be positive',
+       lambda: pico3d.surface(image(8, 8), bands=0), ValueError)
+raises('render refuses a banded surface',
+       lambda: banded.render(slab, pico3d.mat4(), eye_level, straddle, None),
+       ValueError)
+
+geom = pico3d.scene(banded, meshes=4, vertices=64, triangles=64)
+ok('scene holds its surface', geom.surface is banded)
+ok('scene starts empty', (geom.meshes, geom.vertices, geom.triangles) == (0, 0, 0))
+ok('scene reports its capacities',
+   (geom.mesh_capacity, geom.vertex_capacity, geom.triangle_capacity) == (4, 64, 64))
+ok('scene repr', 'scene(' in repr(geom))
+raises('scene wants a surface', lambda: pico3d.scene(canvas), TypeError)
+raises('scene capacities must be positive',
+       lambda: pico3d.scene(banded, meshes=0), ValueError)
+raises('add wants a mesh', lambda: geom.add(canvas, pico3d.mat4(), eye_level, straddle),
+       TypeError)
+
+banded_canvas.clear()
+ok('add accepts a mesh', geom.add(slab, pico3d.mat4(), eye_level, straddle) is True)
+ok('add counts the geometry', (geom.meshes, geom.vertices, geom.triangles) == (1, 4, 2))
+ok('draw returns triangles drawn', banded.draw(geom) > 0)
+
+# Same scene through the immediate path, for a pixel-for-pixel comparison.
+canvas.clear()
+surf.clear_depth()
+surf.render(slab, pico3d.mat4(), eye_level, straddle, None)
+_diff = sum(1 for i in range(0, 32 * 32 * 4, 4)
+            if canvas.raw[i] != banded_canvas.raw[i])
+ok('banded output matches the immediate path', _diff == 0, 'got %d differing px' % _diff)
+
+geom.reset()
+ok('reset empties the scene', (geom.meshes, geom.vertices, geom.triangles) == (0, 0, 0))
+
+# A full scene reports it rather than dropping geometry silently.
+small = pico3d.scene(banded, meshes=1, vertices=8, triangles=8)
+ok('first add fits', small.add(slab, pico3d.mat4(), eye_level, straddle) is True)
+ok('second add refuses', small.add(slab, pico3d.mat4(), eye_level, straddle) is False)
+
+# A mesh behind the camera is culled whole: reported as success, adds nothing.
+behind = pico3d.mat4().translate(0, 0, 500)
+geom.reset()
+ok('a culled mesh reports success',
+   geom.add(slab, behind, eye_level, straddle) is True)
+ok('and takes no room', geom.meshes == 0)
+
+raises('a scene cannot be drawn through another surface',
+       lambda: surf.draw(geom), ValueError)
+
+# Bounds are measured at build time and drive whole-mesh culling, so deforming
+# a mesh through its positions has to be followed by a re-measure.
+_far = pico3d.mesh(positions=array('f', (-1, -0.5, 2, 1, -0.5, 2, 1, -0.5, -8,
+                                         -1, -0.5, -8)),
+                   indices=array('H', (0, 1, 2, 0, 2, 3)))
+for _i in range(12):
+    _far.positions[_i] = _far.positions[_i] + 1000.0
+_far.update_bounds()
+geom.reset()
+geom.add(_far, pico3d.mat4(), eye_level, straddle)
+ok('update_bounds re-measures a deformed mesh', geom.meshes == 0)
 
 # ── engine ──────────────────────────────────────────────────────────────────
 ok('engine.cores returns the count', pico3d.engine.cores(2) in (1, 2))

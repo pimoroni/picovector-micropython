@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pv import api, cpp, Buffer
+from pv import api, cpp, native, Buffer
 
 
 @api(field="mesh", module="pico3d",
@@ -48,7 +48,8 @@ class mesh:
     @cpp(get_raw="self->positions_ref")
     def positions(self) -> None:
         ("The position array this mesh was built over (read-only reference; the "
-         "array itself stays writable). Write into it to deform the mesh.")
+         "array itself stays writable). Write into it to deform the mesh, then "
+         "call update_bounds().")
 
     @property
     @cpp(get_raw="self->indices_ref")
@@ -69,3 +70,12 @@ class mesh:
     @property
     @cpp(get_raw="self->tangents_ref")
     def tangents(self) -> None: "The tangent array, or None (read-only)."
+
+    @native
+    def update_bounds(self) -> None:
+        ("Re-measure the model-space bounding box from positions.\n\n"
+         "The box is measured once when the mesh is built, and a mesh whose box "
+         "falls outside the frustum is rejected whole rather than transformed "
+         "vertex by vertex. Deforming the mesh through positions leaves the box "
+         "stale, so call this after moving a vertex outside it - otherwise the "
+         "mesh can be culled while it is still on screen.")

@@ -242,7 +242,26 @@ extern "C" {
     uint32_t vcache_cap;
     uint32_t fog;                       // linear depth fog, copied into the target
     float fog_near, fog_far;
+    // How many horizontal bands draw() splits the surface into, and the rows one
+    // band covers. bands == 1 is a full-surface depth buffer, which is what
+    // render() needs; above that the buffer holds one band and is walked down
+    // the screen, so it is small enough to sit in fast memory.
+    int bands, band_rows;
   } surface_obj_t;
+
+  // A deferred scene: the storage pico3d_scene_t points at, all sized once here
+  // because add() never allocates.
+  //
+  // scene.subs holds raw pointers to the pico3d_mesh_t / _material_t / _light_t
+  // living INSIDE mesh_obj_t, material_obj_t and light_obj_t. Those are interior
+  // pointers, which the collector cannot trace back to the block that owns them,
+  // so refs roots the objects themselves - three a submission, in add() order.
+  typedef struct _scene_obj_t {
+    mp_obj_base_t base;
+    pico3d_scene_t scene;
+    surface_obj_t *target;
+    mp_obj_t *refs;
+  } scene_obj_t;
 
   // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
   // entry point and the two engine-wide accessors behind the `engine` namespace.
