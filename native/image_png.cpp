@@ -15,7 +15,10 @@ extern "C" {
   static void pngdec_close_callback(void *handle);
   static int32_t pngdec_read_callback(PNGFILE *png, uint8_t *p, int32_t c);
   static int32_t pngdec_seek_callback(PNGFILE *png, int32_t p);
-  static void pngdec_decode_callback(PNGDRAW *pDraw);
+  static int pngdec_decode_callback(PNGDRAW *pDraw);
+
+  static_assert(sizeof(PNG) <= PV_WORKING_BUFFER_SIZE,
+                "the PNG decoder doesn't fit in the working buffer");
 
   struct pngdec_decode_data_t {
     fx16_t step_x;
@@ -163,20 +166,20 @@ extern "C" {
     return seek_s.offset;
   }
 
-  static void pngdec_decode_callback(PNGDRAW *pDraw) {
+  static int pngdec_decode_callback(PNGDRAW *pDraw) {
     pngdec_decode_data_t* decode_data = (pngdec_decode_data_t*)pDraw->pUser;
 
     fx16_t last_y = decode_data->cur_y >> 16;
     decode_data->cur_y += decode_data->step_y;
     if (decode_data->cur_y >> 16 == last_y) {
-      return;
+      return 1;
     }
 
     image_t *target = decode_data->image;
 
     // Only the indexed branch stores one byte a pixel. The rest store four, so
     // decoding into a palettised target would write past the end of every row.
-    if(target->has_palette() && pDraw->iPixelType != PNG_PIXEL_INDEXED) return;
+    if(target->has_palette() && pDraw->iPixelType != PNG_PIXEL_INDEXED) return 1;
 
     uint8_t *pixels = (uint8_t *)pDraw->pPixels;
 
@@ -306,5 +309,7 @@ extern "C" {
         // TODO: raise file not supported error
       } break;
     }
+
+    return 1;
   }
 }
