@@ -552,6 +552,30 @@ PNG = (
     b'\x82'
 )
 
+PNG_SPLIT_IDAT = (
+    b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHD'
+    b'R\x00\x00\x00(\x00\x00\x00\x08\x08\x02\x00\x00\x00\x04'
+    b'0*\x0c\x00\x00\x00\x08IDATx\xdacP'
+    b'\x98pa@\x0e\x02\x83\xfb\x00\x00\x00\x08IDA'
+    b'T\x10\xc3\xa8\xc5\xa3\x16\x8fZ\xcblH\xd5\x00\x00'
+    b'\x00\x08IDATL-\x04\x00\xdc\xde\xe0\x10\r'
+    b'\xddm\xfc\x00\x00\x00\x00IEND\xaeB`\x82'
+)
+
+
+def test_png():
+    img = image.load(PNG)
+    ok("a png loads at its own size", img.width == 40 and img.height == 8,
+       "%dx%d" % (img.width, img.height))
+    ok("a truecolour png is four bytes a pixel", len(img.raw) == 40 * 8 * 4,
+       str(len(img.raw)))
+
+    split = image.load(PNG_SPLIT_IDAT)
+    ok("a split-IDAT png loads at the same size",
+       split.width == img.width and split.height == img.height,
+       "%dx%d" % (split.width, split.height))
+    ok("...and decodes to the same pixels", bytes(split.raw) == bytes(img.raw))
+
 
 def test_animated_gif():
     img = image.load(GIF)
@@ -988,6 +1012,7 @@ def main():
     test_custom_accepts_an_array()
     test_vector_text()
     test_animated_gif()
+    test_png()
     test_palette()
     test_image_construction()
     test_palettised_image()
