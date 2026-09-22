@@ -14,7 +14,9 @@
 #include "spritesheet.hpp"
 #include "blend.hpp"
 #include "rasteriser.hpp"
+#if PV_PICO3D
 #include "pico3d.hpp"
+#endif
 #include "tween/tween.hpp"
 #include "PNGdec.h"
 #endif
@@ -196,6 +198,7 @@ extern "C" {
   typedef struct _font_ns_obj_t { mp_obj_base_t base; } font_ns_obj_t;
   extern const font_ns_obj_t pv_font_ns_obj;
 
+#if PV_PICO3D
   // ── pico3d ────────────────────────────────────────────────────────────────
   // The 3D module's objs. The engine works in plain pointer views, so these are
   // where image_t and the GC heap meet it: every borrowed Python buffer is held
@@ -247,6 +250,7 @@ extern "C" {
   // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
   // entry point and the two engine-wide accessors behind the `engine` namespace.
   extern void surface_view(surface_obj_t *self, pico3d_target_t *t);
+#endif
 }
 
 extern rect_t mp_obj_get_rect(mp_obj_t rect_in);

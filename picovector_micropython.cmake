@@ -36,15 +36,6 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/generated/pixel_font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/algorithm.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/tween.cpp
-  # the pico3d module table + its per-type bindings
-  ${CMAKE_CURRENT_LIST_DIR}/generated/pico3d_bindings.c
-  ${CMAKE_CURRENT_LIST_DIR}/generated/vec3.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/mat4.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/mesh.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/material.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/light.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/surface.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generated/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/generated/pv_metrics_names.cpp
   # shared glue + hand-written (native) bodies + companion image decoders
   ${CMAKE_CURRENT_LIST_DIR}/runtime/pv_support.cpp
@@ -57,12 +48,25 @@ set(PV_MP_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/native/spritesheet_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/tween_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/algorithm_native.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/native/pico3d_native.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_png.cpp
   ${CMAKE_CURRENT_LIST_DIR}/native/image_jpeg.cpp
   # GIF needs no vendored decoder: the parser is core, so the host tests cover it
   ${CMAKE_CURRENT_LIST_DIR}/native/image_gif.cpp
 )
+
+if(PV_PICO3D)
+  list(APPEND PV_MP_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/generated/pico3d_bindings.c
+    ${CMAKE_CURRENT_LIST_DIR}/generated/vec3.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/mat4.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/mesh.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/material.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/light.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/surface.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/generated/engine.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/native/pico3d_native.cpp
+  )
+endif()
 
 target_sources(usermod_picovector INTERFACE
   ${PV_MP_SOURCES}
