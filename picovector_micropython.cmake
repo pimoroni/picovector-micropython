@@ -68,6 +68,15 @@ if(PV_PICO3D)
   )
 endif()
 
+# Real TTF/OTF outlines through FreeType, decomposed at load time instead of
+# packed ahead of time into .af. Host-class targets only: it needs FreeType, and
+# the point of .af is that an embedded target cannot carry a font this way.
+option(PV_FREETYPE "Load TTF/OTF fonts via FreeType (host targets only)" OFF)
+if(PV_FREETYPE)
+  find_package(Freetype REQUIRED)
+  list(APPEND PV_MP_SOURCES ${CMAKE_CURRENT_LIST_DIR}/native/font_freetype.cpp)
+endif()
+
 target_sources(usermod_picovector INTERFACE
   ${PV_MP_SOURCES}
 )
@@ -79,6 +88,11 @@ target_include_directories(usermod_picovector INTERFACE
 )
 
 target_link_libraries(usermod_picovector INTERFACE pngdec jpegdec)
+
+if(PV_FREETYPE)
+  target_compile_definitions(usermod_picovector INTERFACE PV_FREETYPE=1)
+  target_link_libraries(usermod_picovector INTERFACE Freetype::Freetype)
+endif()
 
 # The RP2 hardware interpolator acceleration is pico-sdk only. It's on by
 # default so Pico builds are unchanged; non-pico targets (e.g. the WebAssembly

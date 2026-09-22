@@ -94,7 +94,22 @@ extern "C" {
   static const char *const FONT_SEARCH_PATHS[] = {
     "/rom/fonts", "/system/assets/fonts", "/fonts", "/assets", ""
   };
+  #if PV_FREETYPE
+  static const char *const FONT_EXTS[] = { ".af", ".ppf", ".ttf", ".otf", ".ttc" };
+  #else
   static const char *const FONT_EXTS[] = { ".af", ".ppf" };
+  #endif
+
+  #if PV_FREETYPE
+  bool pv_ft_is_font_marker(const char marker[4]);
+  mp_obj_t pv_ft_load(mp_obj_t file, const char *path, mp_obj_t chars_obj,
+                      mp_obj_t tolerance_obj, mp_obj_t variations);
+  // Options for the load in progress: font.load() sets them, parse_by_marker
+  // reads them. Not re-entrant, and does not need to be -- a load never nests.
+  static mp_obj_t ft_chars = mp_const_none;
+  static mp_obj_t ft_tolerance = mp_const_none;
+  static mp_obj_t ft_variations = mp_const_none;
+  #endif
 
   static mp_obj_t font_open_read(const char *path) {
     mp_obj_t open_args[2] = { mp_obj_new_str(path, strlen(path)),
@@ -107,6 +122,11 @@ extern "C" {
     size_t n = strlen(name);
     if (n >= 3 && strcmp(name + n - 3, ".af") == 0) return true;
     if (n >= 4 && strcmp(name + n - 4, ".ppf") == 0) return true;
+    #if PV_FREETYPE
+    if (n >= 4 && strcmp(name + n - 4, ".ttf") == 0) return true;
+    if (n >= 4 && strcmp(name + n - 4, ".otf") == 0) return true;
+    if (n >= 4 && strcmp(name + n - 4, ".ttc") == 0) return true;
+    #endif
     return false;
   }
 
@@ -123,6 +143,12 @@ extern "C" {
       return load_vector_font(file, path);
     }
     if (memcmp(marker, "ppf!", 4) == 0) return parse_pixel_font(file, path);
+    #if PV_FREETYPE
+    if (pv_ft_is_font_marker(marker)) {
+      font_stream_seek(file, 0);
+      return pv_ft_load(file, path, ft_chars, ft_tolerance, ft_variations);
+    }
+    #endif
     mp_stream_close(file);
     mp_raise_msg_varg(&mp_type_OSError,
                       MP_ERROR_TEXT("'%s' is not a font (bad magic marker)"), path);
@@ -163,12 +189,34 @@ extern "C" {
     return mp_const_none;  // unreachable
   }
 
-  // font.load(name) — the sole loader (a factory returning vector_font/pixel_font).
-  mp_obj_t font_load(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    return font_load_name(args[0]);
+  // font.load(name, *, chars=, tolerance=, variations=) — the sole loader, a
+  // factory returning vector_font/pixel_font. The keyword options apply only to
+  // TTF/OTF, where the outlines are decomposed here rather than ahead of time;
+  // they are accepted and ignored for .af and .ppf, which carry no such choice.
+  mp_obj_t font_load(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_name, ARG_chars, ARG_tolerance, ARG_variations };
+    static const mp_arg_t allowed[] = {
+      { MP_QSTR_name,       MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+      { MP_QSTR_chars,      MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+      { MP_QSTR_tolerance,  MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+      { MP_QSTR_variations, MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+    };
+    mp_arg_val_t parsed[MP_ARRAY_SIZE(allowed)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args,
+                     MP_ARRAY_SIZE(allowed) - 1, allowed + 1, parsed + 1);
+
+    #if PV_FREETYPE
+    ft_chars = parsed[ARG_chars].u_obj;
+    ft_tolerance = parsed[ARG_tolerance].u_obj;
+    ft_variations = parsed[ARG_variations].u_obj;
+    #endif
+    mp_obj_t font = font_load_name(pos_args[0]);
+    #if PV_FREETYPE
+    ft_chars = ft_tolerance = ft_variations = mp_const_none;
+    #endif
+    return font;
   }
-  static MP_DEFINE_CONST_FUN_OBJ_VAR(pv_font_load_obj, 1, font_load);
+  static MP_DEFINE_CONST_FUN_OBJ_KW(pv_font_load_obj, 1, font_load);
 
   // ── ROM short-name lookup (cached), backing font.<name> ────────────────────
   static mp_obj_t font_rom_get(qstr q) {
