@@ -278,6 +278,7 @@ namespace pv {
     return MP_OBJ_FROM_PTR(o);
   }
 
+#if PV_PICO3D
   // ── pico3d ─────────────────────────────────────────────────────────────────
   static inline mp_obj_t box_vec3(const vec3_t &v) {
     vec3_obj_t *o = mp_obj_malloc(vec3_obj_t, &type_vec3);
@@ -324,5 +325,6 @@ namespace pv {
     tv.width = (int)b.w;
     tv.height = (int)b.h;
   }
+#endif
 
 }  // namespace pv
