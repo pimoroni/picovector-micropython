@@ -247,6 +247,7 @@ extern "C" {
       surface_size_bands(self);
     }
     t->color = (uint32_t *)im->ptr(0, 0);
+    t->color565 = im->pixel_format() == RGB565;
     t->depth = self->depth;
     t->width = w;
     t->height = h;
@@ -284,10 +285,12 @@ extern "C" {
     image_obj_t *img = (image_obj_t *)MP_OBJ_TO_PTR(vals[ARG_image].u_obj);
     // has_palette() is separate from the format: a palettised image reports
     // RGBA8888 for its colour table while its pixels are one byte of index, so
-    // writing RGBA words into it would run four times past the end.
-    if (img->image->pixel_format() != RGBA8888 || img->image->has_palette()) {
+    // writing RGBA words into it would run four times past the end. RGB565 (the
+    // platform framebuffer) is fine: the rasteriser packs its stores for it.
+    if ((img->image->pixel_format() != RGBA8888 && img->image->pixel_format() != RGB565)
+        || img->image->has_palette()) {
       mp_raise_msg(&mp_type_ValueError,
-                   MP_ERROR_TEXT("pico3d needs an RGBA image"));
+                   MP_ERROR_TEXT("pico3d needs an RGBA or RGB565 image"));
     }
     rect_t b = img->image->bounds();
 

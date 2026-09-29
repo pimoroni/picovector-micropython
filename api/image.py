@@ -53,9 +53,17 @@ class image:
     CLIP = const("text_overflow_t::CLIP", "Text overflow: clip to bounds.")
     ELLIPSES = const("text_overflow_t::ELLIPSES", "Text overflow: truncate with '...'.")
 
+    RGB565 = const("picovector::RGB565",
+                   "Platform-internal: the 16-bit format a board's framebuffer may "
+                   "use. Only meaningful as image()'s format argument when platform "
+                   "code wraps that framebuffer; drawing behaves identically on it.")
+
     @cpp(emit="image")
-    def __init__(self, width: int, height: int, buffer: Buffer = None):
-        "image(width, height) allocates a buffer; pass an existing buffer to wrap it."
+    def __init__(self, width: int, height: int, buffer: Buffer = None, format: int = None):
+        ("image(width, height) allocates a buffer; pass an existing buffer to "
+         "wrap it. format is platform-internal: image.RGB565 wraps a board's "
+         "16-bit framebuffer (buffer of width * height * 2 bytes). Drawing "
+         "works the same whatever the storage format.")
 
     # ── properties ──────────────────────────────────────────────────────────
     @property

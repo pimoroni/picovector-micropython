@@ -645,8 +645,14 @@ static mp_obj_t image_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
   if (n_args > 2) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
-    pv::check_image_buffer(bufinfo.len, bytes);
-    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h);
+    // an explicit format (4th argument, image.RGB565) marks a platform
+    // 16-bit framebuffer; the default is RGBA (see RGB565 in image.hpp)
+    pixel_format_t fmt = n_args > 3 ? (pixel_format_t)mp_obj_get_int(args[3]) : RGBA8888;
+    if (fmt != RGBA8888 && fmt != RGB565) {
+      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("unknown pixel format"));
+    }
+    pv::check_image_buffer(bufinfo.len, fmt == RGB565 ? (size_t)w * h * 2 : bytes);
+    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h, fmt);
   } else {
     self->image = new (m_malloc(sizeof(image_t))) image_t(w, h);
   }
@@ -794,6 +800,7 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_BOTTOM), MP_ROM_INT(text_align_t::BOTTOM) },
   { MP_ROM_QSTR(MP_QSTR_CLIP), MP_ROM_INT(text_overflow_t::CLIP) },
   { MP_ROM_QSTR(MP_QSTR_ELLIPSES), MP_ROM_INT(text_overflow_t::ELLIPSES) },
+  { MP_ROM_QSTR(MP_QSTR_RGB565), MP_ROM_INT(picovector::RGB565) },
   { MP_ROM_QSTR(MP_QSTR_load), MP_ROM_PTR(&mpy_image_load_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_qr), MP_ROM_PTR(&mpy_image_qr_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_load_into), MP_ROM_PTR(&mpy_image_load_into_obj) },
