@@ -71,7 +71,7 @@ class surface:
         ("The colour every surface fades towards with distance, as a picovector "
          "color. Set fog_far past fog_near to turn it on; it is off until you do. "
          "Match it to whatever the frame is cleared to and the scene recedes into "
-         "the background instead of into a haze that sits in front of it.")
+         "the background instead of into a haze that sits in front of it.\n\nSet the fog range before adding meshes to a scene: a mesh added while fog is off is stored without the depth fog needs, and draws unfogged.")
 
     @property
     @cpp(get="self->fog_near", set="self->fog_near = {0}")
