@@ -238,11 +238,13 @@ extern "C" {
   // Fill a render-target view from the wrapped image, reallocating the depth
   // buffer if the image has been resized (a window()ed view can hand back a
   // different size) since the surface was built.
-  void surface_view(surface_obj_t *self, pico3d_target_t *t) {
+  void surface_view(surface_obj_t *self, pico3d_target_t *t, bool fence) {
     image_t *im = self->source->image;
     // a streaming display may still be reading a 565 framebuffer: stall the
-    // draw here, before any band writes a pixel, and nowhere else
-    if (im->pixel_format() == RGB565) pv_fence_565();
+    // draw here, before any band writes a pixel, and nowhere else. scene.add
+    // only reads the target's geometry - it must NOT fence, or every add
+    // stalls behind the scan-out and the async overlap is lost.
+    if (fence && im->pixel_format() == RGB565) pv_fence_565();
     rect_t b = im->bounds(), cl = im->clip();
     int w = (int)b.w, h = (int)b.h;
     if (w != self->w || h != self->h) {
@@ -609,7 +611,7 @@ extern "C" {
     }
 
     pico3d_target_t t;
-    surface_view(self->target, &t);
+    surface_view(self->target, &t, false);   // geometry only, no pixel writes
     const uint32_t before = self->scene.sub_count;
     const char *why = nullptr;
     if (!pico3d_scene_add(&self->scene, &t, &mesh->mesh, &model->m, &vp->m,

@@ -276,7 +276,7 @@ extern "C" {
 
   // pico3d natives (native/pico3d_native.cpp): the depth/vcache-owning render
   // entry point and the two engine-wide accessors behind the `engine` namespace.
-  extern void surface_view(surface_obj_t *self, pico3d_target_t *t);
+  extern void surface_view(surface_obj_t *self, pico3d_target_t *t, bool fence = true);
 #endif
 }
 
