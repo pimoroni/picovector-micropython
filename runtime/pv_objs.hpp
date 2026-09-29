@@ -265,6 +265,9 @@ extern "C" {
   // pointers, which the collector cannot trace back to the block that owns them,
   // so refs roots the objects themselves - three a submission, in add() order.
   typedef struct _scene_obj_t {
+    // This scene's arrays sit in the platform's SRAM arena (released by
+    // __del__); false means they came from the heap as usual.
+    bool owns_sram;
     mp_obj_base_t base;
     pico3d_scene_t scene;
     surface_obj_t *target;

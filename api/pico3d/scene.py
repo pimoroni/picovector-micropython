@@ -5,7 +5,7 @@ from __future__ import annotations
 from pv import api, cpp, native
 
 
-@api(field="", module="pico3d",
+@api(field="", module="pico3d", del_native=True,
      print=("scene(%u/%u meshes)", "self->scene.sub_count", "self->scene.sub_cap"))
 class scene:
     """A frame's geometry, transformed and projected once and then rasterised in

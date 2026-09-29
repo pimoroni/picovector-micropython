@@ -440,6 +440,38 @@ extern "C" {
     return mp_obj_new_int(drawn);
   }
 
+  // ── the SRAM scene arena ──────────────────────────────────────────────────
+  // A board that has spare on-chip RAM (the Tufty freed 150 KB by storing its
+  // framebuffer as RGB565) sets PICO3D_SRAM_ARENA_SIZE, and one scene at a
+  // time gets its arrays from this pool instead of the PSRAM heap: the
+  // transform then writes, and the extents / binning / assembly passes read,
+  // single-cycle SRAM instead of paying the QSPI round trip per cache line.
+  // Claimed whole by the first scene that fits, released by its finaliser; a
+  // scene that does not fit (or arrives second) falls back to the heap and
+  // simply runs at PSRAM speed.
+#ifndef PICO3D_SRAM_ARENA_SIZE
+#define PICO3D_SRAM_ARENA_SIZE 0
+#endif
+#if PICO3D_SRAM_ARENA_SIZE
+  static uint8_t __attribute__((section(".uninitialized_data"), aligned(8)))
+      pico3d_sram_arena[PICO3D_SRAM_ARENA_SIZE];
+  static bool pico3d_sram_claimed = false;
+#endif
+
+  mp_obj_t scene__del__(mp_obj_t self_in) {
+#if PICO3D_SRAM_ARENA_SIZE
+    self(self_in, scene_obj_t);
+    if (self->owns_sram) {
+      self->owns_sram = false;
+      pico3d_sram_claimed = false;
+    }
+#else
+    (void)self_in;
+#endif
+    return mp_const_none;
+  }
+
+
   // ── scene ─────────────────────────────────────────────────────────────────
   mp_obj_t scene_make_new_impl(const mp_obj_type_t *type, size_t n_args,
                                size_t n_kw, const mp_obj_t *args) {
@@ -461,8 +493,9 @@ extern "C" {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("scene capacities must be positive"));
     }
 
-    scene_obj_t *self = mp_obj_malloc(scene_obj_t, type);
+    scene_obj_t *self = mp_obj_malloc_with_finaliser(scene_obj_t, type);
     self->target = (surface_obj_t *)MP_OBJ_TO_PTR(vals[ARG_surface].u_obj);
+    self->owns_sram = false;
     pico3d_scene_t &sc = self->scene;
     sc.sub_cap  = (uint32_t)vals[ARG_meshes].u_int;
     sc.vert_cap = (uint32_t)vals[ARG_vertices].u_int;
@@ -471,14 +504,39 @@ extern "C" {
     // a bounds check, so it has to hold the whole scene's worth.
     sc.bin_cap  = sc.tri_cap;
 
+    // Take each array from the SRAM arena while it fits, biggest traffic first:
+    // the vertex arena (written by the transform, read back by every later
+    // pass), then the row extents (rescanned per band), then the bins.
+    size_t sram_off = 0;
+    auto arena = [&](size_t bytes) -> void * {
+#if PICO3D_SRAM_ARENA_SIZE
+      if (!self->owns_sram) {
+        if (pico3d_sram_claimed) return nullptr;
+        pico3d_sram_claimed = self->owns_sram = true;
+      }
+      bytes = (bytes + 7) & ~(size_t)7;
+      if (sram_off + bytes > (size_t)PICO3D_SRAM_ARENA_SIZE) return nullptr;
+      void *p = pico3d_sram_arena + sram_off;
+      sram_off += bytes;
+      return p;
+#else
+      (void)bytes; (void)sram_off;
+      return nullptr;
+#endif
+    };
+    auto take = [&](size_t bytes) -> void * {
+      void *p = arena(bytes);
+      // the heap arrays hold no pointers, so keeping them out of the GC's
+      // reach saves scanning them every pass
+      return p ? p : m_malloc_no_scan(bytes);
+    };
+
     sc.subs  = m_new(pico3d_sub_t, sc.sub_cap);
-    // The arena is the big one - 2048 vertices is ~150 KB - and holds no
-    // pointers, so keeping it out of the GC's reach saves scanning it every pass.
-    sc.verts = (pico3d_vcache_t *)m_malloc_no_scan(sizeof(pico3d_vcache_t) * sc.vert_cap);
-    sc.ys    = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 2 * sc.tri_cap);
-    sc.bin   = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+    sc.verts = (pico3d_vcache_t *)take(sizeof(pico3d_vcache_t) * sc.vert_cap);
+    sc.ys    = (int16_t *)take(sizeof(int16_t) * 2 * sc.tri_cap);
+    sc.bin   = (uint16_t *)take(sizeof(uint16_t) * sc.bin_cap);
     // core1's own bin, so the two cores can take a band's halves apart
-    sc.bin1  = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+    sc.bin1  = (uint16_t *)take(sizeof(uint16_t) * sc.bin_cap);
     self->refs = m_new(mp_obj_t, sc.sub_cap * 3);
     for (uint32_t i = 0; i < sc.sub_cap * 3; i++) self->refs[i] = mp_const_none;
     pico3d_scene_reset(&sc);

@@ -14,6 +14,9 @@ static mp_obj_t scene_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
   return scene_make_new_impl(type, n_args, n_kw, args);
 }
 
+extern "C" mp_obj_t scene__del__(mp_obj_t self_in);
+static MP_DEFINE_CONST_FUN_OBJ_1(scene__del___obj, scene__del__);
+
 static void scene_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
   self(self_in, scene_obj_t);
   mp_printf(print, "scene(%u/%u meshes)", self->scene.sub_count, self->scene.sub_cap);
@@ -63,6 +66,7 @@ void scene_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
 }
 
 static const mp_rom_map_elem_t scene_locals_dict_table[] = {
+  { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&scene__del___obj) },
   { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&mpy_scene_reset_obj) },
   { MP_ROM_QSTR(MP_QSTR_add), MP_ROM_PTR(&mpy_scene_add_obj) },
 };
