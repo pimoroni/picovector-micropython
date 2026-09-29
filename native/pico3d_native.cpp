@@ -10,6 +10,7 @@
 #include "pv_bindings.hpp"
 #include "types.h"
 #include "picovector_working_buffer.h"   // the banded depth strip lives here
+#include <cstring>
 
 extern "C" {
   #include "py/runtime.h"
@@ -504,39 +505,46 @@ extern "C" {
     // a bounds check, so it has to hold the whole scene's worth.
     sc.bin_cap  = sc.tri_cap;
 
-    // Take each array from the SRAM arena while it fits, biggest traffic first:
-    // the vertex arena (written by the transform, read back by every later
-    // pass), then the row extents (rescanned per band), then the bins.
-    size_t sram_off = 0;
-    auto arena = [&](size_t bytes) -> void * {
+    // Lay the scene out in the SRAM arena when it fits: the small fixed arrays
+    // (row extents, both bins) first, then everything left is the vertex
+    // region - per-frame entries grow up it while the engine caches index
+    // copies down from its tail. Worth claiming only if the region could hold
+    // vert_cap of the smallest entries; otherwise (mona_hi-sized scenes, or a
+    // second scene) everything comes from the heap at PSRAM speed as before.
+    sc.vert_arena_bytes = 0;
+    sc.cache_low = 0;
+    sc.cache_count = 0;
+    const size_t ys_bytes   = (sizeof(int16_t) * 2 * sc.tri_cap + 7) & ~(size_t)7;
+    const size_t bin_bytes  = (sizeof(uint16_t) * sc.bin_cap + 7) & ~(size_t)7;
+    bool pooled = false;
 #if PICO3D_SRAM_ARENA_SIZE
-      if (!self->owns_sram) {
-        if (pico3d_sram_claimed) return nullptr;
-        pico3d_sram_claimed = self->owns_sram = true;
+    {
+      const size_t fixed = ys_bytes + 2 * bin_bytes;
+      if (!pico3d_sram_claimed && fixed < (size_t)PICO3D_SRAM_ARENA_SIZE) {
+        const size_t vert_region = (size_t)PICO3D_SRAM_ARENA_SIZE - fixed;
+        if (vert_region >= (size_t)sc.vert_cap * (size_t)offsetof(pico3d_vcache_t, w)) {
+          pico3d_sram_claimed = self->owns_sram = true;
+          uint8_t *at = pico3d_sram_arena;
+          sc.ys   = (int16_t *)at;   at += ys_bytes;
+          sc.bin  = (uint16_t *)at;  at += bin_bytes;
+          sc.bin1 = (uint16_t *)at;  at += bin_bytes;
+          sc.verts = (pico3d_vcache_t *)at;
+          sc.vert_arena_bytes = (uint32_t)vert_region;
+          pooled = true;
+        }
       }
-      bytes = (bytes + 7) & ~(size_t)7;
-      if (sram_off + bytes > (size_t)PICO3D_SRAM_ARENA_SIZE) return nullptr;
-      void *p = pico3d_sram_arena + sram_off;
-      sram_off += bytes;
-      return p;
-#else
-      (void)bytes; (void)sram_off;
-      return nullptr;
+    }
 #endif
-    };
-    auto take = [&](size_t bytes) -> void * {
-      void *p = arena(bytes);
+    sc.subs = m_new(pico3d_sub_t, sc.sub_cap);
+    if (!pooled) {
       // the heap arrays hold no pointers, so keeping them out of the GC's
       // reach saves scanning them every pass
-      return p ? p : m_malloc_no_scan(bytes);
-    };
-
-    sc.subs  = m_new(pico3d_sub_t, sc.sub_cap);
-    sc.verts = (pico3d_vcache_t *)take(sizeof(pico3d_vcache_t) * sc.vert_cap);
-    sc.ys    = (int16_t *)take(sizeof(int16_t) * 2 * sc.tri_cap);
-    sc.bin   = (uint16_t *)take(sizeof(uint16_t) * sc.bin_cap);
-    // core1's own bin, so the two cores can take a band's halves apart
-    sc.bin1  = (uint16_t *)take(sizeof(uint16_t) * sc.bin_cap);
+      sc.verts = (pico3d_vcache_t *)m_malloc_no_scan(sizeof(pico3d_vcache_t) * sc.vert_cap);
+      sc.ys    = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 2 * sc.tri_cap);
+      sc.bin   = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+      // core1's own bin, so the two cores can take a band's halves apart
+      sc.bin1  = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+    }
     self->refs = m_new(mp_obj_t, sc.sub_cap * 3);
     for (uint32_t i = 0; i < sc.sub_cap * 3; i++) self->refs[i] = mp_const_none;
     pico3d_scene_reset(&sc);
@@ -600,8 +608,15 @@ extern "C" {
     pico3d_target_t t;
     surface_view(self->target, &t);
     const uint32_t before = self->scene.sub_count;
+    const char *why = nullptr;
     if (!pico3d_scene_add(&self->scene, &t, &mesh->mesh, &model->m, &vp->m,
-                          &mat->mat, mat->shading, light, view)) {
+                          &mat->mat, mat->shading, light, view, &why)) {
+      // the declared capacities keep the documented contract (return False);
+      // running out of the platform's vertex arena is new and raises instead
+      if (why && strcmp(why, "vertex arena") == 0) {
+        mp_raise_msg(&mp_type_RuntimeError,
+                     MP_ERROR_TEXT("scene vertex arena exhausted: fewer/smaller meshes, or a smaller scene"));
+      }
       return mp_const_false;
     }
     // A culled mesh is a success that added nothing, so root against the slot

@@ -85,4 +85,9 @@ class scene:
          "the geometry on screen varies, since the alternative is silently "
          "dropping whatever came last. A mesh outside the frustum is culled "
          "whole, before any of its vertices are transformed, and reports True: "
-         "nothing failed, there was simply nothing to add.")
+         "nothing failed, there was simply nothing to add.\n\n"
+         "On a platform whose scenes live in a fast on-chip arena, a mesh that "
+         "does not fit it raises RuntimeError instead, and the first time a mesh "
+         "is added its index list is copied into the arena: rewriting a mesh's "
+         "indices needs a new scene to take effect (positions stay live, as "
+         "ever).")
