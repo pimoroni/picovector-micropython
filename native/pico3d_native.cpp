@@ -596,6 +596,7 @@ extern "C" {
       { MP_QSTR_wait,         PICO3D_PD_WAIT },      { MP_QSTR_verts,      PICO3D_PD_VERTS },
       { MP_QSTR_tris_in,      PICO3D_PD_TRIS_IN },   { MP_QSTR_tris_drawn, PICO3D_PD_TRIS_DRAWN },
       { MP_QSTR_tris_clipped, PICO3D_PD_TRIS_CLIPPED },
+      { MP_QSTR_rows, PICO3D_PD_ROWS }, { MP_QSTR_rows_empty, PICO3D_PD_ROWS_EMPTY }, { MP_QSTR_fills, PICO3D_PD_FILLS },
     };
     for (auto &r : detail) {
       store(r.name, pico3d_prof_detail[0][r.id], pico3d_prof_detail[1][r.id]);
