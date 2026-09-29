@@ -27,14 +27,18 @@ class mesh:
 
     @cpp(emit="native")
     def __init__(self, positions: Buffer, indices: Buffer, normals: Buffer = None,
-                 uvs: Buffer = None, colors: Buffer = None, tangents: Buffer = None):
+                 uvs: Buffer = None, colors: Buffer = None, tangents: Buffer = None,
+                 quantise: bool = False):
         ("Build a mesh over existing buffers. positions is an array('f') of 3 "
          "floats a vertex and indices an array('H') of 3 vertex indices a "
          "triangle; both are required. The rest are optional and add what a "
          "material can then use: normals (3 floats a vertex) for lit or matcap "
          "shading, uvs (2 floats) for a texture, colors (one array('I') packed "
          "RGB word a vertex) for per-vertex colour, and tangents (3 floats) for "
-         "a normal map.")
+         "a normal map. quantise=True additionally stores positions as 16-bit "
+         "fixed point over the mesh's bounds: the per-frame transform then reads "
+         "half the bytes, at a precision cost far below a pixel. A quantised "
+         "mesh no longer follows writes into positions.")
 
     @property
     @cpp(get="self->mesh.vertex_count")

@@ -56,7 +56,8 @@ extern "C" {
   // ── mesh ──────────────────────────────────────────────────────────────────
   mp_obj_t mesh_make_new_impl(const mp_obj_type_t *type, size_t n_args,
                               size_t n_kw, const mp_obj_t *args) {
-    enum { ARG_positions, ARG_indices, ARG_normals, ARG_uvs, ARG_colors, ARG_tangents };
+    enum { ARG_positions, ARG_indices, ARG_normals, ARG_uvs, ARG_colors, ARG_tangents,
+           ARG_quantise };
     static const mp_arg_t allowed[] = {
       { MP_QSTR_positions, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
       { MP_QSTR_indices,   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -64,6 +65,7 @@ extern "C" {
       { MP_QSTR_uvs,       MP_ARG_OBJ, {.u_obj = mp_const_none} },
       { MP_QSTR_colors,    MP_ARG_OBJ, {.u_obj = mp_const_none} },
       { MP_QSTR_tangents,  MP_ARG_OBJ, {.u_obj = mp_const_none} },
+      { MP_QSTR_quantise,  MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
     };
     mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
     mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
@@ -120,6 +122,13 @@ extern "C" {
     // whole mesh before a vertex is transformed. Without it has_bounds stays
     // clear and nothing is ever culled.
     pico3d_mesh_bounds(&m);
+    if (vals[ARG_quantise].u_bool) {
+      // int16 positions halve what the transform re-reads from PSRAM every
+      // frame. The buffer sits in the mesh object's shadow (no_scan is fine:
+      // the object's own positions_q pointer keeps it reachable).
+      int16_t *q = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 3 * m.vertex_count);
+      pico3d_mesh_quantise(&m, q);
+    }
     return MP_OBJ_FROM_PTR(self);
   }
 
