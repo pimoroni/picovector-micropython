@@ -461,7 +461,11 @@ extern "C" {
 #if PICO3D_SRAM_ARENA_SIZE
   static uint8_t __attribute__((section(".uninitialized_data"), aligned(8)))
       pico3d_sram_arena[PICO3D_SRAM_ARENA_SIZE];
-  static bool pico3d_sram_claimed = false;
+  // A bump pool: scenes claim consecutive regions while they fit. The pool
+  // resets when the last owning scene is collected, so out-of-order frees
+  // just delay reuse until then (badge apps tear their scenes down together).
+  static size_t   pico3d_sram_used = 0;
+  static uint32_t pico3d_sram_owners = 0;
 #endif
 
   mp_obj_t scene__del__(mp_obj_t self_in) {
@@ -469,7 +473,7 @@ extern "C" {
     self(self_in, scene_obj_t);
     if (self->owns_sram) {
       self->owns_sram = false;
-      pico3d_sram_claimed = false;
+      if (--pico3d_sram_owners == 0) pico3d_sram_used = 0;
     }
 #else
     (void)self_in;
@@ -525,18 +529,25 @@ extern "C" {
 #if PICO3D_SRAM_ARENA_SIZE
     {
       const size_t fixed = ys_bytes + 2 * bin_bytes;
-      if (!pico3d_sram_claimed && fixed < (size_t)PICO3D_SRAM_ARENA_SIZE) {
-        const size_t vert_region = (size_t)PICO3D_SRAM_ARENA_SIZE - fixed;
-        if (vert_region >= (size_t)sc.vert_cap * (size_t)offsetof(pico3d_vcache_t, w)) {
-          pico3d_sram_claimed = self->owns_sram = true;
-          uint8_t *at = pico3d_sram_arena;
-          sc.ys   = (int16_t *)at;   at += ys_bytes;
-          sc.bin  = (uint16_t *)at;  at += bin_bytes;
-          sc.bin1 = (uint16_t *)at;  at += bin_bytes;
-          sc.verts = (pico3d_vcache_t *)at;
-          sc.vert_arena_bytes = (uint32_t)vert_region;
-          pooled = true;
-        }
+      // Enough for every declared vertex at the short (16-byte) stride plus a
+      // cached copy of every declared index list. A scene whose materials use
+      // long entries (FLAT, matcap, normal maps) should size `vertices` up
+      // accordingly or it will raise "vertex arena" when it fills.
+      const size_t vert_region = (size_t)sc.vert_cap * (size_t)offsetof(pico3d_vcache_t, w)
+                               + (((size_t)sc.tri_cap * 6 + 7) & ~(size_t)7)
+                               + (size_t)sc.sub_cap * 8;
+      const size_t need = fixed + vert_region;
+      if (pico3d_sram_used + need <= (size_t)PICO3D_SRAM_ARENA_SIZE) {
+        self->owns_sram = true;
+        pico3d_sram_owners++;
+        uint8_t *at = pico3d_sram_arena + pico3d_sram_used;
+        pico3d_sram_used += need;
+        sc.ys   = (int16_t *)at;   at += ys_bytes;
+        sc.bin  = (uint16_t *)at;  at += bin_bytes;
+        sc.bin1 = (uint16_t *)at;  at += bin_bytes;
+        sc.verts = (pico3d_vcache_t *)at;
+        sc.vert_arena_bytes = (uint32_t)vert_region;
+        pooled = true;
       }
     }
 #endif
