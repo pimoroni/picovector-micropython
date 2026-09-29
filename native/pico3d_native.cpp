@@ -584,7 +584,8 @@ extern "C" {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_scene_add);
 #endif
-    enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_view };
+    enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_view,
+           ARG_flat_depth };
     static const mp_arg_t allowed[] = {
       { MP_QSTR_mesh,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
       { MP_QSTR_model,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -592,6 +593,7 @@ extern "C" {
       { MP_QSTR_material,  MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
       { MP_QSTR_light,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
       { MP_QSTR_view,      MP_ARG_OBJ, {.u_obj = mp_const_none} },
+      { MP_QSTR_flat_depth, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
     };
     mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
     mp_arg_parse_all(n_args - 1, args + 1, kw_args,
@@ -626,7 +628,8 @@ extern "C" {
     const uint32_t before = self->scene.sub_count;
     const char *why = nullptr;
     if (!pico3d_scene_add(&self->scene, &t, &mesh->mesh, &model->m, &vp->m,
-                          &mat->mat, mat->shading, light, view, &why)) {
+                          &mat->mat, mat->shading, light, view, &why,
+                          vals[ARG_flat_depth].u_bool)) {
       // the declared capacities keep the documented contract (return False);
       // running out of the platform's vertex arena is new and raises instead
       if (why && strcmp(why, "vertex arena") == 0) {
