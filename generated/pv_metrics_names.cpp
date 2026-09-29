@@ -188,6 +188,8 @@ const char *const pv_metric_names[PV_METRIC_COUNT] = {
   "scene.add",
   "engine.cores",
   "engine.core_count",
+  "engine.work_bands",
   "engine.profile",
+  "engine.profile_detail",
 };
 #endif

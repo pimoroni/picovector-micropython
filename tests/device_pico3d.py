@@ -195,18 +195,19 @@ ok('it paints below the horizon', _below > 40, 'got %d px' % _below)
 ok('and nothing above it', _above == 0, 'got %d px' % _above)
 
 # ── scene ───────────────────────────────────────────────────────────────────
-# The banded path has to land the same ink as the immediate one: same geometry,
-# same camera, one drawn a band at a time against a buffer a quarter the height.
-banded_canvas = image(32, 32)
-banded = pico3d.surface(banded_canvas, bands=4)
-ok('bands is remembered', banded.bands == 4)
-ok('a band is a quarter of the surface', banded.band_rows == 8)
-ok('an unbanded surface is one band', surf.bands == 1 and surf.band_rows == 32)
-raises('bands must be positive',
-       lambda: pico3d.surface(image(8, 8), bands=0), ValueError)
-raises('render refuses a banded surface',
-       lambda: banded.render(slab, pico3d.mat4(), eye_level, straddle, None),
-       ValueError)
+# The depth buffer is always the working buffer, so its size sets the banding:
+# a 32x32 surface fits whole, and one 4096 wide (8 KB a depth row) cannot.
+# The banded path has to land the same ink as the immediate one.
+ok('a surface that fits is one band', surf.bands == 1 and surf.band_rows == 32)
+BAND_W = 4096
+banded_canvas = image(BAND_W, 32)
+banded = pico3d.surface(banded_canvas)
+ok('a surface too tall for the buffer bands', banded.bands > 1,
+   'got %d bands' % banded.bands)
+ok('its bands cover it', banded.bands * banded.band_rows >= 32
+   and (banded.bands - 1) * banded.band_rows < 32)
+raises('bands is not an argument',
+       lambda: pico3d.surface(image(8, 8), bands=4), TypeError)
 
 geom = pico3d.scene(banded, meshes=4, vertices=64, triangles=64)
 ok('scene holds its surface', geom.surface is banded)
@@ -225,13 +226,23 @@ ok('add accepts a mesh', geom.add(slab, pico3d.mat4(), eye_level, straddle) is T
 ok('add counts the geometry', (geom.meshes, geom.vertices, geom.triangles) == (1, 4, 2))
 ok('draw returns triangles drawn', banded.draw(geom) > 0)
 
-# Same scene through the immediate path, for a pixel-for-pixel comparison.
-canvas.clear()
-surf.clear_depth()
-surf.render(slab, pico3d.mat4(), eye_level, straddle, None)
-_diff = sum(1 for i in range(0, 32 * 32 * 4, 4)
-            if canvas.raw[i] != banded_canvas.raw[i])
+# The same slab through render() on a banded surface (banded internally), and
+# through the immediate path with no depth - one plane cannot occlude itself, so
+# all three have to agree pixel for pixel.
+def _differ(a, b):
+    return sum(1 for i in range(0, BAND_W * 32 * 4, 4) if a.raw[i] != b.raw[i])
+
+render_canvas = image(BAND_W, 32)
+render_banded = pico3d.surface(render_canvas)
+ok('render draws on a banded surface',
+   render_banded.render(slab, pico3d.mat4(), eye_level, straddle, None) > 0)
+_diff = _differ(render_canvas, banded_canvas)
+ok('banded render matches draw(scene)', _diff == 0, 'got %d differing px' % _diff)
+render_canvas.clear()
+render_banded.render(slab, pico3d.mat4(), eye_level, straddle, None, depth=False)
+_diff = _differ(render_canvas, banded_canvas)
 ok('banded output matches the immediate path', _diff == 0, 'got %d differing px' % _diff)
+del render_canvas, render_banded
 
 geom.reset()
 ok('reset empties the scene', (geom.meshes, geom.vertices, geom.triangles) == (0, 0, 0))

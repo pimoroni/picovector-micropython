@@ -29,15 +29,15 @@ class surface:
     """
 
     @cpp(emit="native")
-    def __init__(self, image, bands: int = 1):
-        ("Wrap an RGBA image as a render target, allocating a depth buffer to "
-         "match. The image is held alive by the surface; a palettised one is "
-         "refused, since the engine writes pixels rather than indices.\n\n"
-         "bands splits the surface horizontally for draw(), and the depth buffer "
-         "is allocated one band tall rather than one screen tall - at 320x240, "
-         "four bands is 38 KB instead of 150 KB, small enough to keep out of "
-         "PSRAM. It only applies to draw(); render() needs the whole buffer and "
-         "refuses a surface with more than one band.")
+    def __init__(self, image):
+        ("Wrap an RGBA image as a render target. The image is held alive by the "
+         "surface; a palettised one is refused, since the engine writes pixels "
+         "rather than indices.\n\n"
+         "The depth buffer is always picovector's working buffer, which is on-chip "
+         "SRAM, so its size decides the banding: as many rows as fit make one "
+         "band, and the surface takes however many bands that leaves. At 320x240 "
+         "with the 80 KB buffer that is two bands of 128 rows. A surface that fits "
+         "whole is one band.")
 
     @property
     @cpp(get_raw="MP_OBJ_FROM_PTR(self->source)")
@@ -55,7 +55,8 @@ class surface:
     @property
     @cpp(get="self->bands")
     def bands(self) -> int:
-        "How many horizontal bands draw() splits the surface into (read-only)."
+        ("How many horizontal bands draw() and render() split the surface into, "
+         "set by how much of it the working buffer's depth strip covers (read-only).")
 
     @property
     @cpp(get="self->band_rows")
@@ -91,7 +92,9 @@ class surface:
     def clear_depth(self, value: int = 65535) -> None:
         ("Reset the depth buffer to value (0 is the near plane, 65535 the far "
          "one, which is the default). Call it once a frame before the first "
-         "render, or everything is depth-tested against last frame.")
+         "render, or everything is depth-tested against last frame. Only a "
+         "one-band surface keeps depth between calls; a banded one clears each "
+         "band as it draws it.")
 
     @cpp(native=True, kw=True)
     def render(self, mesh, model: mat4, view_proj: mat4, material,
@@ -99,6 +102,10 @@ class surface:
         ("Transform, light and rasterise a mesh. model places it in the world "
          "and view_proj is the camera (projection times view). Returns the "
          "number of triangles actually drawn, the rest having been culled.\n\n"
+         "On a banded surface the mesh is drawn a band at a time, the way draw() "
+         "draws a scene, so it depth-tests against itself but not against earlier "
+         "render() calls - build a scene for meshes that have to occlude each "
+         "other. A one-band surface keeps its depth from call to call.\n\n"
          "light may be omitted, which renders as if the material were UNLIT. "
          "Pass depth=False to skip the depth buffer entirely for this call: no "
          "per-pixel depth read or write, which is a real saving on a convex, "

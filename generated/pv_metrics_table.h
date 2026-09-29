@@ -191,6 +191,8 @@ enum {
   PV_M_scene_add,  // scene.add
   PV_M_engine_cores,  // engine.cores
   PV_M_engine_core_count,  // engine.core_count
+  PV_M_engine_work_bands,  // engine.work_bands
   PV_M_engine_profile,  // engine.profile
+  PV_M_engine_profile_detail,  // engine.profile_detail
   PV_METRIC_COUNT
 };

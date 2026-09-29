@@ -90,10 +90,12 @@ if(PV_HARDWARE_INTERP)
 endif()
 
 # Badge configuration of the core library:
-#  - enlarge the shared working buffer to also fit PNGDEC/JPEGDEC decode state
-#    ((60 + 20) * 1024 = 81920); the core rasteriser-only default is 60 KB.
+#  - enlarge the shared working buffer to also fit PNGDEC/JPEGDEC decode state;
+#    the core rasteriser-only default is 60 KB. 75 KB is also exactly 120 rows of
+#    a 320 wide pico3d depth strip, so a 320x240 surface bands as two equal
+#    halves, and it leaves SRAM some headroom.
 target_compile_definitions(usermod_picovector INTERFACE
-  PV_WORKING_BUFFER_SIZE=81920
+  PV_WORKING_BUFFER_SIZE=76800
 )
 
 # NOTE: PV_GC_MANAGED is deliberately NOT set here. It is not an optional feature

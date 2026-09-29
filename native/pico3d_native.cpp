@@ -9,6 +9,7 @@
 
 #include "pv_bindings.hpp"
 #include "types.h"
+#include "picovector_working_buffer.h"   // the banded depth strip lives here
 
 extern "C" {
   #include "py/runtime.h"
@@ -216,10 +217,21 @@ extern "C" {
   }
 
   // ── surface ───────────────────────────────────────────────────────────────
-  // Rows one band covers, which is also the height of the depth buffer. Rounded
-  // up, so the last band is the short one rather than the buffer being a row shy.
-  static int surface_band_rows(const surface_obj_t *self) {
-    return self->bands > 1 ? (self->h + self->bands - 1) / self->bands : self->h;
+  // The depth buffer is always picovector's working buffer: on-chip SRAM, and
+  // idle while a 3D pass runs. The heap is PSRAM, where a depth buffer read and
+  // written for every pixel stepped over is ruinous. So the pool's size decides
+  // how the surface bands - as many rows as fit make one band, and the surface
+  // takes however many bands that leaves. A surface that fits whole is one band.
+  static void surface_size_bands(surface_obj_t *self) {
+    int fit = (int)(working_buffer_size / ((size_t)self->w * sizeof(uint16_t)));
+    if (fit < 1) {
+      mp_raise_msg_varg(&mp_type_ValueError,
+                        MP_ERROR_TEXT("a %d px wide surface needs %d bytes a depth row, have %d"),
+                        self->w, (int)(self->w * sizeof(uint16_t)), (int)working_buffer_size);
+    }
+    self->band_rows = fit < self->h ? fit : self->h;
+    self->bands = (self->h + self->band_rows - 1) / self->band_rows;
+    self->depth = (uint16_t *)PicoVector_working_buffer;
   }
 
   // Fill a render-target view from the wrapped image, reallocating the depth
@@ -232,8 +244,7 @@ extern "C" {
     if (w != self->w || h != self->h) {
       self->w = w;
       self->h = h;
-      self->band_rows = surface_band_rows(self);
-      self->depth = m_new(uint16_t, (size_t)w * self->band_rows);
+      surface_size_bands(self);
     }
     t->color = (uint32_t *)im->ptr(0, 0);
     t->depth = self->depth;
@@ -260,10 +271,9 @@ extern "C" {
 
   mp_obj_t surface_make_new_impl(const mp_obj_type_t *type, size_t n_args,
                                  size_t n_kw, const mp_obj_t *args) {
-    enum { ARG_image, ARG_bands };
+    enum { ARG_image };
     static const mp_arg_t allowed[] = {
       { MP_QSTR_image, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-      { MP_QSTR_bands, MP_ARG_INT, {.u_int = 1} },
     };
     mp_arg_val_t vals[MP_ARRAY_SIZE(allowed)];
     mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed), allowed, vals);
@@ -279,18 +289,13 @@ extern "C" {
       mp_raise_msg(&mp_type_ValueError,
                    MP_ERROR_TEXT("pico3d needs an RGBA image"));
     }
-    if (vals[ARG_bands].u_int < 1) {
-      mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("bands must be at least 1"));
-    }
     rect_t b = img->image->bounds();
 
     surface_obj_t *self = mp_obj_malloc(surface_obj_t, type);
     self->source = img;
     self->w = (int)b.w;
     self->h = (int)b.h;
-    self->bands = (int)vals[ARG_bands].u_int;
-    self->band_rows = surface_band_rows(self);
-    self->depth = m_new(uint16_t, (size_t)self->w * self->band_rows);
+    surface_size_bands(self);
     return MP_OBJ_FROM_PTR(self);
   }
 
@@ -318,12 +323,6 @@ extern "C" {
 #if PV_METRICS
     pv::metric_scope _pvm(PV_M_surface_render);
 #endif
-    // A banded surface's depth buffer is one band tall, and render() depth-tests
-    // the whole surface in one pass, so there is nothing sane to do here.
-    if (self->bands > 1) {
-      mp_raise_msg(&mp_type_ValueError,
-                   MP_ERROR_TEXT("render() needs bands=1; use draw(scene)"));
-    }
     enum { ARG_mesh, ARG_model, ARG_view_proj, ARG_material, ARG_light, ARG_depth, ARG_view };
     static const mp_arg_t allowed[] = {
       { MP_QSTR_mesh,      MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -371,12 +370,40 @@ extern "C" {
 
     pico3d_target_t t;
     surface_view(self, &t);
-    // depth=False drops the Z-buffer for this call. Both the read and the write
-    // go to PSRAM, so it is a real saving on a mesh that cannot occlude itself.
+    // depth=False drops the Z-buffer for this call, and with it any need to band.
     if (!vals[ARG_depth].u_bool) t.depth = nullptr;
 
-    int drawn = pico3d_draw_mesh(&t, &mesh->mesh, &model->m, &vp->m, &mat->mat,
-                                 mat->shading, light, self->vcache, view);
+    // A surface whose depth fits the working buffer whole draws immediately, and
+    // its depth persists from call to call until clear_depth().
+    if (self->bands == 1 || !t.depth) {
+      int drawn = pico3d_draw_mesh(&t, &mesh->mesh, &model->m, &vp->m, &mat->mat,
+                                   mat->shading, light, self->vcache, view);
+      return mp_obj_new_int(drawn);
+    }
+
+    // Otherwise the depth strip is one band tall, so the mesh goes through a
+    // scene of one: transformed once, then rasterised a band at a time with each
+    // band clearing its own strip. The mesh depth-tests against itself, but not
+    // against earlier render() calls - that needs a scene holding all of them.
+    uint32_t nt = mesh->mesh.triangle_count;
+    if (nt > self->tri_cap) {
+      self->tri_ys = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 2 * nt);
+      self->tri_bin = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * nt);
+      self->tri_bin1 = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * nt);
+      self->tri_cap = nt;
+    }
+    pico3d_sub_t sub;
+    pico3d_scene_t sc{};
+    sc.subs = &sub;             sc.sub_cap = 1;
+    sc.verts = self->vcache;    sc.vert_cap = self->vcache_cap;
+    sc.ys = self->tri_ys;       sc.tri_cap = self->tri_cap;
+    sc.bin = self->tri_bin;     sc.bin_cap = self->tri_cap;
+    sc.bin1 = self->tri_bin1;
+    pico3d_scene_reset(&sc);
+    pico3d_scene_add(&sc, &t, &mesh->mesh, &model->m, &vp->m, &mat->mat,
+                     mat->shading, light, view);
+    t.depth_y0 = t.clip_y0;     // as draw(): a clip shorter than a band still lands in the strip
+    int drawn = pico3d_scene_draw(&sc, &t, self->band_rows);
     return mp_obj_new_int(drawn);
   }
 
@@ -447,6 +474,8 @@ extern "C" {
     sc.verts = (pico3d_vcache_t *)m_malloc_no_scan(sizeof(pico3d_vcache_t) * sc.vert_cap);
     sc.ys    = (int16_t *)m_malloc_no_scan(sizeof(int16_t) * 2 * sc.tri_cap);
     sc.bin   = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
+    // core1's own bin, so the two cores can take a band's halves apart
+    sc.bin1  = (uint16_t *)m_malloc_no_scan(sizeof(uint16_t) * sc.bin_cap);
     self->refs = m_new(mp_obj_t, sc.sub_cap * 3);
     for (uint32_t i = 0; i < sc.sub_cap * 3; i++) self->refs[i] = mp_const_none;
     pico3d_scene_reset(&sc);
@@ -529,16 +558,50 @@ extern "C" {
   mp_obj_t engine_profile(size_t n_args, const mp_obj_t *args) {
     (void)n_args; (void)args;
     uint64_t *counters[] = {
-      &pico3d_prof_transform_cyc, &pico3d_prof_build_cyc,
-      &pico3d_prof_project_cyc, &pico3d_prof_planes_cyc, &pico3d_prof_edges_cyc,
-      &pico3d_prof_fill_cyc, &pico3d_prof_bbox_px, &pico3d_prof_px,
+      pico3d_prof_transform_cyc, pico3d_prof_build_cyc,
+      pico3d_prof_project_cyc, pico3d_prof_planes_cyc, pico3d_prof_edges_cyc,
+      pico3d_prof_fill_cyc, pico3d_prof_bbox_px, pico3d_prof_px,
     };
     mp_obj_t out[MP_ARRAY_SIZE(counters)];
     for (size_t i = 0; i < MP_ARRAY_SIZE(counters); i++) {
-      out[i] = mp_obj_new_int_from_uint((mp_uint_t)*counters[i]);
-      *counters[i] = 0;
+      // both cores' counts, summed
+      out[i] = mp_obj_new_int_from_uint((mp_uint_t)(counters[i][0] + counters[i][1]));
+      counters[i][0] = counters[i][1] = 0;
     }
     return mp_obj_new_tuple(MP_ARRAY_SIZE(out), out);
+  }
+
+  mp_obj_t engine_profile_detail(size_t n_args, const mp_obj_t *args) {
+    (void)n_args; (void)args;
+    mp_obj_t d = mp_obj_new_dict(24);
+    auto store = [&](qstr name, uint64_t c0, uint64_t c1) {
+      mp_obj_t pair[2] = { mp_obj_new_int_from_ull(c0), mp_obj_new_int_from_ull(c1) };
+      mp_obj_dict_store(d, MP_OBJ_NEW_QSTR(name), mp_obj_new_tuple(2, pair));
+    };
+    struct { qstr name; uint64_t *c; } wide[] = {
+      { MP_QSTR_transform_wall, pico3d_prof_transform_cyc },
+      { MP_QSTR_project,        pico3d_prof_project_cyc },
+      { MP_QSTR_planes,         pico3d_prof_planes_cyc },
+      { MP_QSTR_edges,          pico3d_prof_edges_cyc },
+      { MP_QSTR_fill,           pico3d_prof_fill_cyc },
+      { MP_QSTR_bbox_px,        pico3d_prof_bbox_px },
+      { MP_QSTR_px,             pico3d_prof_px },
+    };
+    for (auto &r : wide) { store(r.name, r.c[0], r.c[1]); r.c[0] = r.c[1] = 0; }
+    struct { qstr name; int id; } detail[] = {
+      { MP_QSTR_add_wall,     PICO3D_PD_ADD_WALL },  { MP_QSTR_xform,      PICO3D_PD_XFORM },
+      { MP_QSTR_extents,      PICO3D_PD_EXTENTS },   { MP_QSTR_draw_wall,  PICO3D_PD_DRAW_WALL },
+      { MP_QSTR_clear,        PICO3D_PD_CLEAR },     { MP_QSTR_bin,        PICO3D_PD_BIN },
+      { MP_QSTR_pass2,        PICO3D_PD_PASS2 },     { MP_QSTR_raster,     PICO3D_PD_RASTER },
+      { MP_QSTR_wait,         PICO3D_PD_WAIT },      { MP_QSTR_verts,      PICO3D_PD_VERTS },
+      { MP_QSTR_tris_in,      PICO3D_PD_TRIS_IN },   { MP_QSTR_tris_drawn, PICO3D_PD_TRIS_DRAWN },
+      { MP_QSTR_tris_clipped, PICO3D_PD_TRIS_CLIPPED },
+    };
+    for (auto &r : detail) {
+      store(r.name, pico3d_prof_detail[0][r.id], pico3d_prof_detail[1][r.id]);
+      pico3d_prof_detail[0][r.id] = pico3d_prof_detail[1][r.id] = 0;
+    }
+    return d;
   }
 
 }

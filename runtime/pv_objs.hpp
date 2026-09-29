@@ -243,12 +243,17 @@ extern "C" {
     int w, h;
     pico3d_vcache_t *vcache;
     uint32_t vcache_cap;
+    // render() on a banded surface draws through a one-mesh scene: these are its
+    // per-triangle row extents and band bin, grown like vcache to the largest mesh.
+    int16_t *tri_ys;
+    uint16_t *tri_bin, *tri_bin1;
+    uint32_t tri_cap;
     uint32_t fog;                       // linear depth fog, copied into the target
     float fog_near, fog_far;
     // How many horizontal bands draw() splits the surface into, and the rows one
-    // band covers. bands == 1 is a full-surface depth buffer, which is what
-    // render() needs; above that the buffer holds one band and is walked down
-    // the screen, so it is small enough to sit in fast memory.
+    // band covers. Both follow from the working buffer's size, which always holds
+    // the depth buffer; bands == 1 means the whole surface fit, which is what
+    // render() needs.
     int bands, band_rows;
   } surface_obj_t;
 

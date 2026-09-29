@@ -17,6 +17,11 @@ extern "C" {
   static int32_t jpegdec_seek_callback(JPEGFILE *jpeg, int32_t p);
   static int jpegdec_decode_callback(JPEGDRAW *pDraw);
 
+  #ifndef NO_QSTR
+  static_assert(sizeof(JPEGDEC) <= PV_WORKING_BUFFER_SIZE,
+                "the JPEG decoder doesn't fit in the working buffer");
+  #endif
+
   struct jpecdec_decode_data_t {
     float x_ratio;
     float y_ratio;

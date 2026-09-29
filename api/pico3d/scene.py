@@ -18,7 +18,7 @@ class scene:
     time, so the depth buffer only ever needs to be one band tall and can sit in
     fast memory::
 
-        view = pico3d.surface(screen, bands=4)
+        view = pico3d.surface(screen)
         geometry = pico3d.scene(view, meshes=96, vertices=2048, triangles=3072)
 
         while True:

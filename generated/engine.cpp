@@ -22,18 +22,35 @@ mp_obj_t mpy_engine_core_count(size_t n_args, const mp_obj_t *args) {
   return mp_obj_new_int(pico3d_get_cores());
 }
 
+// engine.work_bands: The fewest bands a two-core draw of a banded surface cuts its rows into, returning the value in effect. Each core takes the next band until none are left, so more bands balance the cores better, at the cost of scanning the scene's triangles once more per band. Default 4.
+mp_obj_t mpy_engine_work_bands(size_t n_args, const mp_obj_t *args) {
+#if PV_METRICS
+  pv::metric_scope _pvm(PV_M_engine_work_bands);
+#endif
+  size_t _i = 0;
+  int n = (int)mp_obj_get_float(args[_i]); _i++;
+  return mp_obj_new_int((pico3d_set_work_bands(n), pico3d_get_work_bands()));
+}
+
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_engine_cores_obj, 1, mpy_engine_cores);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_engine_cores_static_obj, MP_ROM_PTR(&mpy_engine_cores_obj));
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_engine_core_count_obj, 0, mpy_engine_core_count);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_engine_core_count_static_obj, MP_ROM_PTR(&mpy_engine_core_count_obj));
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_engine_work_bands_obj, 1, mpy_engine_work_bands);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_engine_work_bands_static_obj, MP_ROM_PTR(&mpy_engine_work_bands_obj));
 extern "C" mp_obj_t engine_profile(size_t n_args, const mp_obj_t *args);
 static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_engine_profile_obj, 0, engine_profile);
 static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_engine_profile_static_obj, MP_ROM_PTR(&mpy_engine_profile_obj));
+extern "C" mp_obj_t engine_profile_detail(size_t n_args, const mp_obj_t *args);
+static MP_DEFINE_CONST_FUN_OBJ_VAR(mpy_engine_profile_detail_obj, 0, engine_profile_detail);
+static MP_DEFINE_CONST_STATICMETHOD_OBJ(mpy_engine_profile_detail_static_obj, MP_ROM_PTR(&mpy_engine_profile_detail_obj));
 
 static const mp_rom_map_elem_t engine_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_cores), MP_ROM_PTR(&mpy_engine_cores_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_core_count), MP_ROM_PTR(&mpy_engine_core_count_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_work_bands), MP_ROM_PTR(&mpy_engine_work_bands_static_obj) },
   { MP_ROM_QSTR(MP_QSTR_profile), MP_ROM_PTR(&mpy_engine_profile_static_obj) },
+  { MP_ROM_QSTR(MP_QSTR_profile_detail), MP_ROM_PTR(&mpy_engine_profile_detail_static_obj) },
 };
 static MP_DEFINE_CONST_DICT(engine_locals_dict, engine_locals_dict_table);
 
