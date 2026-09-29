@@ -240,6 +240,9 @@ extern "C" {
   // different size) since the surface was built.
   void surface_view(surface_obj_t *self, pico3d_target_t *t) {
     image_t *im = self->source->image;
+    // a streaming display may still be reading a 565 framebuffer: stall the
+    // draw here, before any band writes a pixel, and nowhere else
+    if (im->pixel_format() == RGB565) pv_fence_565();
     rect_t b = im->bounds(), cl = im->clip();
     int w = (int)b.w, h = (int)b.h;
     if (w != self->w || h != self->h) {
