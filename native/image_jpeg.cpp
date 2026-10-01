@@ -147,7 +147,7 @@ extern "C" {
     jpecdec_decode_data_t* decode_data = (jpecdec_decode_data_t*)pDraw->pUser;
     image_t *target = decode_data->image;
 
-    // A JPEG is never indexed, so every write below stores a four-byte pixel.
+    // A JPEG is never indexed, so every write below stores a whole pv_store_t.
     // Into a palettised target that would run past the end of every row.
     if(target->has_palette()) return 1;
 
@@ -163,15 +163,16 @@ extern "C" {
       int x = 0;
       fx16_t cur_x = f_to_fx16(decode_data->x_ratio * pDraw->x);
 
-      uint32_t *pdst = (uint32_t *)target->ptr(cur_x >> 16, cur_y >> 16);
-      
+      pv_store_t *pdst = (pv_store_t *)target->ptr(cur_x >> 16, cur_y >> 16);
+
       while (x < pDraw->iWidth) {
         if(x >= pDraw->iWidthUsed) break; // Clip to the used width
         int offset = (y * pDraw->iWidth + x) * 3;
         uint8_t r = pixels[offset];
         uint8_t g = pixels[offset + 1];
         uint8_t b = pixels[offset + 2];
-        *pdst++ = rgb_color_t(r, g, b, 255)._p;
+        pv_store(pdst, rgb_color_t(r, g, b, 255)._p);
+        pdst++;
 
         // Assume that scaling has got us close to target resolution, so it's not
         // worth doing divisions to avoid these loops.
