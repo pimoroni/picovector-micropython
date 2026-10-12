@@ -191,9 +191,14 @@ extern "C" {
     switch(pDraw->iPixelType) {
       case PNG_PIXEL_TRUECOLOR: {
         uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        if(decode_data->step_x == (1 << 16)) {
+          for(; w > 0; w--, psrc += 3) {
+            *pdst++ = opaque(psrc[0], psrc[1], psrc[2]);
+          }
+          break;
+        }
         while(w--) {
-          rgb_color_t c(psrc[0], psrc[1], psrc[2], 255);
-          *pdst = c._p;
+          *pdst = opaque(psrc[0], psrc[1], psrc[2]);
           pdst++;
 
           fx16_t last_x = cur_x >> 16;
@@ -206,9 +211,14 @@ extern "C" {
 
       case PNG_PIXEL_TRUECOLOR_ALPHA: {
         uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        if(decode_data->step_x == (1 << 16)) {
+          for(; w > 0; w--, psrc += 4) {
+            *pdst++ = psrc[3] == 255 ? opaque(psrc[0], psrc[1], psrc[2]) : premultiply(psrc[0], psrc[1], psrc[2], psrc[3]);
+          }
+          break;
+        }
         while(w--) {
-          rgb_color_t c(psrc[0], psrc[1], psrc[2], psrc[3]);
-          *pdst = c._p;
+          *pdst = premultiply(psrc[0], psrc[1], psrc[2], psrc[3]);
           pdst++;
 
           fx16_t last_x = cur_x >> 16;
@@ -254,12 +264,12 @@ extern "C" {
           uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
           while(w--) {
             uint8_t idx = pngdec_indexed_pixel(psrc, src_x, bpp);
-            *pdst = rgb_color_t(
+            *pdst = premultiply(
               pDraw->pPalette[idx * 3 + 0],
               pDraw->pPalette[idx * 3 + 1],
               pDraw->pPalette[idx * 3 + 2],
               pDraw->iHasAlpha ? pDraw->pPalette[768 + idx] : 255
-            )._p;
+            );
             pdst++;
 
             fx16_t last_x = cur_x >> 16;
@@ -276,7 +286,7 @@ extern "C" {
         uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
         while(w--) {
           uint8_t v = pngdec_gray_pixel(psrc, src_x, bpp);
-          *pdst = rgb_color_t(v, v, v, 255)._p;
+          *pdst = opaque(v, v, v);
           pdst++;
 
           fx16_t last_x = cur_x >> 16;
@@ -294,7 +304,7 @@ extern "C" {
         while(w--) {
           uint8_t v = psrc[src_x * 2 + 0];
           uint8_t a = psrc[src_x * 2 + 1];
-          *pdst = rgb_color_t(v, v, v, a)._p;
+          *pdst = premultiply(v, v, v, a);
           pdst++;
 
           fx16_t last_x = cur_x >> 16;

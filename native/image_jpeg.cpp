@@ -176,7 +176,7 @@ extern "C" {
         uint8_t r = pixels[offset];
         uint8_t g = pixels[offset + 1];
         uint8_t b = pixels[offset + 2];
-        *pdst++ = rgb_color_t(r, g, b, 255)._p;
+        *pdst++ = opaque(r, g, b);
 
         // Assume that scaling has got us close to target resolution, so it's not
         // worth doing divisions to avoid these loops.
