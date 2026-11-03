@@ -71,7 +71,6 @@ extern "C" {
     int jpeg_options = 0;
     if (scale > 1) jpeg_options = scale;
     int status = jpeg->decode(0, 0, jpeg_options);
-    jpeg->close();
     return status ? JPEG_SUCCESS : JPEG_DECODE_ERROR;
   }
 
@@ -87,10 +86,22 @@ extern "C" {
   int jpegdec_open_file(image_obj_t &target, const char *path, int target_width, int target_height) {
     JPEGDEC *jpeg = new(PicoVector_working_buffer) JPEGDEC();
     int status = jpeg->open(path, jpegdec_open_callback, jpegdec_close_callback, jpegdec_read_callback, jpegdec_seek_callback, jpegdec_decode_callback);
-    if (status != 1) {
-      return JPEG_INVALID_FILE;
+    if (status == 1) {
+      nlr_buf_t nlr;
+      if (nlr_push(&nlr) == 0) {
+        status = jpegdec_decode(target, jpeg, target_width, target_height);
+        nlr_pop();
+      } else {
+        // A decode that raises closes the file before the exception passes on
+        jpeg->close();
+        nlr_jump(nlr.ret_val);
+      }
+    } else {
+      status = JPEG_INVALID_FILE;
     }
-    return jpegdec_decode(target, jpeg, target_width, target_height);
+    // Close the file whether or not it was a JPEG, since its handle is on the tracked list
+    jpeg->close();
+    return status;
   }
 
   static void *jpegdec_open_callback(const char *filename, int32_t *size) {
@@ -107,16 +118,20 @@ extern "C" {
     mp_obj_tuple_t *tuple = (mp_obj_tuple_t*)MP_OBJ_TO_PTR(stat);
     *size = mp_obj_get_int(tuple->items[6]);
 
+    // Open before taking the handle, so an open that raises leaves nothing on the tracked list
+    mp_obj_t fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
     jpeg_handle_t *jpeg_handle = (jpeg_handle_t *)m_tracked_calloc(1, sizeof(jpeg_handle_t));
-    jpeg_handle->fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
+    jpeg_handle->fhandle = fhandle;
 
     return (void *)jpeg_handle;
   }
 
   static void jpegdec_close_callback(void *handle) {
-    jpeg_handle_t *jpeg_handle = (jpeg_handle_t *)(handle);
-    mp_stream_close(jpeg_handle->fhandle);
+    if (handle == NULL) return;
+    // Free the handle before closing, so a close that raises leaves nothing on the tracked list
+    mp_obj_t fhandle = ((jpeg_handle_t *)handle)->fhandle;
     m_tracked_free(handle);
+    mp_stream_close(fhandle);
   }
 
   static int32_t jpegdec_read_callback(JPEGFILE *jpeg, uint8_t *p, int32_t c) {

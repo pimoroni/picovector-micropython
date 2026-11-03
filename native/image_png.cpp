@@ -90,9 +90,7 @@ extern "C" {
     decode_data.step_y = f_to_fx16((float)target_height / (float)height);
     decode_data.cur_y = -decode_data.step_y;
 
-    int status = png->decode((void *)&decode_data, 0);
-    png->close();
-    return status;
+    return png->decode((void *)&decode_data, 0);
   }
 
   int pngdec_open_ram(image_obj_t &target, const void* buffer, const size_t size, int target_width, int target_height) {
@@ -107,10 +105,20 @@ extern "C" {
   int pngdec_open_file(image_obj_t &target, const char *path, int target_width, int target_height) {
     PNG *png = new(PicoVector_working_buffer) PNG();
     int status = png->open(path, pngdec_open_callback, pngdec_close_callback, pngdec_read_callback, pngdec_seek_callback, pngdec_decode_callback);
-    if (status != PNG_SUCCESS) {
-      return status;
+    if (status == PNG_SUCCESS) {
+      nlr_buf_t nlr;
+      if (nlr_push(&nlr) == 0) {
+        status = pngdec_decode(target, png, target_width, target_height);
+        nlr_pop();
+      } else {
+        // A decode that raises closes the file before the exception passes on
+        png->close();
+        nlr_jump(nlr.ret_val);
+      }
     }
-    return pngdec_decode(target, png, target_width, target_height);
+    // Close the file whether or not it was a PNG, since its handle is on the tracked list
+    png->close();
+    return status;
   }
 
   static void *pngdec_open_callback(const char *filename, int32_t *size) {
@@ -127,16 +135,20 @@ extern "C" {
     mp_obj_tuple_t *tuple = (mp_obj_tuple_t*)MP_OBJ_TO_PTR(stat);
     *size = mp_obj_get_int(tuple->items[6]);
 
+    // Open before taking the handle, so an open that raises leaves nothing on the tracked list
+    mp_obj_t fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
     png_handle_t *png_handle = (png_handle_t *)m_tracked_calloc(1, sizeof(png_handle_t));
-    png_handle->fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
+    png_handle->fhandle = fhandle;
 
     return (void *)png_handle;
   }
 
   static void pngdec_close_callback(void *handle) {
-    png_handle_t *png_handle = (png_handle_t *)(handle);
-    mp_stream_close(png_handle->fhandle);
+    if (handle == NULL) return;
+    // Free the handle before closing, so a close that raises leaves nothing on the tracked list
+    mp_obj_t fhandle = ((png_handle_t *)handle)->fhandle;
     m_tracked_free(handle);
+    mp_stream_close(fhandle);
   }
 
   static int32_t pngdec_read_callback(PNGFILE *png, uint8_t *p, int32_t c) {
