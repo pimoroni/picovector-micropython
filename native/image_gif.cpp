@@ -62,7 +62,10 @@ extern "C" {
     int error;
     mp_uint_t res = stream_p->ioctl(gif_handle->fhandle, MP_STREAM_SEEK,
                                     (mp_uint_t)(uintptr_t)&seek_s, &error);
-    return res != MP_STREAM_ERROR;
+    if (res == MP_STREAM_ERROR) {
+        mp_raise_msg_varg(&mp_type_OSError, MP_ERROR_TEXT("GIF: seek failed with %d"), error);
+    }
+    return true;
   }
 
   static size_t gifdec_ram_read(void *handle, void *dest, size_t len) {
@@ -140,7 +143,16 @@ extern "C" {
     gif_handle.fhandle = mp_vfs_open(MP_ARRAY_SIZE(args), &args[0], (mp_map_t *)&mp_const_empty_map);
 
     gif_reader_t reader = { gifdec_read_callback, gifdec_rewind_callback, &gif_handle };
-    int status = gifdec_open(target, reader, *info);
+    int status;
+    nlr_buf_t nlr;
+    if (nlr_push(&nlr) == 0) {
+      status = gifdec_open(target, reader, *info);
+      nlr_pop();
+    } else {
+      // A decode that raises closes the file before the exception passes on
+      mp_stream_close(gif_handle.fhandle);
+      nlr_jump(nlr.ret_val);
+    }
 
     mp_stream_close(gif_handle.fhandle);
     return status;
