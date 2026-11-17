@@ -30,6 +30,7 @@ api/*.py         one stub class per type (vec2, rect, mat3, color, brush, shape,
 api/pico3d/*.py  the same, for the pico3d module's types
 model.py         internal IR + the loader that introspects the stubs
 generate.py      IR -> C++ (run this to (re)generate)
+stubs.py         api/ -> .pyi type stubs for editors (stubs/picovector.pyi, stubs/pico3d.pyi)
 picovector.config.hpp   MicroPython config: routes the core onto the GC heap and
                         sets the build knobs (selected by the core via __has_include)
 runtime/
