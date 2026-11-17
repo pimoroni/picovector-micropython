@@ -85,7 +85,7 @@ _PSEUDO = {
     "XY": XY, "XYWH": XYWH, "ColorStops": STOPS, "Pattern8": PATTERN8,
     "PathList": PATHLIST, "ShapeOrList": SHAPELIST, "ShapeList": SHAPEARGS,
     "Filter": FILTER,
-    "Buffer": BUFFER, "SourceImage": SOURCEIMAGE,
+    "Buffer": BUFFER, "SourceImage": SOURCEIMAGE, "Position": ANY,
 }
 
 

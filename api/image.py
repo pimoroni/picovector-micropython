@@ -10,7 +10,7 @@ their signatures, docstrings and registration.
 from __future__ import annotations
 
 from pv import (api, cpp, native, overload, const,
-                XY, XYWH, Filter, Buffer, ShapeOrList, SourceImage, NEAREST)
+                XY, XYWH, Position, Filter, Buffer, ShapeOrList, SourceImage, NEAREST)
 
 
 @api("image_t", field="image", ptr=True, buffer=True,
@@ -247,7 +247,7 @@ class image:
 
     # ── text (font branching + bounds layout → native) ──────────────────────
     @cpp(native=True, kw=True)
-    def text(self, text: str, at: XY = None, font_size: float = 0,
+    def text(self, text: str, at: Position = None, font_size: float = 0,
              align=None, overflow=None, line_height: float = 1,
              word_spacing: float = 1, transform: mat3 = None) -> rect:
         ("Draw text with the current font; returns the drawn bounding box as a "
@@ -293,7 +293,7 @@ class image:
          "overwrites it; pass fn=None to remove it (a no-op if unregistered).")
 
     @cpp(native=True, kw=True)
-    def measure_text(self, text: str, at: XY = None, font_size: float = 0,
+    def measure_text(self, text: str, at: Position = None, font_size: float = 0,
                      line_height: float = 1, word_spacing: float = 1) -> tuple[float, float]:
         ("Measure text in the current font. Returns (width, height). Pass a rect "
          "as at to measure the text word-wrapped inside those bounds (font_size, "

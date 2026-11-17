@@ -26,7 +26,7 @@ from typing import Annotated, overload, Optional  # noqa: F401  (overload re-exp
 __all__ = [
     "Range", "api", "cpp", "native", "overload", "Annotated", "same", "Palette",
     "const",
-    "XY", "XYWH", "ColorStops", "Pattern8", "PathList", "ShapeOrList", "ShapeList",
+    "XY", "XYWH", "Position", "ColorStops", "Pattern8", "PathList", "ShapeOrList", "ShapeList",
     "Filter", "Buffer", "NEAREST", "BILINEAR", "BICUBIC",
 ]
 
@@ -100,6 +100,7 @@ class _Pseudo:
 
 XY = _Pseudo("XY", "A vec2, or two floats (x, y).")
 XYWH = _Pseudo("XYWH", "A rect, or four floats (x, y, w, h).")
+Position = _Pseudo("Position", "A vec2, two floats (x, y), or a rect for laid-out text.")
 ColorStops = _Pseudo("ColorStops", "A sequence of (position, color) gradient stops.")
 Pattern8 = _Pseudo("Pattern8", "An 8-element tuple of row bitmasks (custom pattern).")
 PathList = _Pseudo("PathList", "One or more shape contours, each a list of vec2 "
