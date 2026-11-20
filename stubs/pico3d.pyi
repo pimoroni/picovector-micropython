@@ -138,8 +138,8 @@ class mesh:
     Triangles wind counter-clockwise when seen from the front; a back-facing one
     is culled unless its material is ``double_sided``.
     """
-    def __init__(self, positions: bytes | bytearray | memoryview, indices: bytes | bytearray | memoryview, normals: bytes | bytearray | memoryview | None = None, uvs: bytes | bytearray | memoryview | None = None, colors: bytes | bytearray | memoryview | None = None, tangents: bytes | bytearray | memoryview | None = None) -> None:
-        """Build a mesh over existing buffers. positions is an array('f') of 3 floats a vertex and indices an array('H') of 3 vertex indices a triangle; both are required. The rest are optional and add what a material can then use: normals (3 floats a vertex) for lit or matcap shading, uvs (2 floats) for a texture, colors (one array('I') packed RGB word a vertex) for per-vertex colour, and tangents (3 floats) for a normal map."""
+    def __init__(self, positions: bytes | bytearray | memoryview, indices: bytes | bytearray | memoryview, normals: bytes | bytearray | memoryview | None = None, uvs: bytes | bytearray | memoryview | None = None, colors: bytes | bytearray | memoryview | None = None, tangents: bytes | bytearray | memoryview | None = None, quantise: bool = False) -> None:
+        """Build a mesh over existing buffers. positions is an array('f') of 3 floats a vertex and indices an array('H') of 3 vertex indices a triangle; both are required. The rest are optional and add what a material can then use: normals (3 floats a vertex) for lit or matcap shading, uvs (2 floats) for a texture, colors (one array('I') packed RGB word a vertex) for per-vertex colour, and tangents (3 floats) for a normal map. quantise=True additionally stores positions as 16-bit fixed point over the mesh's bounds: the per-frame transform then reads half the bytes, at a precision cost far below a pixel. A quantised mesh no longer follows writes into positions."""
         ...
     @property
     def vertices(self) -> int:
@@ -151,7 +151,7 @@ class mesh:
         ...
     @property
     def positions(self) -> Any:
-        """The position array this mesh was built over (read-only reference; the array itself stays writable). Write into it to deform the mesh."""
+        """The position array this mesh was built over (read-only reference; the array itself stays writable). Write into it to deform the mesh, then call update_bounds()."""
         ...
     @property
     def indices(self) -> Any:
@@ -172,6 +172,12 @@ class mesh:
     @property
     def tangents(self) -> Any:
         """The tangent array, or None (read-only)."""
+        ...
+    def update_bounds(self) -> None:
+        """Re-measure the model-space bounding box from positions.
+
+        The box is measured once when the mesh is built, and a mesh whose box falls outside the frustum is rejected whole rather than transformed vertex by vertex. Deforming the mesh through positions leaves the box stale, so call this after moving a vertex outside it - otherwise the mesh can be culled while it is still on screen.
+        """
         ...
 
 
@@ -328,7 +334,10 @@ class surface:
     3D viewport the same way it frames anything else.
     """
     def __init__(self, image) -> None:
-        """Wrap an RGBA image as a render target, allocating a depth buffer to match. The image is held alive by the surface; a palettised one is refused, since the engine writes pixels rather than indices."""
+        """Wrap an RGBA image as a render target. The image is held alive by the surface; a palettised one is refused, since the engine writes pixels rather than indices.
+
+        The depth buffer is always picovector's working buffer, which is on-chip SRAM, so its size decides the banding: as many rows as fit make one band, and the surface takes however many bands that leaves. At 320x240 with the 80 KB buffer that is two bands of 128 rows. A surface that fits whole is one band.
+        """
         ...
     @property
     def image(self) -> Any:
@@ -343,8 +352,19 @@ class surface:
         """Height in pixels (read-only)."""
         ...
     @property
+    def bands(self) -> int:
+        """How many horizontal bands draw() and render() split the surface into, set by how much of it the working buffer's depth strip covers (read-only)."""
+        ...
+    @property
+    def band_rows(self) -> int:
+        """Rows one band covers, which is also the depth buffer's height (read-only)."""
+        ...
+    @property
     def fog(self) -> Any:
-        """The colour every surface fades towards with distance, as a picovector color. Set fog_far past fog_near to turn it on; it is off until you do. Match it to whatever the frame is cleared to and the scene recedes into the background instead of into a haze that sits in front of it."""
+        """The colour every surface fades towards with distance, as a picovector color. Set fog_far past fog_near to turn it on; it is off until you do. Match it to whatever the frame is cleared to and the scene recedes into the background instead of into a haze that sits in front of it.
+
+        Set the fog range before adding meshes to a scene: a mesh added while fog is off is stored without the depth fog needs, and draws unfogged.
+        """
         ...
     @fog.setter
     def fog(self, value: Any) -> None: ...
@@ -364,12 +384,88 @@ class surface:
     @fog_far.setter
     def fog_far(self, value: float) -> None: ...
     def clear_depth(self, value: float = 65535) -> None:
-        """Reset the depth buffer to value (0 is the near plane, 65535 the far one, which is the default). Call it once a frame before the first render, or everything is depth-tested against last frame."""
+        """Reset the depth buffer to value (0 is the near plane, 65535 the far one, which is the default). Call it once a frame before the first render, or everything is depth-tested against last frame. Only a one-band surface keeps depth between calls; a banded one clears each band as it draws it."""
         ...
     def render(self, mesh, model: mat4, view_proj: mat4, material, light = None, depth: bool = True, view: mat4 | None = None) -> int:
         """Transform, light and rasterise a mesh. model places it in the world and view_proj is the camera (projection times view). Returns the number of triangles actually drawn, the rest having been culled.
 
+        On a banded surface the mesh is drawn a band at a time, the way draw() draws a scene, so it depth-tests against itself but not against earlier render() calls - build a scene for meshes that have to occlude each other. A one-band surface keeps its depth from call to call.
+
         light may be omitted, which renders as if the material were UNLIT. Pass depth=False to skip the depth buffer entirely for this call: no per-pixel depth read or write, which is a real saving on a convex, back-face-culled mesh that cannot occlude itself. view is the view matrix on its own, and only matcap and specular materials need it - they resolve against the camera, so without it a matcap is fixed in world space and a highlight will not appear.
+        """
+        ...
+    def draw(self, scene, clear_to: float = 65535) -> int:
+        """Rasterise a scene, one band of rows at a time, and return the number of triangles drawn. Each band clears its own slice of the depth buffer to clear_to first, so there is no clear_depth() to remember.
+
+        The scene has to be one built against this surface: add() projects for a particular viewport, and replaying that through another would put every triangle in the wrong place.
+        """
+        ...
+
+
+class scene:
+    """A frame's geometry, transformed and projected once and then rasterised in
+    horizontal bands.
+
+    ``surface.render()`` draws a mesh the moment you hand it over, which means
+    depth-testing against a buffer as tall as the whole screen. A scene defers
+    instead: ``add()`` transforms and projects each mesh into the scene's own
+    arena, and ``draw()`` runs the finished geometry past one band of rows at a
+    time, so the depth buffer only ever needs to be one band tall and can sit in
+    fast memory::
+
+        view = pico3d.surface(screen)
+        geometry = pico3d.scene(view, meshes=96, vertices=2048, triangles=3072)
+
+        while True:
+            geometry.reset()
+            for thing in world:
+                geometry.add(thing.mesh, thing.model, view_proj, thing.material, sun)
+            view.draw(geometry)
+
+    Nothing here allocates after construction, so a frame can never stall on the
+    heap: the three capacities are fixed when the scene is built and ``add()``
+    returns False rather than growing.
+    """
+    def __init__(self, surface, meshes: float = 16, vertices: float = 512, triangles: float = 512) -> None:
+        """Size a scene against the surface it will be drawn into. meshes is how many add() calls one frame may hold, vertices and triangles the totals across all of them - a mesh costs its own vertex and triangle count whatever it is drawn with, so add up the geometry you expect on screen at once and leave some room. The surface is held alive by the scene."""
+        ...
+    @property
+    def surface(self) -> Any:
+        """The surface this scene projects for (read-only)."""
+        ...
+    @property
+    def meshes(self) -> int:
+        """Meshes added since the last reset (read-only)."""
+        ...
+    @property
+    def vertices(self) -> int:
+        """Vertices held, across every mesh added (read-only)."""
+        ...
+    @property
+    def triangles(self) -> int:
+        """Triangles held, across every mesh added (read-only)."""
+        ...
+    @property
+    def mesh_capacity(self) -> int:
+        """How many meshes it was built to hold (read-only)."""
+        ...
+    @property
+    def vertex_capacity(self) -> int:
+        """How many vertices it was built to hold (read-only)."""
+        ...
+    @property
+    def triangle_capacity(self) -> int:
+        """How many triangles it was built to hold (read-only)."""
+        ...
+    def reset(self) -> None:
+        """Empty the scene, ready for the next frame. Call it before the frame's first add(), not after draw(): the geometry has to stay put until it has been rasterised."""
+        ...
+    def add(self, mesh, model: mat4, view_proj: mat4, material, light = None, view: mat4 | None = None) -> bool:
+        """Transform, light and project a mesh into the scene. The arguments are surface.render()'s, and mean the same things.
+
+        Returns False if the scene is full, having added nothing - check it if the geometry on screen varies, since the alternative is silently dropping whatever came last. A mesh outside the frustum is culled whole, before any of its vertices are transformed, and reports True: nothing failed, there was simply nothing to add.
+
+        On a platform whose scenes live in a fast on-chip arena, a mesh that does not fit it raises RuntimeError instead, and the first time a mesh is added its index list is copied into the arena: rewriting a mesh's indices needs a new scene to take effect (positions stay live, as ever).
         """
         ...
 
@@ -387,6 +483,14 @@ class engine:
         """How many cores the rasteriser is currently using."""
         ...
     @staticmethod
+    def work_bands(n: float) -> int:
+        """The fewest bands a two-core draw of a banded surface cuts its rows into, returning the value in effect. Each core takes the next band until none are left, so more bands balance the cores better, at the cost of scanning the scene's triangles once more per band. Default 4."""
+        ...
+    @staticmethod
     def profile() -> tuple:
         """Cycle counts accumulated since the last call, and reset by it: (transform, build, project, planes, edges, fill, bbox_pixels, pixels). transform is the per-vertex pass, build the per-triangle assembly, project/planes/edges the three parts of per-triangle setup, and fill the scanline rasterise. bbox_pixels counts every pixel the fill stepped over and pixels only those it wrote, so the ratio is how much of the bounding boxes the triangles actually covered. All zero on a build without the cycle counter."""
+        ...
+    @staticmethod
+    def profile_detail() -> dict:
+        """The full per-core breakdown behind profile(), accumulated since the last call to either and reset by this one: a dict of name -> (core0, core1). Cycles: transform_wall (core0's wall time for the vertex pass), xform (the transform itself), extents (add's cull and row-extent pass), add_wall, draw_wall, clear (depth), bin, pass2 (triangle assembly and raster), raster (the part inside the rasteriser), project/planes/edges/fill (within raster), wait (core0 idle waiting for core1). Counts: verts, tris_in, tris_drawn, tris_clipped, bbox_px, px."""
         ...

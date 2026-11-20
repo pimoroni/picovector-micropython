@@ -817,8 +817,10 @@ class image:
     """Text overflow: clip to bounds."""
     ELLIPSES: int
     """Text overflow: truncate with '...'."""
-    def __init__(self, width: float, height: float, buffer: bytes | bytearray | memoryview | None = None) -> None:
-        """image(width, height) allocates a buffer; pass an existing buffer to wrap it."""
+    RGB565: int
+    """Platform-internal: the 16-bit format a board's framebuffer may use. Only meaningful as image()'s format argument when platform code wraps that framebuffer; drawing behaves identically on it."""
+    def __init__(self, width: float, height: float, buffer: bytes | bytearray | memoryview | None = None, format: float | None = None) -> None:
+        """image(width, height) allocates a buffer; pass an existing buffer to wrap it. format is platform-internal: image.RGB565 wraps a board's 16-bit framebuffer (buffer of width * height * 2 bytes). Drawing works the same whatever the storage format."""
         ...
     @property
     def width(self) -> int:
