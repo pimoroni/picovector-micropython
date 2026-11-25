@@ -109,8 +109,9 @@ extern "C" {
   static const char *const FONT_EXTS[] = { ".af", ".ppf" };
 
   static mp_obj_t font_open_read(const char *path) {
+    // Binary mode: only a binary ROMFS file exposes its bytes for in-place use.
     mp_obj_t open_args[2] = { mp_obj_new_str(path, strlen(path)),
-                              MP_ROM_QSTR(MP_QSTR_r) };
+                              MP_ROM_QSTR(MP_QSTR_rb) };
     return mp_vfs_open(MP_ARRAY_SIZE(open_args), open_args,
                        (mp_map_t *)&mp_const_empty_map);
   }
