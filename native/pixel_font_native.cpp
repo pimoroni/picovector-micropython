@@ -35,14 +35,15 @@ extern "C" {
 
     uint32_t bpr = floor((glyph_width + 7) / 8);
     uint32_t glyph_data_size = bpr * glyph_height;
+    size_t glyph_data_total = (size_t)glyph_data_size * glyph_count;
 
     // glyph table (codepoint+width) and raw pixel data are pointer-free, so
     // their buffers need no GC scanning.
     result->glyph_buffer_size = sizeof(pixel_font_glyph_t) * glyph_count;
     result->glyph_buffer = (uint8_t *)m_malloc_no_scan(result->glyph_buffer_size);
-    result->glyph_data_buffer_size = glyph_data_size * glyph_count;
-    result->glyph_data_buffer = (uint8_t *)m_malloc_no_scan(result->glyph_data_buffer_size);
-    if (!result->glyph_buffer || !result->glyph_data_buffer) {
+    result->glyph_data_buffer_size = 0;
+    result->glyph_data_buffer = NULL;
+    if (!result->glyph_buffer) {
       mp_raise_msg_varg(&mp_type_OSError,
                         MP_ERROR_TEXT("couldn't allocate buffer for font data"));
     }
@@ -52,8 +53,26 @@ extern "C" {
       glyphs[i].codepoint = ru32(file);
       glyphs[i].width = ru16(file);
     }
-    mp_stream_read_exactly(file, result->glyph_data_buffer,
-                           result->glyph_data_buffer_size, &error);
+
+    // The pixel data follows the glyph table. A file that exposes its bytes, as
+    // one in ROMFS does, is drawn from in place (see load_vector_font for why
+    // that is safe); anything else is read into a buffer.
+    const uint8_t *glyph_data;
+    size_t glyph_data_offset = 4 + 2 + 4 + 2 + 2 + sizeof(name) + (size_t)glyph_count * 6;
+    mp_buffer_info_t mapped;
+    if (mp_get_buffer(file, &mapped, MP_BUFFER_READ) && glyph_data_offset + glyph_data_total <= mapped.len) {
+      glyph_data = (const uint8_t *)mapped.buf + glyph_data_offset;
+    } else {
+      result->glyph_data_buffer_size = glyph_data_total;
+      result->glyph_data_buffer = (uint8_t *)m_malloc_no_scan(result->glyph_data_buffer_size);
+      if (!result->glyph_data_buffer) {
+        mp_raise_msg_varg(&mp_type_OSError,
+                          MP_ERROR_TEXT("couldn't allocate buffer for font data"));
+      }
+      mp_stream_read_exactly(file, result->glyph_data_buffer,
+                             result->glyph_data_buffer_size, &error);
+      glyph_data = result->glyph_data_buffer;
+    }
 
     result->font = m_new_class(pixel_font_t);
     result->font->glyph_count     = glyph_count;
@@ -61,7 +80,7 @@ extern "C" {
     result->font->height          = glyph_height;
     result->font->glyph_data_size = glyph_data_size;
     result->font->glyphs          = glyphs;
-    result->font->glyph_data      = result->glyph_data_buffer;
+    result->font->glyph_data      = (uint8_t *)glyph_data;
     strcpy(result->font->name, name);
 
     mp_stream_close(file);

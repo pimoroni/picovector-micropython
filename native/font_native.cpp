@@ -70,8 +70,13 @@ extern "C" {
   }
 
   // `file` is an open stream positioned at the start of the .af. The parser
-  // builds one self-contained non-scanned block (its internal glyph->paths /
-  // path->points pointers stay within it, kept alive by the scanned obj).
+  // builds one non-scanned block, kept alive by the scanned obj, for the glyph
+  // and path tables and (unless they are used in place) the points.
+  //
+  // A file that exposes its bytes, as one in ROMFS does, is parsed in place: a
+  // narrow font's points are read straight from flash. ROMFS is only rewritten
+  // between IDE runs, each of which ends in a soft reset, so the font is gone
+  // before its points could change.
   mp_obj_t load_vector_font(mp_obj_t file, const char *path) {
     vector_font_obj_t *result = mp_obj_malloc(vector_font_obj_t, &type_vector_font);
     result->path = dup_path(path);
@@ -80,10 +85,17 @@ extern "C" {
     result->buffer = NULL;
     result->buffer_size = 0;
 
-    font_reader_t reader = { font_stream_read, (void *)file };
     size_t buffer_size = 0;
-    font_status_t status = parse_vector_font(reader, &result->font,
-                                             &result->buffer, &buffer_size);
+    font_status_t status;
+    mp_buffer_info_t mapped;
+    if (mp_get_buffer(file, &mapped, MP_BUFFER_READ)) {
+      status = parse_vector_font_mapped((const uint8_t *)mapped.buf, mapped.len,
+                                        &result->font, &result->buffer, &buffer_size);
+    } else {
+      font_reader_t reader = { font_stream_read, (void *)file };
+      status = parse_vector_font(reader, &result->font,
+                                 &result->buffer, &buffer_size);
+    }
     mp_stream_close(file);
     if (status != FONT_OK) raise_font_error(status, path);
     result->buffer_size = buffer_size;
@@ -171,6 +183,20 @@ extern "C" {
   static MP_DEFINE_CONST_FUN_OBJ_VAR(pv_font_load_obj, 1, font_load);
 
   // ── ROM short-name lookup (cached), backing font.<name> ────────────────────
+  // A pixel font wins over a vector font of the same name.
+  static const char *const ROM_FONT_EXTS[] = { ".ppf", ".af" };
+
+  static bool rom_font_ext(const char *name, size_t len, size_t *stem) {
+    for (size_t e = 0; e < MP_ARRAY_SIZE(ROM_FONT_EXTS); e++) {
+      size_t ext = strlen(ROM_FONT_EXTS[e]);
+      if (len > ext && strcmp(name + len - ext, ROM_FONT_EXTS[e]) == 0) {
+        *stem = len - ext;
+        return true;
+      }
+    }
+    return false;
+  }
+
   static mp_obj_t font_rom_get(qstr q) {
     if (MP_STATE_VM(pv_font_rom_cache) == MP_OBJ_NULL) {
       MP_STATE_VM(pv_font_rom_cache) = mp_obj_new_dict(0);
@@ -182,20 +208,23 @@ extern "C" {
 
     vstr_t vs;
     vstr_init(&vs, 48);
-    vstr_printf(&vs, "/rom/fonts/%s.ppf", qstr_str(q));
-    const char *path = vstr_null_terminated_str(&vs);
-    if (mp_vfs_import_stat(path) != MP_IMPORT_STAT_FILE) {
-      vstr_clear(&vs);
-      return MP_OBJ_NULL;  // miss -> AttributeError
+    for (size_t e = 0; e < MP_ARRAY_SIZE(ROM_FONT_EXTS); e++) {
+      vstr_reset(&vs);
+      vstr_printf(&vs, "/rom/fonts/%s%s", qstr_str(q), ROM_FONT_EXTS[e]);
+      const char *path = vstr_null_terminated_str(&vs);
+      if (mp_vfs_import_stat(path) == MP_IMPORT_STAT_FILE) {
+        // parse (which copies `path`) before releasing the vstr buffer.
+        mp_obj_t f = parse_by_marker(font_open_read(path), path);
+        vstr_clear(&vs);
+        mp_obj_dict_store(cache, key, f);
+        return f;
+      }
     }
-    // parse (which copies `path`) before releasing the vstr buffer.
-    mp_obj_t f = parse_by_marker(font_open_read(path), path);
     vstr_clear(&vs);
-    mp_obj_dict_store(cache, key, f);
-    return f;
+    return MP_OBJ_NULL;  // miss -> AttributeError
   }
 
-  // dir(font) — a lazy scan of /rom/fonts, returning the .ppf stems.
+  // dir(font) — a lazy scan of /rom/fonts, returning the .ppf and .af stems.
   static mp_obj_t font_ns_dir(mp_obj_t self_in) {
     (void)self_in;
     mp_obj_t list = mp_obj_new_list(0, NULL);
@@ -207,9 +236,12 @@ extern "C" {
       size_t n; mp_obj_t *fields;
       mp_obj_get_array(item, &n, &fields);
       const char *nm = mp_obj_str_get_str(fields[0]);
-      size_t len = strlen(nm);
-      if (len > 4 && strcmp(nm + len - 4, ".ppf") == 0) {
-        mp_obj_list_append(list, mp_obj_new_str(nm, len - 4));
+      size_t stem;
+      if (rom_font_ext(nm, strlen(nm), &stem)) {
+        mp_obj_t name = mp_obj_new_str(nm, stem);
+        if (mp_binary_op(MP_BINARY_OP_CONTAINS, list, name) == mp_const_false) {
+          mp_obj_list_append(list, name);
+        }
       }
     }
     return list;
