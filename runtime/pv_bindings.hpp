@@ -190,11 +190,11 @@ namespace pv {
   // be one. The multiply is done in 64 bits and checked, because on the badge
   // size_t is 32 bits: image(65536, 65536) wants 16GB, which wraps to something
   // small and plausible, and the image then believes it owns the larger area.
-  static inline size_t check_image_size(int w, int h) {
+  static inline size_t check_image_size(int w, int h, size_t bytes_per_pixel = 4) {
     if(w <= 0 || h <= 0) {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image width and height must be positive"));
     }
-    uint64_t bytes = (uint64_t)(uint32_t)w * (uint32_t)h * 4u;
+    uint64_t bytes = (uint64_t)(uint32_t)w * (uint32_t)h * bytes_per_pixel;
     if(bytes > (uint64_t)SIZE_MAX) {
       mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("image is too large to address"));
     }

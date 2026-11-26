@@ -19,11 +19,16 @@ from pv import (api, cpp, native, overload, const,
 class image:
     """A pixel buffer you can draw into and blit around.
 
-    Usually four bytes a pixel. A palettised file loads as one byte a pixel
-    indexing a colour table instead, and since every brush and filter stores
-    four, nothing can draw into one: the whole drawing surface is a quiet no-op
-    there, and the buffer keeps its indices. Blitting *from* one is the point of
-    it, and the table stays writable. ``palette`` tells the two apart.
+    Usually four bytes a pixel (RGBA8888). ``format`` says which: RGBA4444 is
+    two bytes, LUM8 (luminance) and MASK8 (alpha) one. Those draw as RGBA8888
+    does, more slowly, except that the brushes and filters that read a pixel's
+    neighbours (blur, pixelate, glitch, chromatic, oilpaint and the whole-image
+    filters) are a quiet no-op there.
+
+    A palettised file loads as PAL8: one byte a pixel indexing a colour table.
+    Nothing can draw into one: the whole drawing surface is a quiet no-op there,
+    and the buffer keeps its indices. Blitting *from* one is the point of it,
+    and the table stays writable. ``palette`` tells it apart.
     """
 
     # antialias / fill-rule / texture-filter constants
@@ -35,6 +40,13 @@ class image:
     NEAREST = const("filter_t::NEAREST", "Texture filter: nearest-neighbour (fastest).")
     BILINEAR = const("filter_t::BILINEAR", "Texture filter: bilinear (smooth).")
     BICUBIC = const("filter_t::BICUBIC", "Texture filter: bicubic (highest quality).")
+
+    # pixel formats, for image(width, height, buffer, format)
+    RGBA8888 = const("pixel_format_t::RGBA8888", "Pixel format: four bytes, the default.")
+    RGBA4444 = const("pixel_format_t::RGBA4444", "Pixel format: two bytes, four bits a channel.")
+    PAL8 = const("pixel_format_t::PAL8", "Pixel format: one byte indexing a palette. A blit source only.")
+    LUM8 = const("pixel_format_t::LUM8", "Pixel format: one byte of luminance, opaque.")
+    MASK8 = const("pixel_format_t::MASK8", "Pixel format: one byte of alpha.")
 
     # QR error correction levels, ascending redundancy
     QR_LOW = const("qr_ecc_t::QR_LOW", "QR error correction: recovers ~7%.")
@@ -54,8 +66,10 @@ class image:
     ELLIPSES = const("text_overflow_t::ELLIPSES", "Text overflow: truncate with '...'.")
 
     @cpp(emit="image")
-    def __init__(self, width: int, height: int, buffer: Buffer = None):
-        "image(width, height) allocates a buffer; pass an existing buffer to wrap it."
+    def __init__(self, width: int, height: int, buffer: Buffer = None, format: int = 1):
+        ("image(width, height) allocates a buffer; pass an existing buffer to wrap "
+         "it. format is RGBA8888 unless given: RGBA4444, LUM8 and MASK8 take less "
+         "memory and draw more slowly, each row converted on the way in and out.")
 
     # ── properties ──────────────────────────────────────────────────────────
     @property
@@ -76,7 +90,8 @@ class image:
         ("Bytes from the start of one row of raw to the next (read-only). A view "
          "inherits its parent's, so a spritesheet cell strides by the whole "
          "sheet's pitch rather than its own width: index raw as "
-         "y * stride + x * 4, never y * width * 4.")
+         "y * stride + x * 4 (or the format's bytes a pixel), never "
+         "y * width * 4.")
 
     @property
     @cpp(get="self->image->clip()", set="self->image->clip({0})")
@@ -84,7 +99,11 @@ class image:
 
     @property
     @cpp(get="self->image->has_palette()")
-    def has_palette(self) -> bool: "True if this image is palettised (read-only)."
+    def has_palette(self) -> bool: "True if this image is palettised: its format is PAL8 (read-only)."
+
+    @property
+    @cpp(get="(int)self->image->pixel_format()")
+    def format(self) -> int: "The pixel format: RGBA8888, RGBA4444, PAL8, LUM8 or MASK8 (read-only)."
 
     @property
     @cpp(get="self->image->palette_size()")

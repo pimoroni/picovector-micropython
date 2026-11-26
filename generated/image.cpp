@@ -641,14 +641,18 @@ static mp_obj_t image_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
   image_obj_t *self = mp_obj_malloc(image_obj_t, type);
   int w = mp_obj_get_int(args[0]);
   int h = mp_obj_get_int(args[1]);
-  size_t bytes = pv::check_image_size(w, h);
-  if (n_args > 2) {
+  int format = n_args > 3 ? mp_obj_get_int(args[3]) : (int)RGBA8888;
+  if (format < (int)RGBA8888 || format > (int)MASK8) {
+    mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("unknown image format"));
+  }
+  size_t bytes = pv::check_image_size(w, h, pv_bytes_per_pixel((pixel_format_t)format));
+  if (n_args > 2 && args[2] != mp_const_none) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
     pv::check_image_buffer(bufinfo.len, bytes);
-    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h);
+    self->image = new (m_malloc(sizeof(image_t))) image_t(bufinfo.buf, w, h, (pixel_format_t)format);
   } else {
-    self->image = new (m_malloc(sizeof(image_t))) image_t(w, h);
+    self->image = new (m_malloc(sizeof(image_t))) image_t(w, h, (pixel_format_t)format);
   }
   return MP_OBJ_FROM_PTR(self);
 }
@@ -691,6 +695,11 @@ void image_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     case MP_QSTR_has_palette:
     {
       if (action == GET) { dest[0] = mp_obj_new_bool(self->image->has_palette()); return; }
+      break;
+    }
+    case MP_QSTR_format:
+    {
+      if (action == GET) { dest[0] = mp_obj_new_int((int)self->image->pixel_format()); return; }
       break;
     }
     case MP_QSTR_palette_size:
@@ -782,6 +791,11 @@ static const mp_rom_map_elem_t image_locals_dict_table[] = {
   { MP_ROM_QSTR(MP_QSTR_NEAREST), MP_ROM_INT(filter_t::NEAREST) },
   { MP_ROM_QSTR(MP_QSTR_BILINEAR), MP_ROM_INT(filter_t::BILINEAR) },
   { MP_ROM_QSTR(MP_QSTR_BICUBIC), MP_ROM_INT(filter_t::BICUBIC) },
+  { MP_ROM_QSTR(MP_QSTR_RGBA8888), MP_ROM_INT(pixel_format_t::RGBA8888) },
+  { MP_ROM_QSTR(MP_QSTR_RGBA4444), MP_ROM_INT(pixel_format_t::RGBA4444) },
+  { MP_ROM_QSTR(MP_QSTR_PAL8), MP_ROM_INT(pixel_format_t::PAL8) },
+  { MP_ROM_QSTR(MP_QSTR_LUM8), MP_ROM_INT(pixel_format_t::LUM8) },
+  { MP_ROM_QSTR(MP_QSTR_MASK8), MP_ROM_INT(pixel_format_t::MASK8) },
   { MP_ROM_QSTR(MP_QSTR_QR_LOW), MP_ROM_INT(qr_ecc_t::QR_LOW) },
   { MP_ROM_QSTR(MP_QSTR_QR_MEDIUM), MP_ROM_INT(qr_ecc_t::QR_MEDIUM) },
   { MP_ROM_QSTR(MP_QSTR_QR_QUARTILE), MP_ROM_INT(qr_ecc_t::QR_QUARTILE) },

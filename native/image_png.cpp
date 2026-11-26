@@ -82,7 +82,7 @@ extern "C" {
       if(entries > 256) entries = 256;
 
       target.image = new(m_malloc(sizeof(image_t))) image_t(target_width, target_height,
-                                                           RGBA8888, has_palette, entries);
+                                                           has_palette ? PAL8 : RGBA8888, entries);
     }
 
     decode_data.image = target.image;
@@ -174,8 +174,8 @@ extern "C" {
 
     image_t *target = decode_data->image;
 
-    // Only the indexed branch stores one byte a pixel. The rest store four, so
-    // decoding into a palettised target would write past the end of every row.
+    // Only the indexed branch stores indices: nothing else can decode into a
+    // palettised target.
     if(target->has_palette() && pDraw->iPixelType != PNG_PIXEL_INDEXED) return;
 
     uint8_t *pixels = (uint8_t *)pDraw->pPixels;
@@ -187,11 +187,10 @@ extern "C" {
 
     switch(pDraw->iPixelType) {
       case PNG_PIXEL_TRUECOLOR: {
-        uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        pixel_writer_t dst(target, 0, decode_data->cur_y >> 16);
         while(w--) {
           rgb_color_t c(psrc[0], psrc[1], psrc[2], 255);
-          *pdst = c._p;
-          pdst++;
+          dst.put(c._p);
 
           fx16_t last_x = cur_x >> 16;
           do {
@@ -202,11 +201,10 @@ extern "C" {
       } break;
 
       case PNG_PIXEL_TRUECOLOR_ALPHA: {
-        uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        pixel_writer_t dst(target, 0, decode_data->cur_y >> 16);
         while(w--) {
           rgb_color_t c(psrc[0], psrc[1], psrc[2], psrc[3]);
-          *pdst = c._p;
-          pdst++;
+          dst.put(c._p);
 
           fx16_t last_x = cur_x >> 16;
           do {
@@ -248,16 +246,15 @@ extern "C" {
             } while (cur_x >> 16 == last_x);
           }
         } else {
-          uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+          pixel_writer_t dst(target, 0, decode_data->cur_y >> 16);
           while(w--) {
             uint8_t idx = pngdec_indexed_pixel(psrc, src_x, bpp);
-            *pdst = rgb_color_t(
+            dst.put(rgb_color_t(
               pDraw->pPalette[idx * 3 + 0],
               pDraw->pPalette[idx * 3 + 1],
               pDraw->pPalette[idx * 3 + 2],
               pDraw->iHasAlpha ? pDraw->pPalette[768 + idx] : 255
-            )._p;
-            pdst++;
+            )._p);
 
             fx16_t last_x = cur_x >> 16;
             do {
@@ -270,11 +267,10 @@ extern "C" {
       case PNG_PIXEL_GRAYSCALE: {
         int bpp = pDraw->iBpp;
         int src_x = 0;
-        uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        pixel_writer_t dst(target, 0, decode_data->cur_y >> 16);
         while(w--) {
           uint8_t v = pngdec_gray_pixel(psrc, src_x, bpp);
-          *pdst = rgb_color_t(v, v, v, 255)._p;
-          pdst++;
+          dst.put(rgb_color_t(v, v, v, 255)._p);
 
           fx16_t last_x = cur_x >> 16;
           do {
@@ -287,12 +283,11 @@ extern "C" {
       case PNG_PIXEL_GRAY_ALPHA: {
         // Two 8-bit samples per pixel: gray then alpha (16-bit depth is rejected at open).
         int src_x = 0;
-        uint32_t *pdst = (uint32_t *)target->ptr(0, decode_data->cur_y >> 16);
+        pixel_writer_t dst(target, 0, decode_data->cur_y >> 16);
         while(w--) {
           uint8_t v = psrc[src_x * 2 + 0];
           uint8_t a = psrc[src_x * 2 + 1];
-          *pdst = rgb_color_t(v, v, v, a)._p;
-          pdst++;
+          dst.put(rgb_color_t(v, v, v, a)._p);
 
           fx16_t last_x = cur_x >> 16;
           do {

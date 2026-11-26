@@ -114,7 +114,7 @@ extern "C" {
 
     target.image = new(m_malloc(sizeof(image_t))) image_t(
       (int)info.width * (int)info.frame_count, (int)info.height,
-      1, (int)info.frame_count, RGBA8888, true, info.palette_size);
+      1, (int)info.frame_count, PAL8, info.palette_size);
 
     status = gif_decode(reader, scratch, &info, target.image);
     if(status != GIF_OK) return status;
